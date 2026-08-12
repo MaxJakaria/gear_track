@@ -1,0 +1,25 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "geartrack-9ccdb",
+          "appId": "1:716390459830:android:30b00af4650a3deddfb917",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "geartrack-9ccdb",
+          "configurations": {
+            "android": "1:716390459830:android:30b00af4650a3deddfb917",
+            "ios": "1:716390459830:ios:6c537a21d5626659dfb917",
+            "macos": "1:716390459830:ios:6c537a21d5626659dfb917",
+            "web": "1:716390459830:web:1a41c77cafd6c15fdfb917",
+            "windows": "1:716390459830:web:4bc5554613e69df3dfb917"
+          }
+        }
+      }
+    }
+  }
+}
