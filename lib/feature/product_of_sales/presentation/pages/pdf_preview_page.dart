@@ -1,25 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
-import 'package:gear_track/feature/product_of_sales/utils/pdf_receipt_service.dart';
-import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
-
 import 'dart:typed_data';
 
 class PdfPreviewPage extends StatelessWidget {
   final Uint8List pdfBytes;
 
-  const PdfPreviewPage({
-    super.key,
-    required this.pdfBytes,
-  });
+  const PdfPreviewPage({super.key, required this.pdfBytes});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Receipt Preview'),
-      ),
+      appBar: AppBar(title: const Text('Receipt Preview')),
       body: PdfPreview(
         build: (format) async => pdfBytes,
         actions: const [],
