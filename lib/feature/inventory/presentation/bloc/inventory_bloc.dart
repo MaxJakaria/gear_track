@@ -66,6 +66,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       itemName: event.itemName,
       model: event.model,
       costCode: event.costCode,
+      initialQuantity: event.stockCount,
       stockCount: event.stockCount,
     );
 

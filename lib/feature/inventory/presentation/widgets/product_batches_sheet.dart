@@ -3,18 +3,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/batch_item_tile.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/edit_product_sheet.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/quick_add_stock_sheet.dart';
 
 class ProductBatchesSheet extends StatelessWidget {
   final GroupedProduct groupedProduct;
 
-  const ProductBatchesSheet({
-    super.key,
-    required this.groupedProduct,
-  });
+  const ProductBatchesSheet({super.key, required this.groupedProduct});
 
-  static Future<void> show(BuildContext context, GroupedProduct groupedProduct) {
+  static Future<void> show(
+    BuildContext context,
+    GroupedProduct groupedProduct,
+  ) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -66,12 +67,7 @@ class ProductBatchesSheet extends StatelessWidget {
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: const EdgeInsets.only(
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: 20,
-      ),
+      padding: const EdgeInsets.only(top: 20, left: 20, right: 20, bottom: 20),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -82,7 +78,9 @@ class ProductBatchesSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.3,
+                  ),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -113,7 +111,9 @@ class ProductBatchesSheet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
@@ -161,165 +161,42 @@ class ProductBatchesSheet extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // Scrollable List of Batches
-            Expanded(
-              child: ListView.separated(
-                itemCount: groupedProduct.batches.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final batch = groupedProduct.batches[index];
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.inventory_2_outlined,
-                            size: 18,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.attach_money_rounded,
-                                    size: 14,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  Text(
-                                    'Cost Code: ${batch.costCode}',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.calendar_today_outlined,
-                                    size: 12,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _formatDate(batch.entryDate),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '+${batch.stockCount} units',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSecondaryContainer,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const SizedBox(width: 4),
-
-                        // Three Dots Context Menu
-                        PopupMenuButton<String>(
-                          icon: Icon(
-                            Icons.more_vert_rounded,
-                            size: 20,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          tooltip: 'Batch Options',
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              Navigator.pop(context);
-                              EditProductSheet.show(context, batch);
-                            } else if (value == 'delete') {
-                              _confirmDelete(context, batch);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem<String>(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.edit_outlined,
-                                    size: 18,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  const Text(
-                                    'Edit Batch',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline_rounded,
-                                    size: 18,
-                                    color: theme.colorScheme.error,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    'Delete Batch',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: theme.colorScheme.error,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-
-                },
+            // Batch List Container (Matching reference image soft ice-blue background)
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.brightness == Brightness.dark
+                    ? const Color(0xFF1B232D)
+                    : const Color(0xFFEBF3FE),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: theme.brightness == Brightness.dark
+                      ? const Color(0xFF2B3645)
+                      : const Color(0xFFD4E3FC),
+                  width: 1,
+                ),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: groupedProduct.batches.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 4),
+                  itemBuilder: (context, index) {
+                    final batch = groupedProduct.batches[index];
+                    return BatchItemTile(
+                      batch: batch,
+                      index: index,
+                      onEdit: () {
+                        Navigator.pop(context);
+                        EditProductSheet.show(context, batch);
+                      },
+                      onDelete: () {
+                        _confirmDelete(context, batch);
+                      },
+                    );
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -350,10 +227,7 @@ class _HeaderTag extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _HeaderTag({
-    required this.icon,
-    required this.label,
-  });
+  const _HeaderTag({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {

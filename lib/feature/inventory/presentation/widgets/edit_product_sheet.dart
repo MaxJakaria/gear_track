@@ -79,6 +79,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
         itemName: _itemNameController.text.trim(),
         model: _modelController.text.trim(),
         costCode: _costCodeController.text.trim(),
+        initialQuantity: widget.product.initialQuantity,
         stockCount: stock,
       );
 

@@ -2,9 +2,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
-import 'package:gear_track/feature/inventory/presentation/pages/inventory_page.dart';
+import 'package:gear_track/feature/product_of_sales/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/firebase_options.dart';
 import 'package:gear_track/init_dependencies.dart';
+import 'package:gear_track/presentation/pages/main_navigation_page.dart';
 
 void main() async {
   // Ensure Flutter's engine is fully initialized before calling native code
@@ -25,6 +26,7 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (context) => serviceLocator<InventoryBloc>()),
+        BlocProvider(create: (context) => serviceLocator<PosBloc>()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -44,7 +46,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         themeMode: ThemeMode.system,
-        home: const InventoryPage(),
+        home: const MainNavigationPage(),
       ),
     );
   }

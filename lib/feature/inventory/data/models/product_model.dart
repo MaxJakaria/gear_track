@@ -9,6 +9,7 @@ class ProductModel extends Product {
     required super.itemName,
     required super.model,
     required super.costCode,
+    required super.initialQuantity,
     required super.stockCount,
   });
 
@@ -23,7 +24,8 @@ class ProductModel extends Product {
       itemName: data['itemName'] ?? '',
       model: data['model'] ?? '',
       costCode: data['costCode'] ?? '',
-      stockCount: data['stockCount'] ?? 0,
+      initialQuantity: data['quantity'] ?? 0,
+      stockCount: data['remainingQuantity'] ?? 0,
     );
   }
 
@@ -34,6 +36,8 @@ class ProductModel extends Product {
       'itemName': itemName,
       'model': model,
       'costCode': costCode,
+      'quantity': initialQuantity,
+      'remainingQuantity': stockCount,
       'stockCount': stockCount,
     };
   }
@@ -46,6 +50,7 @@ class ProductModel extends Product {
       itemName: product.itemName,
       model: product.model,
       costCode: product.costCode,
+      initialQuantity: product.initialQuantity,
       stockCount: product.stockCount,
     );
   }
