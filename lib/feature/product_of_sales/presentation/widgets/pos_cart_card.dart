@@ -1,25 +1,71 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/feature/product_of_sales/presentation/bloc/pos_bloc.dart';
+import 'package:gear_track/feature/product_of_sales/presentation/pages/pdf_preview_page.dart';
 import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_cart_empty_view.dart';
 import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_cart_item_tile.dart';
 import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_checkout_button.dart';
 
+import 'package:gear_track/feature/product_of_sales/utils/pdf_receipt_service.dart';
+
 /// "Sales Cart" Card Component
-class PosCartCard extends StatelessWidget {
+class PosCartCard extends StatefulWidget {
   const PosCartCard({super.key});
+
+  @override
+  State<PosCartCard> createState() => _PosCartCardState();
+}
+
+class _PosCartCardState extends State<PosCartCard> {
+  bool _isPdfGenerating = false;
+  List<CartItem> _currentCartItems = [];
+  double _currentTotal = 0.0;
+  int _currentItemCount = 0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return BlocBuilder<PosBloc, PosState>(
+    return BlocConsumer<PosBloc, PosState>(
+      listener: (context, state) async {
+        if (state is SaleAddedSuccess && state.checkoutCartItems.isNotEmpty) {
+          if (mounted) {
+            setState(() {
+              _isPdfGenerating = true;
+            });
+          }
+          final doc = await PdfReceiptService.generateReceipt(
+            state.checkoutCartItems,
+            state.totalPaid,
+          );
+          final bytes = await doc.save();
+          if (mounted) {
+            setState(() {
+              _isPdfGenerating = false;
+            });
+          }
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PdfPreviewPage(pdfBytes: bytes),
+            ),
+          );
+        }
+      },
       builder: (context, state) {
-        final cartItems = state is PosLoaded ? state.cartItems : [];
-        final totalAmount = state is PosLoaded ? state.totalAmount : 0.0;
-        final itemCount = state is PosLoaded ? state.totalItemCount : 0;
+        if (state is PosLoaded && !_isPdfGenerating) {
+          _currentCartItems = state.cartItems;
+          _currentTotal = state.totalAmount;
+          _currentItemCount = state.totalItemCount;
+        }
+
+        final cartItems = _currentCartItems;
+        final totalAmount = _currentTotal;
+        final itemCount = _currentItemCount;
 
         return Container(
           padding: const EdgeInsets.all(16.0),
@@ -106,6 +152,7 @@ class PosCartCard extends StatelessWidget {
                 PosCheckoutButton(
                   cartItems: List.from(cartItems),
                   totalAmount: totalAmount,
+                  isLoading: state is SaleAdding || _isPdfGenerating,
                 ),
               ],
             ],
