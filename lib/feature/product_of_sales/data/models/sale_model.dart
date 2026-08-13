@@ -4,6 +4,7 @@ import '../../domain/entities/sale_entity.dart';
 class SaleModel extends SaleEntity {
   const SaleModel({
     required super.id,
+    required super.productId,
     required super.saleDate,
     required super.itemName,
     required super.quantity,
@@ -15,6 +16,7 @@ class SaleModel extends SaleEntity {
     final data = doc.data()!;
     return SaleModel(
       id: doc.id,
+      productId: data['productId'] ?? '',
       saleDate: (data['saleDate'] as Timestamp).toDate(),
       itemName: data['itemName'] ?? '',
       quantity: data['quantity'] ?? 0,
@@ -25,6 +27,7 @@ class SaleModel extends SaleEntity {
 
   Map<String, dynamic> toMap() {
     return {
+      'productId': productId,
       'saleDate': Timestamp.fromDate(saleDate),
       'itemName': itemName,
       'quantity': quantity,
@@ -36,6 +39,7 @@ class SaleModel extends SaleEntity {
   factory SaleModel.fromEntity(SaleEntity saleEntity) {
     return SaleModel(
       id: saleEntity.id,
+      productId: saleEntity.productId,
       saleDate: saleEntity.saleDate,
       itemName: saleEntity.itemName,
       quantity: saleEntity.quantity,

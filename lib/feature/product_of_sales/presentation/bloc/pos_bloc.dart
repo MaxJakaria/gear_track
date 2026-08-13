@@ -184,6 +184,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     for (final item in checkoutItems) {
       final sale = SaleEntity(
         id: '${DateTime.now().millisecondsSinceEpoch}_${item.productId}',
+        productId: item.productId,
         saleDate: DateTime.now(),
         itemName: item.itemName,
         quantity: item.quantity,

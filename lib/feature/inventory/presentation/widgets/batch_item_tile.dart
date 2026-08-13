@@ -24,18 +24,34 @@ class BatchItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isOut = batch.stockCount <= 0;
+    final isLow = batch.stockCount > 0 && batch.stockCount <= 5;
+
+    final statusColor = isOut
+        ? theme.colorScheme.error
+        : isLow
+        ? const Color(0xFFE65100)
+        : const Color(0xFF00875A);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
+        color: isDark
+            ? theme.colorScheme.surfaceContainer
+            : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: const Color(0xFFD32F2F).withValues(alpha: 0.25),
+          color: isDark
+              ? theme.colorScheme.outline.withValues(alpha: 0.15)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -43,155 +59,142 @@ class BatchItemTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Index Circle Tag
+          // 1. Compact Batch # Tag
           Container(
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: Color(0xFF2C323B),
-              shape: BoxShape.circle,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               '${index + 1}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.onPrimaryContainer,
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
 
-          // Batch Info (Cost Code & Date)
+          // 2. Batch Meta (Cost Code & Date)
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.sell_outlined,
-                      size: 12,
-                      color: Color(0xFFD32F2F),
+                    Text(
+                      'Cost: ',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 10,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Expanded(
+                    Flexible(
                       child: Text(
-                        'Cost Code: ${batch.costCode}',
+                        batch.costCode.isEmpty ? 'N/A' : batch.costCode,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           fontSize: 12,
-                          color: Color(0xFF1E242B),
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 11,
-                      color: Color(0xFF4A515A),
+                Text(
+                  _formatDate(batch.entryDate),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.75,
                     ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Date: ${_formatDate(batch.entryDate)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF4A515A),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Quantity Chip
+          // 3. Intuitive Stock Ratio Pill (Available / Initial)
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 3,
-            ),
-            child: Text(
-              '+${batch.stockCount}',
-              style: const TextStyle(
-                color: Color(0xFFD32F2F),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: statusColor.withValues(alpha: 0.3),
+                width: 0.8,
               ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${batch.stockCount}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: statusColor,
+                  ),
+                ),
+                Text(
+                  ' / ${batch.initialQuantity}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.75,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 2),
+          const SizedBox(width: 4),
 
-          // Three Dots Popup Menu (Edit & Delete)
-          PopupMenuButton<String>(
-            icon: const Icon(
-              Icons.more_vert_rounded,
-              size: 20,
-              color: Color(0xFF2C323B),
-            ),
-            tooltip: 'Batch Options',
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            onSelected: (value) {
-              if (value == 'edit') {
-                onEdit();
-              } else if (value == 'delete') {
-                onDelete();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem<String>(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.edit_outlined,
-                      size: 18,
-                      color: Color(0xFF2C323B),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Edit',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+          // 4. Sleek Inline Action Buttons (Edit & Delete)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Edit Button
+              InkWell(
+                onTap: onEdit,
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    Icons.edit_outlined,
+                    size: 14,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ),
-              const PopupMenuItem<String>(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.delete_outline_rounded,
-                      size: 18,
-                      color: Color(0xFFD32F2F),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Delete',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFD32F2F),
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 4),
+
+              // Delete Button
+              InkWell(
+                onTap: onDelete,
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 14,
+                    color: theme.colorScheme.error,
+                  ),
                 ),
               ),
             ],

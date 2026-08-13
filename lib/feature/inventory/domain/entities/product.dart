@@ -7,6 +7,7 @@ class Product extends Equatable {
   final String itemName;
   final String model;
   final String costCode;
+  final int initialQuantity;
   final int stockCount;
 
   const Product({
@@ -16,6 +17,7 @@ class Product extends Equatable {
     required this.itemName,
     required this.model,
     required this.costCode,
+    required this.initialQuantity,
     required this.stockCount,
   });
 
@@ -27,6 +29,7 @@ class Product extends Equatable {
     itemName,
     model,
     costCode,
+    initialQuantity,
     stockCount,
   ];
 }

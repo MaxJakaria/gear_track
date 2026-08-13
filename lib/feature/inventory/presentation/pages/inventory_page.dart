@@ -250,7 +250,7 @@ class _InventoryPageState extends State<InventoryPage> {
                           child: ListView.builder(
                             keyboardDismissBehavior:
                                 ScrollViewKeyboardDismissBehavior.onDrag,
-                            padding: const EdgeInsets.only(bottom: 80),
+                            padding: const EdgeInsets.all(16),
                             itemCount: groupedProducts.length,
                             itemBuilder: (context, index) {
                               final grouped = groupedProducts[index];
@@ -277,7 +277,6 @@ class _InventoryPageState extends State<InventoryPage> {
                           ),
                         );
                       }
-
 
                       return const SizedBox.shrink();
                     },

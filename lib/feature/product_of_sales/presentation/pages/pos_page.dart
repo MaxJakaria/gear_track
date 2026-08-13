@@ -69,7 +69,7 @@ class _PosPageState extends State<PosPage> {
                 onProductSelected: (latestBatch, grouped) {
                   context.read<PosBloc>().add(
                     AddToCartEvent(
-                      productId: latestBatch.id,
+                      productId: grouped.partNo,
                       itemName: grouped.itemName,
                       partNo: grouped.partNo,
                       costCode: latestBatch.costCode,

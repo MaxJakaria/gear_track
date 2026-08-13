@@ -7,7 +7,6 @@ import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.da
 import 'package:gear_track/feature/inventory/presentation/widgets/batch_item_tile.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/edit_product_sheet.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/stock_status_badge.dart';
-import 'package:gear_track/feature/inventory/presentation/widgets/tech_chip.dart';
 
 class ProductCard extends StatelessWidget {
   final GroupedProduct groupedProduct;
@@ -34,7 +33,7 @@ class ProductCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFD32F2F)),
@@ -71,26 +70,32 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final grouped = groupedProduct;
 
+    final shadowColor = isDark
+        ? theme.colorScheme.primary.withValues(alpha: 0.35)
+        : Colors.black.withValues(alpha: 0.14);
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
+
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 14,
-            spreadRadius: 0,
-            offset: const Offset(0, 7),
+            color: shadowColor,
+            blurRadius: 10,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            // 1. Background Artwork Image
+            // Background Artwork Image (Fully Visible)
             Positioned.fill(
               child: Image.asset(
                 'assets/images/card_bg.png',
@@ -98,237 +103,275 @@ class ProductCard extends StatelessWidget {
               ),
             ),
 
-            // 2. Real Hardware-Accelerated Blurry Glossy Filter Layer with LinearGradient Overlay
+            // Translucent Glossy Filter Layer (Image Shines Through Clearly)
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 1.8, sigmaY: 1.8),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      const Color.fromARGB(
-                        255,
-                        45,
-                        67,
-                        79,
-                      ).withValues(alpha: 0.25),
-                      Colors.white.withValues(alpha: 0.25),
-                    ],
-                  ),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onToggleExpand,
-                    child: Container(
-                      padding: const EdgeInsets.all(12.0),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(
-                            color: grouped.totalStockCount <= 0
-                                ? const Color(0xFFD32F2F)
-                                : const Color(0xFF2E7D32),
-                            width: 4,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Top Section: Title & Stock Status Badge
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      grouped.itemName.isNotEmpty
-                                          ? grouped.itemName
-                                          : 'Unnamed Product',
-                                      style: const TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF1E242B),
-                                        letterSpacing: -0.3,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: [
-                                        TechChip(
-                                          icon: Icons.qr_code_2_rounded,
-                                          label: 'Part No: ${grouped.partNo}',
-                                          borderColor: const Color(
-                                            0xFFD32F2F,
-                                          ).withValues(alpha: 0.4),
-                                          textColor: const Color(0xFF2C323B),
-                                        ),
-                                        TechChip(
-                                          icon: Icons
-                                              .precision_manufacturing_outlined,
-                                          label: 'Model: ${grouped.model}',
-                                          borderColor: const Color(
-                                            0xFF4A515A,
-                                          ).withValues(alpha: 0.3),
-                                          textColor: const Color(0xFF38404A),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 10),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onToggleExpand,
+                  child: Container(
+                    padding: const EdgeInsets.all(12.0),
 
-                              // Right Side: Stock Badge & Quick Add Button
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                mainAxisSize: MainAxisSize.min,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Top Section: Title & Stock Status Badge
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  StockStatusBadge(
-                                    totalStockCount: grouped.totalStockCount,
-                                  ),
-                                  if (onQuickAdd != null) ...[
-                                    const SizedBox(height: 8),
-                                    InkWell(
-                                      onTap: onQuickAdd,
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 5,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFD32F2F),
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(
-                                                0xFFD32F2F,
-                                              ).withValues(alpha: 0.35),
-                                              blurRadius: 6,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.add_rounded,
-                                              size: 14,
-                                              color: Colors.white,
-                                            ),
-                                            SizedBox(width: 3),
-                                            Text(
-                                              'Add',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Metrics Strip: Batch Count & Expand Button
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.layers_outlined,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 6),
                                   Text(
-                                    '${grouped.batchCount} ${grouped.batchCount == 1 ? 'Batch' : 'Batches'}',
+                                    grouped.itemName.isNotEmpty
+                                        ? grouped.itemName
+                                        : 'Unnamed Product',
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11,
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.3,
                                     ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+
+                                  // Meta Chips Row: P/N & Model
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.18,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.25,
+                                            ),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Part No: ${grouped.partNo}',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      if (grouped.model.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.18,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              5,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.25,
+                                              ),
+                                              width: 0.8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Model: ${grouped.model}',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ],
                               ),
+                            ),
+                            const SizedBox(width: 10),
 
-                              // Expand/Collapse Interactive Circle Button
-                              AnimatedRotation(
-                                turns: isExpanded ? 0.5 : 0,
-                                duration: const Duration(milliseconds: 200),
-                                child: Container(
-                                  padding: const EdgeInsets.all(5),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.42),
-                                    shape: BoxShape.circle,
+                            // High-Visibility Stock Status Badge
+                            StockStatusBadge(
+                              totalStockCount: grouped.totalStockCount,
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Controls Row: Combined Batches Pill & Quick Add Button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Combined Pill Container: Batch Count & Arrow Toggle Icon
+                            InkWell(
+                              onTap: onToggleExpand,
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.28),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.45),
+                                    width: 1,
                                   ),
-                                  child: const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    size: 18,
-                                    color: Color(0xFF2C323B),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.layers_outlined,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      '${grouped.batchCount} ${grouped.batchCount == 1 ? 'Batch' : 'Batches'}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    AnimatedRotation(
+                                      turns: isExpanded ? 0.5 : 0,
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      child: const Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Quick Add Stock Pill Button
+                            if (onQuickAdd != null)
+                              InkWell(
+                                onTap: onQuickAdd,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD32F2F),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFFD32F2F,
+                                        ).withValues(alpha: 0.35),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.add_rounded,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(width: 3),
+                                      Text(
+                                        'Add Stock',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+
+                        // Expandable Batch History Section
+                        AnimatedCrossFade(
+                          firstChild: const SizedBox.shrink(),
+                          secondChild: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 12),
+                              // Batch Items Container (Soft Ice-Blue Reference Design)
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF1B232D)
+                                      : const Color(0xFFEBF3FE),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF2B3645)
+                                        : const Color(0xFFD4E3FC),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 180,
+                                  ),
+                                  child: ListView.builder(
+                                    shrinkWrap: true,
+                                    itemCount: grouped.batches.length,
+                                    itemBuilder: (context, index) {
+                                      final batch = grouped.batches[index];
+                                      return BatchItemTile(
+                                        batch: batch,
+                                        index: index,
+                                        onEdit: () => EditProductSheet.show(
+                                          context,
+                                          batch,
+                                        ),
+                                        onDelete: () =>
+                                            _confirmDelete(context, batch),
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
                             ],
                           ),
-
-                          // Expandable Batch History Section
-                          AnimatedCrossFade(
-                            firstChild: const SizedBox.shrink(),
-                            secondChild: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 10),
-                                  child: Divider(
-                                    height: 1,
-                                    color: Color(0xFFCFD5DC),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-
-                                // Batch Items List
-                                ...grouped.batches.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  final batch = entry.value;
-
-                                  return BatchItemTile(
-                                    batch: batch,
-                                    index: index,
-                                    onEdit: () =>
-                                        EditProductSheet.show(context, batch),
-                                    onDelete: () =>
-                                        _confirmDelete(context, batch),
-                                  );
-                                }),
-                              ],
-                            ),
-                            crossFadeState: isExpanded
-                                ? CrossFadeState.showSecond
-                                : CrossFadeState.showFirst,
-                            duration: const Duration(milliseconds: 250),
-                          ),
-                        ],
-                      ),
+                          crossFadeState: isExpanded
+                              ? CrossFadeState.showSecond
+                              : CrossFadeState.showFirst,
+                          duration: const Duration(milliseconds: 250),
+                        ),
+                      ],
                     ),
                   ),
                 ),
