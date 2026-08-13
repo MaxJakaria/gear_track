@@ -30,4 +30,14 @@ class PosRepositoryImpl implements PosRepository {
       return Left(Failure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, List<SaleEntity>>> getProductSales(String productId) async {
+    try {
+      final saleModels = await remoteDataSource.getProductSales(productId);
+      return Right(saleModels);
+    } catch (e) {
+      return Left(Failure(e.toString()));
+    }
+  }
 }

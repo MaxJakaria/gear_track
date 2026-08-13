@@ -6,4 +6,6 @@ abstract class PosRepository {
   Future<Either<Failure, void>> addSale(SaleEntity saleEntity);
 
   Future<Either<Failure, List<SaleEntity>>> getSales();
+
+  Future<Either<Failure, List<SaleEntity>>> getProductSales(String productId);
 }

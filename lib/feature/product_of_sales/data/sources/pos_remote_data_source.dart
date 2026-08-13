@@ -4,6 +4,7 @@ import 'package:gear_track/feature/product_of_sales/data/models/sale_model.dart'
 abstract class PosRemoteDataSource {
   Future<void> addSale(SaleModel saleModel);
   Future<List<SaleModel>> getSales();
+  Future<List<SaleModel>> getProductSales(String productId);
 }
 
 class PosRemoteDataSourceImpl implements PosRemoteDataSource {
@@ -117,15 +118,39 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
         'totalStock': newTotalStock,
       });
 
-      // 6. WRITE: Save sale record into sales collection
-      final saleRef = firestore.collection('sales').doc(saleModel.id);
-      transaction.set(saleRef, saleModel.toMap());
+      // 6. WRITE: Save sale record into 'sales -> productId -> sales_records -> saleId'
+      final salesProductRef = firestore.collection('sales').doc(productId);
+      transaction.set(
+        salesProductRef,
+        {
+          'productId': productId,
+          'itemName': saleModel.itemName,
+          'lastSaleDate': Timestamp.fromDate(saleModel.saleDate),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+
+      final saleRecordRef = salesProductRef.collection('sales_records').doc(saleModel.id);
+      transaction.set(saleRecordRef, saleModel.toMap());
     });
   }
 
   @override
   Future<List<SaleModel>> getSales() async {
-    final snapshot = await firestore.collection('sales').get();
+    final snapshot = await firestore.collectionGroup('sales_records').get();
+    return snapshot.docs.map((doc) => SaleModel.fromFirestore(doc)).toList();
+  }
+
+  @override
+  Future<List<SaleModel>> getProductSales(String productId) async {
+    final snapshot = await firestore
+        .collection('sales')
+        .doc(productId)
+        .collection('sales_records')
+        .orderBy('saleDate', descending: true)
+        .get();
+
     return snapshot.docs.map((doc) => SaleModel.fromFirestore(doc)).toList();
   }
 }

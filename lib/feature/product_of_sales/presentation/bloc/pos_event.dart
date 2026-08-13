@@ -11,6 +11,15 @@ class FetchSalesEvent extends PosEvent {
   const FetchSalesEvent();
 }
 
+class FetchProductSalesEvent extends PosEvent {
+  final String productId;
+
+  const FetchProductSalesEvent(this.productId);
+
+  @override
+  List<Object?> get props => [productId];
+}
+
 class AddSaleEvent extends PosEvent {
   final SaleEntity sale;
 

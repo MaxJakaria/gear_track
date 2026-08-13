@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
 import 'package:gear_track/feature/product_of_sales/domain/entities/sale_entity.dart';
 import 'package:gear_track/feature/product_of_sales/domain/usecases/add_sale.dart';
+import 'package:gear_track/feature/product_of_sales/domain/usecases/get_product_sales.dart';
 import 'package:gear_track/feature/product_of_sales/domain/usecases/get_sales.dart';
 
 part 'pos_event.dart';
@@ -11,6 +12,7 @@ part 'pos_state.dart';
 class PosBloc extends Bloc<PosEvent, PosState> {
   final AddSale addSale;
   final GetSales getSales;
+  final GetProductSales getProductSales;
 
   List<SaleEntity> _allSales = [];
   List<CartItem> _cartItems = [];
@@ -18,8 +20,10 @@ class PosBloc extends Bloc<PosEvent, PosState> {
   PosBloc({
     required this.addSale,
     required this.getSales,
+    required this.getProductSales,
   }) : super(PosInitial()) {
     on<FetchSalesEvent>(_onFetchSales);
+    on<FetchProductSalesEvent>(_onFetchProductSales);
     on<AddSaleEvent>(_onAddSale);
     on<SearchSalesEvent>(_onSearchSales);
     on<AddToCartEvent>(_onAddToCart);
@@ -36,6 +40,29 @@ class PosBloc extends Bloc<PosEvent, PosState> {
   ) async {
     emit(PosLoading());
     final result = await getSales();
+    result.fold(
+      (failure) => emit(PosError(failure.message)),
+      (sales) {
+        final sortedSales = List<SaleEntity>.from(sales)
+          ..sort((a, b) => b.saleDate.compareTo(a.saleDate));
+        _allSales = sortedSales;
+        emit(
+          PosLoaded(
+            sales: sortedSales,
+            filteredSales: sortedSales,
+            cartItems: _cartItems,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _onFetchProductSales(
+    FetchProductSalesEvent event,
+    Emitter<PosState> emit,
+  ) async {
+    emit(PosLoading());
+    final result = await getProductSales(event.productId);
     result.fold(
       (failure) => emit(PosError(failure.message)),
       (sales) {
