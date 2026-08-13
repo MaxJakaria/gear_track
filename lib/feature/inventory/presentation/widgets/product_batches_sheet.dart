@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
@@ -7,7 +8,7 @@ import 'package:gear_track/feature/inventory/presentation/widgets/batch_item_til
 import 'package:gear_track/feature/inventory/presentation/widgets/edit_product_sheet.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/quick_add_stock_sheet.dart';
 
-class ProductBatchesSheet extends StatelessWidget {
+class ProductBatchesSheet extends StatefulWidget {
   final GroupedProduct groupedProduct;
 
   const ProductBatchesSheet({super.key, required this.groupedProduct});
@@ -23,6 +24,13 @@ class ProductBatchesSheet extends StatelessWidget {
       builder: (context) => ProductBatchesSheet(groupedProduct: groupedProduct),
     );
   }
+
+  @override
+  State<ProductBatchesSheet> createState() => _ProductBatchesSheetState();
+}
+
+class _ProductBatchesSheetState extends State<ProductBatchesSheet> {
+  String? _deletingBatchId;
 
   void _confirmDelete(BuildContext context, Product batch) {
     showDialog(
@@ -41,9 +49,20 @@ class ProductBatchesSheet extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(dialogContext);
-              context.read<InventoryBloc>().add(DeleteProductEvent(batch.id));
+              setState(() => _deletingBatchId = batch.id);
+              final completer = Completer<void>();
+              context.read<InventoryBloc>().add(
+                    DeleteProductEvent(batch.id, completer: completer),
+                  );
+              try {
+                await completer.future;
+              } finally {
+                if (mounted) {
+                  setState(() => _deletingBatchId = null);
+                }
+              }
             },
             child: const Text('Delete'),
           ),
@@ -120,7 +139,7 @@ class ProductBatchesSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    groupedProduct.itemName,
+                    widget.groupedProduct.itemName,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -130,16 +149,16 @@ class ProductBatchesSheet extends StatelessWidget {
                     children: [
                       _HeaderTag(
                         icon: Icons.qr_code_2_rounded,
-                        label: 'P/N: ${groupedProduct.partNo}',
+                        label: 'P/N: ${widget.groupedProduct.partNo}',
                       ),
                       const SizedBox(width: 8),
                       _HeaderTag(
                         icon: Icons.precision_manufacturing_outlined,
-                        label: 'Model: ${groupedProduct.model}',
+                        label: 'Model: ${widget.groupedProduct.model}',
                       ),
                       const Spacer(),
                       Text(
-                        'Total: ${groupedProduct.totalStockCount}',
+                        'Total: ${widget.groupedProduct.totalStockCount}',
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -153,7 +172,7 @@ class ProductBatchesSheet extends StatelessWidget {
             const SizedBox(height: 16),
 
             Text(
-              'Recorded Batches (${groupedProduct.batchCount})',
+              'Recorded Batches (${widget.groupedProduct.batchCount})',
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -180,13 +199,14 @@ class ProductBatchesSheet extends StatelessWidget {
                 constraints: const BoxConstraints(maxHeight: 220),
                 child: ListView.separated(
                   shrinkWrap: true,
-                  itemCount: groupedProduct.batches.length,
+                  itemCount: widget.groupedProduct.batches.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 4),
                   itemBuilder: (context, index) {
-                    final batch = groupedProduct.batches[index];
+                    final batch = widget.groupedProduct.batches[index];
                     return BatchItemTile(
                       batch: batch,
                       index: index,
+                      isDeleting: _deletingBatchId == batch.id,
                       onEdit: () {
                         Navigator.pop(context);
                         EditProductSheet.show(context, batch);
@@ -205,7 +225,7 @@ class ProductBatchesSheet extends StatelessWidget {
             FilledButton.icon(
               onPressed: () {
                 Navigator.pop(context);
-                QuickAddStockSheet.show(context, groupedProduct);
+                QuickAddStockSheet.show(context, widget.groupedProduct);
               },
               icon: const Icon(Icons.add_circle_outline),
               label: const Text('Add New Stock Batch'),

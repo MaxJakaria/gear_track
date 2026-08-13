@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
@@ -29,6 +30,7 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   final _costCodeController = TextEditingController();
   final _stockCountController = TextEditingController(text: '1');
   DateTime _selectedDate = DateTime.now();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -51,9 +53,13 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isLoading) return;
     if (_formKey.currentState?.validate() ?? false) {
+      setState(() => _isLoading = true);
       final stock = int.tryParse(_stockCountController.text.trim()) ?? 0;
+      final completer = Completer<void>();
+
       context.read<InventoryBloc>().add(
             AddProductEvent(
               itemName: widget.groupedProduct.itemName,
@@ -62,8 +68,20 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
               costCode: _costCodeController.text.trim(),
               stockCount: stock,
               entryDate: _selectedDate,
+              completer: completer,
             ),
           );
+
+      try {
+        await completer.future;
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     }
   }
 
@@ -222,37 +240,31 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                 ),
                 const SizedBox(height: 24),
 
-                BlocBuilder<InventoryBloc, InventoryState>(
-                  builder: (context, state) {
-                    final isLoading = state is ProductAdding;
-
-                    return FilledButton.icon(
-                      onPressed: isLoading ? null : _submit,
-                      icon: isLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add_circle_outline),
-                      label: Text(
-                        isLoading ? 'Saving Batch...' : 'Add Stock Batch',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  },
+                FilledButton.icon(
+                  onPressed: _isLoading ? null : _submit,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.add_circle_outline),
+                  label: Text(
+                    _isLoading ? 'Saving Batch...' : 'Add Stock Batch',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ],
             ),

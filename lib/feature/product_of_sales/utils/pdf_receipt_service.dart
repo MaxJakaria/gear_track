@@ -29,7 +29,6 @@ class PdfReceiptService {
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
-            mainAxisSize: pw.MainAxisSize.min,
             children: [
               // Header & QR Code Row
               pw.Row(
@@ -157,7 +156,7 @@ class PdfReceiptService {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 12),
+              pw.Spacer(),
 
               // Footer
               pw.Center(

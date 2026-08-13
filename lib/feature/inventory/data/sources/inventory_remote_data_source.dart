@@ -99,81 +99,128 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<void> updateProduct(ProductModel productModel) async {
-    // productModel.id is the stock entry sub-collection doc ID
-    // productModel.partNo is the main product's document ID
-    final productRef = firestore
+    DocumentReference productRef = firestore
         .collection('products')
         .doc(productModel.partNo);
-    final entryRef = productRef
+    DocumentReference entryRef = productRef
         .collection('stock_entries')
         .doc(productModel.id);
 
+    // Verify if entryRef exists at productModel.partNo or find its actual location
+    final directCheck = await entryRef.get();
+    if (!directCheck.exists) {
+      final allEntries = await firestore.collectionGroup('stock_entries').get();
+      final matching = allEntries.docs
+          .where((d) => d.id == productModel.id)
+          .toList();
+      if (matching.isNotEmpty) {
+        entryRef = matching.first.reference;
+        productRef = entryRef.parent.parent!;
+      }
+    }
+
     await firestore.runTransaction((transaction) async {
+      // 1. ALL READS FIRST
       final entrySnapshot = await transaction.get(entryRef);
+      final productSnapshot = await transaction.get(productRef);
+
       int oldRemaining = 0;
       if (entrySnapshot.exists) {
-        oldRemaining = entrySnapshot.data()?['remainingQuantity'] ?? 0;
+        final data = entrySnapshot.data() as Map<String, dynamic>?;
+        oldRemaining = (data?['remainingQuantity'] as num?)?.toInt() ?? 0;
       }
 
-      // Update core details in main product
-      transaction.update(productRef, {
-        'itemName': productModel.itemName,
-        'model': productModel.model,
-      });
-
-      // Update specific batch details in sub-collection
-      transaction.update(entryRef, {
-        'date': Timestamp.fromDate(productModel.entryDate),
-        'remainingQuantity': productModel.stockCount,
-        'costCode': productModel.costCode,
-      });
-
-      // Adjust main product's total stock count based on the update difference
-      final productSnapshot = await transaction.get(productRef);
+      int newTotalStock = productModel.stockCount;
       if (productSnapshot.exists) {
-        final productData = productSnapshot.data() ?? {};
-        final int currentTotalStock = productData['totalStock'] ?? 0;
+        final productData =
+            (productSnapshot.data() as Map<String, dynamic>?) ?? {};
+        final int currentTotalStock =
+            (productData['totalStock'] as num?)?.toInt() ?? 0;
         final int diff = productModel.stockCount - oldRemaining;
-        final int newTotalStock = currentTotalStock + diff;
+        newTotalStock = (currentTotalStock + diff)
+            .clamp(0, double.infinity)
+            .toInt();
+      }
 
-        transaction.update(productRef, {'totalStock': newTotalStock});
+      // 2. ALL WRITES AFTER
+      if (productSnapshot.exists) {
+        transaction.update(productRef, {
+          'itemName': productModel.itemName,
+          'model': productModel.model,
+          'partNo': productModel.partNo,
+          'totalStock': newTotalStock,
+        });
+      }
+
+      if (entrySnapshot.exists) {
+        transaction.update(entryRef, {
+          'date': Timestamp.fromDate(productModel.entryDate),
+          'remainingQuantity': productModel.stockCount,
+          'costCode': productModel.costCode,
+        });
       }
     });
   }
 
   @override
   Future<void> deleteProduct(String productId) async {
-    // Search for the stock entry across all products using collectionGroup
+    // 1. Search across stock entries for matching batch ID
     final querySnapshot = await firestore
         .collectionGroup('stock_entries')
-        .where(FieldPath.documentId, isEqualTo: productId)
         .get();
+    final matchingDocs = querySnapshot.docs
+        .where((doc) => doc.id == productId)
+        .toList();
 
-    if (querySnapshot.docs.isEmpty) {
-      throw FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'not-found',
-        message: 'Stock entry batch not found with ID: $productId',
-      );
+    if (matchingDocs.isNotEmpty) {
+      final entryDoc = matchingDocs.first;
+      final entryRef = entryDoc.reference;
+      final productRef = entryRef.parent.parent!;
+      final int remainingQuantity =
+          (entryDoc.data()['remainingQuantity'] as num?)?.toInt() ?? 0;
+
+      await firestore.runTransaction((transaction) async {
+        // ALL READS FIRST
+        final productSnapshot = await transaction.get(productRef);
+        final entrySnapshot = await transaction.get(entryRef);
+
+        // ALL WRITES AFTER
+        if (productSnapshot.exists) {
+          final productData = productSnapshot.data() ?? {};
+          final int currentTotalStock =
+              (productData['totalStock'] as num?)?.toInt() ?? 0;
+          final int newTotalStock = (currentTotalStock - remainingQuantity)
+              .clamp(0, double.infinity)
+              .toInt();
+
+          transaction.update(productRef, {'totalStock': newTotalStock});
+        }
+
+        if (entrySnapshot.exists) {
+          transaction.delete(entryRef);
+        }
+      });
+      return;
     }
 
-    final entryDoc = querySnapshot.docs.first;
-    final entryRef = entryDoc.reference;
-    final productRef = entryRef.parent.parent!;
-    final int remainingQuantity = entryDoc.data()['remainingQuantity'] ?? 0;
-
-    await firestore.runTransaction((transaction) async {
-      final productSnapshot = await transaction.get(productRef);
-      if (productSnapshot.exists) {
-        final productData = productSnapshot.data() ?? {};
-        final int currentTotalStock = productData['totalStock'] ?? 0;
-        final int newTotalStock = (currentTotalStock - remainingQuantity)
-            .clamp(0, double.infinity)
-            .toInt();
-
-        transaction.update(productRef, {'totalStock': newTotalStock});
+    // 2. Check if productId directly matches a main product document
+    final directProductRef = firestore.collection('products').doc(productId);
+    final directSnapshot = await directProductRef.get();
+    if (directSnapshot.exists) {
+      final entries = await directProductRef.collection('stock_entries').get();
+      final batch = firestore.batch();
+      for (final entry in entries.docs) {
+        batch.delete(entry.reference);
       }
-      transaction.delete(entryRef);
-    });
+      batch.delete(directProductRef);
+      await batch.commit();
+      return;
+    }
+
+    throw FirebaseException(
+      plugin: 'cloud_firestore',
+      code: 'not-found',
+      message: 'Product or batch not found with ID: $productId',
+    );
   }
 }

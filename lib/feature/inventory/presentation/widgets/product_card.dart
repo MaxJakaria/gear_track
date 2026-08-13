@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,7 +9,7 @@ import 'package:gear_track/feature/inventory/presentation/widgets/batch_item_til
 import 'package:gear_track/feature/inventory/presentation/widgets/edit_product_sheet.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/stock_status_badge.dart';
 
-class ProductCard extends StatelessWidget {
+class ProductCard extends StatefulWidget {
   final GroupedProduct groupedProduct;
   final VoidCallback? onQuickAdd;
   final bool isExpanded;
@@ -21,6 +22,13 @@ class ProductCard extends StatelessWidget {
     this.isExpanded = false,
     this.onToggleExpand,
   });
+
+  @override
+  State<ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<ProductCard> {
+  String? _deletingBatchId;
 
   String _formatDate(DateTime date) {
     final year = date.year;
@@ -57,9 +65,20 @@ class ProductCard extends StatelessWidget {
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFD32F2F),
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(dialogContext);
-              context.read<InventoryBloc>().add(DeleteProductEvent(batch.id));
+              setState(() => _deletingBatchId = batch.id);
+              final completer = Completer<void>();
+              context.read<InventoryBloc>().add(
+                DeleteProductEvent(batch.id, completer: completer),
+              );
+              try {
+                await completer.future;
+              } finally {
+                if (mounted) {
+                  setState(() => _deletingBatchId = null);
+                }
+              }
             },
             child: const Text('Delete'),
           ),
@@ -72,7 +91,7 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final grouped = groupedProduct;
+    final grouped = widget.groupedProduct;
 
     final shadowColor = isDark
         ? Colors.white.withValues(alpha: 0.14)
@@ -99,6 +118,7 @@ class ProductCard extends StatelessWidget {
               child: Image.asset(
                 'assets/images/card_bg.png',
                 fit: BoxFit.cover,
+                gaplessPlayback: true,
               ),
             ),
 
@@ -108,7 +128,7 @@ class ProductCard extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: onToggleExpand,
+                  onTap: widget.onToggleExpand,
                   child: Container(
                     padding: const EdgeInsets.all(12.0),
 
@@ -222,7 +242,7 @@ class ProductCard extends StatelessWidget {
                           children: [
                             // Combined Pill Container: Batch Count & Arrow Toggle Icon
                             InkWell(
-                              onTap: onToggleExpand,
+                              onTap: widget.onToggleExpand,
                               borderRadius: BorderRadius.circular(20),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
@@ -256,7 +276,7 @@ class ProductCard extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 4),
                                     AnimatedRotation(
-                                      turns: isExpanded ? 0.5 : 0,
+                                      turns: widget.isExpanded ? 0.5 : 0,
                                       duration: const Duration(
                                         milliseconds: 200,
                                       ),
@@ -272,9 +292,9 @@ class ProductCard extends StatelessWidget {
                             ),
 
                             // Quick Add Stock Pill Button
-                            if (onQuickAdd != null)
+                            if (widget.onQuickAdd != null)
                               InkWell(
-                                onTap: onQuickAdd,
+                                onTap: widget.onQuickAdd,
                                 borderRadius: BorderRadius.circular(20),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -364,6 +384,8 @@ class ProductCard extends StatelessWidget {
                                       return BatchItemTile(
                                         batch: batch,
                                         index: index,
+                                        isDeleting:
+                                            _deletingBatchId == batch.id,
                                         onEdit: () => EditProductSheet.show(
                                           context,
                                           batch,
@@ -377,7 +399,7 @@ class ProductCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          crossFadeState: isExpanded
+                          crossFadeState: widget.isExpanded
                               ? CrossFadeState.showSecond
                               : CrossFadeState.showFirst,
                           duration: const Duration(milliseconds: 250),

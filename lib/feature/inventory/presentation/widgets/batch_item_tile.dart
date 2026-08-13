@@ -4,6 +4,7 @@ import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 class BatchItemTile extends StatelessWidget {
   final Product batch;
   final int index;
+  final bool isDeleting;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -11,6 +12,7 @@ class BatchItemTile extends StatelessWidget {
     super.key,
     required this.batch,
     required this.index,
+    this.isDeleting = false,
     required this.onEdit,
     required this.onDelete,
   });
@@ -162,7 +164,7 @@ class BatchItemTile extends StatelessWidget {
             children: [
               // Edit Button
               InkWell(
-                onTap: onEdit,
+                onTap: isDeleting ? null : onEdit,
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.all(5),
@@ -181,7 +183,7 @@ class BatchItemTile extends StatelessWidget {
 
               // Delete Button
               InkWell(
-                onTap: onDelete,
+                onTap: isDeleting ? null : onDelete,
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.all(5),
@@ -189,11 +191,20 @@ class BatchItemTile extends StatelessWidget {
                     color: theme.colorScheme.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Icon(
-                    Icons.delete_outline_rounded,
-                    size: 14,
-                    color: theme.colorScheme.error,
-                  ),
+                  child: isDeleting
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.error,
+                          ),
+                        )
+                      : Icon(
+                          Icons.delete_outline_rounded,
+                          size: 14,
+                          color: theme.colorScheme.error,
+                        ),
                 ),
               ),
             ],
