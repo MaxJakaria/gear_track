@@ -98,8 +98,9 @@ class _PosProductSearchCardState extends State<PosProductSearchCard> {
             _searchQuery = val.trim().toLowerCase();
           });
         },
-        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
+        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
         decoration: InputDecoration(
+          isDense: true,
           hintText: 'Search by name, model or part no...',
           hintStyle: TextStyle(
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
@@ -108,27 +109,39 @@ class _PosProductSearchCardState extends State<PosProductSearchCard> {
           prefixIcon: Icon(
             Icons.search_rounded,
             color: theme.colorScheme.onSurfaceVariant,
-            size: 20,
+            size: 18,
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 32,
+            minHeight: 20,
+          ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 32,
+            minHeight: 20,
           ),
           suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: Icon(
-                    Icons.clear_rounded,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  onPressed: () {
+              ? GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
                     _searchController.clear();
                     setState(() {
                       _searchQuery = '';
                     });
                   },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Icon(
+                      Icons.clear_rounded,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 )
-              : null,
+              : const SizedBox(width: 32, height: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
+            horizontal: 10,
+            vertical: 8,
           ),
         ),
       ),

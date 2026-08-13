@@ -66,7 +66,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                             fontSize: 14,
                           ),
                           decoration: InputDecoration(
-                            hintText: 'Search by part-no/name/model...',
+                            hintText: 'Search by name, model or part no...',
                             hintStyle: TextStyle(
                               fontSize: 13,
                               color: theme.colorScheme.onSurfaceVariant

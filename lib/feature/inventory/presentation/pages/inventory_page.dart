@@ -247,11 +247,13 @@ class _InventoryPageState extends State<InventoryPage> {
                               const FetchProductsEvent(),
                             );
                           },
-                          child: ListView.builder(
+                          child: ListView.separated(
                             keyboardDismissBehavior:
                                 ScrollViewKeyboardDismissBehavior.onDrag,
                             padding: const EdgeInsets.all(16),
                             itemCount: groupedProducts.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final grouped = groupedProducts[index];
                               final cardKey =

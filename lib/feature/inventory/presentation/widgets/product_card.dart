@@ -75,8 +75,8 @@ class ProductCard extends StatelessWidget {
     final grouped = groupedProduct;
 
     final shadowColor = isDark
-        ? theme.colorScheme.primary.withValues(alpha: 0.35)
-        : Colors.black.withValues(alpha: 0.14);
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.34);
 
     return Container(
       decoration: BoxDecoration(
@@ -86,13 +86,12 @@ class ProductCard extends StatelessWidget {
           BoxShadow(
             color: shadowColor,
             blurRadius: 10,
-            spreadRadius: 2,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         child: Stack(
           children: [
             // Background Artwork Image (Fully Visible)
@@ -328,16 +327,26 @@ class ProductCard extends StatelessWidget {
                               const SizedBox(height: 12),
                               // Batch Items Container (Soft Ice-Blue Reference Design)
                               Container(
-                                padding: const EdgeInsets.all(8),
+                                padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF1B232D)
-                                      : const Color(0xFFEBF3FE),
-                                  borderRadius: BorderRadius.circular(14),
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: isDark
+                                        ? [
+                                            const Color(0xFF131922),
+                                            const Color(0xFF1B232D),
+                                          ]
+                                        : [
+                                            const Color(0xFFDCEBFE),
+                                            const Color(0xFFF0F5FF),
+                                          ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
                                     color: isDark
                                         ? const Color(0xFF2B3645)
-                                        : const Color(0xFFD4E3FC),
+                                        : const Color(0xFFC7DCFA),
                                     width: 1,
                                   ),
                                 ),
@@ -345,9 +354,11 @@ class ProductCard extends StatelessWidget {
                                   constraints: const BoxConstraints(
                                     maxHeight: 180,
                                   ),
-                                  child: ListView.builder(
+                                  child: ListView.separated(
                                     shrinkWrap: true,
                                     itemCount: grouped.batches.length,
+                                    separatorBuilder: (context, index) =>
+                                        const SizedBox(height: 4),
                                     itemBuilder: (context, index) {
                                       final batch = grouped.batches[index];
                                       return BatchItemTile(

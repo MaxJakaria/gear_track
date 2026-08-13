@@ -36,7 +36,6 @@ class BatchItemTile extends StatelessWidget {
         : const Color(0xFF00875A);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: isDark
