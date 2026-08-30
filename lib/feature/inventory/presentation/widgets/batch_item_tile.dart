@@ -78,12 +78,39 @@ class BatchItemTile extends StatelessWidget {
           ),
           const SizedBox(width: 8),
 
-          // 2. Batch Meta (Cost Code & Date)
+          // 2. Batch Meta (Part No, Cost Code & Date)
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Text(
+                      'P/N: ',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Flexible(
+                      child: Text(
+                        batch.partNo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? const Color(0xFF818CF8)
+                              : const Color(0xFF6366F1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Text(
@@ -100,22 +127,22 @@ class BatchItemTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSurface,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                Text(
-                  _formatDate(batch.entryDate),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 10,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.75,
+                    Text(
+                      ' • ${_formatDate(batch.entryDate)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 10,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.75,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),

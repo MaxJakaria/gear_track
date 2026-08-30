@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/inventory_page.dart';
 import 'package:gear_track/feature/product_of_sales/presentation/pages/pos_page.dart';
+import 'package:gear_track/presentation/pages/reports_page.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});
@@ -10,28 +11,9 @@ class MainNavigationPage extends StatefulWidget {
 }
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
-  int _currentIndex = 1; // Default to Point of Sale (Index 1) as per mockup
+  int _currentIndex = 0; // Default to Inventory (Index 0)
 
-  final List<Widget> _pages = [
-    const InventoryPage(),
-    const PosPage(),
-    const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.insert_chart_outlined, size: 64, color: Color(0xFF64748B)),
-          SizedBox(height: 12),
-          Text(
-            'Sales & Inventory Reports',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    ),
-  ];
+  final List<Widget> _pages = const [InventoryPage(), PosPage(), ReportsPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -39,10 +21,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
@@ -61,15 +40,19 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             });
           },
           backgroundColor: theme.colorScheme.surface,
-          selectedItemColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1),
-          unselectedItemColor: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          selectedItemColor: isDark
+              ? const Color(0xFF818CF8)
+              : const Color(0xFF6366F1),
+          unselectedItemColor: theme.colorScheme.onSurfaceVariant.withValues(
+            alpha: 0.7,
+          ),
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 11,
+            fontSize: 12,
           ),
           unselectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w500,
-            fontSize: 11,
+            fontSize: 12,
           ),
           type: BottomNavigationBarType.fixed,
           elevation: 0,

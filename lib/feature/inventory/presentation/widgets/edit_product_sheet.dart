@@ -24,6 +24,7 @@ class EditProductSheet extends StatefulWidget {
 
 class _EditProductSheetState extends State<EditProductSheet> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _partNoController;
   late final TextEditingController _costCodeController;
   late final TextEditingController _stockCountController;
   late DateTime _selectedDate;
@@ -32,6 +33,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
   @override
   void initState() {
     super.initState();
+    _partNoController = TextEditingController(text: widget.product.partNo);
     _costCodeController = TextEditingController(text: widget.product.costCode);
     _stockCountController = TextEditingController(
       text: widget.product.stockCount.toString(),
@@ -41,6 +43,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
 
   @override
   void dispose() {
+    _partNoController.dispose();
     _costCodeController.dispose();
     _stockCountController.dispose();
     super.dispose();
@@ -68,7 +71,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
       final updatedProduct = Product(
         id: widget.product.id,
         entryDate: _selectedDate,
-        partNo: widget.product.partNo,
+        partNo: _partNoController.text.trim(),
         itemName: widget.product.itemName,
         model: widget.product.model,
         costCode: _costCodeController.text.trim(),
@@ -172,44 +175,47 @@ class _EditProductSheetState extends State<EditProductSheet> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'P/N: ${widget.product.partNo}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                      if (widget.product.model.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Model: ${widget.product.model}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Model: ${widget.product.model}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
 
-                // 3 Batch Fields: Cost Code, Quantity / Stock Count, Entry Date
+                // Editable Part Number Input Field (Matching Quick Add Stock Sheet)
+                TextFormField(
+                  controller: _partNoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Part Number',
+                    prefixIcon: Icon(Icons.qr_code),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) => val == null || val.trim().isEmpty
+                      ? 'Part No is required'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+
+                // Dynamic Input Fields (Cost Code & Stock Count)
                 Row(
                   children: [
                     Expanded(
                       child: TextFormField(
                         controller: _costCodeController,
-                        autofocus: true,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
                           prefixIcon: Icon(Icons.attach_money),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Cost Code required'
+                            ? 'Cost code required'
                             : null,
                       ),
                     ),
@@ -238,6 +244,8 @@ class _EditProductSheetState extends State<EditProductSheet> {
                   ],
                 ),
                 const SizedBox(height: 12),
+
+                // Entry Date Picker
                 InkWell(
                   onTap: _pickDate,
                   borderRadius: BorderRadius.circular(4),
@@ -251,30 +259,33 @@ class _EditProductSheetState extends State<EditProductSheet> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                FilledButton(
+
+                // Submit Button
+                FilledButton.icon(
                   onPressed: _isLoading ? null : _submit,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_circle_outline),
+                  label: Text(
+                    _isLoading ? 'Updating Batch...' : 'Update Batch',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Update Batch',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
               ],
             ),

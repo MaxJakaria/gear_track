@@ -156,7 +156,7 @@ class PdfReceiptService {
                   ),
                 ],
               ),
-              pw.Spacer(),
+              pw.SizedBox(height: 16),
 
               // Footer
               pw.Center(

@@ -24,16 +24,21 @@ class CartItem extends Equatable {
   double get subtotal => quantity * sellPrice;
 
   CartItem copyWith({
+    String? productId,
+    String? itemName,
+    String? partNo,
+    String? costCode,
+    int? availableStock,
     int? quantity,
     double? sellPrice,
   }) {
     return CartItem(
       id: id,
-      productId: productId,
-      itemName: itemName,
-      partNo: partNo,
-      costCode: costCode,
-      availableStock: availableStock,
+      productId: productId ?? this.productId,
+      itemName: itemName ?? this.itemName,
+      partNo: partNo ?? this.partNo,
+      costCode: costCode ?? this.costCode,
+      availableStock: availableStock ?? this.availableStock,
       quantity: quantity ?? this.quantity,
       sellPrice: sellPrice ?? this.sellPrice,
     );

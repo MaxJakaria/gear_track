@@ -24,66 +24,72 @@ class _PosPageState extends State<PosPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Sales & Billing',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Sales & Billing',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
         ),
-      ),
-      body: BlocListener<PosBloc, PosState>(
-        listener: (context, state) {
-          if (state is SaleAddedSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.check_circle_rounded, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(state.message)),
-                  ],
+        body: BlocListener<PosBloc, PosState>(
+          listener: (context, state) {
+            if (state is SaleAddedSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(state.message)),
+                    ],
+                  ),
+                  backgroundColor: const Color(0xFF00A859),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                backgroundColor: const Color(0xFF00A859),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              );
+            } else if (state is PosError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: const Color(0xFFD32F2F),
+                  behavior: SnackBarBehavior.floating,
                 ),
-              ),
-            );
-          } else if (state is PosError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: const Color(0xFFD32F2F),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // 1. "Find & Add Product" Component
-              PosProductSearchCard(
-                onProductSelected: (latestBatch, grouped) {
-                  context.read<PosBloc>().add(
-                    AddToCartEvent(
-                      productId: grouped.partNo,
-                      itemName: grouped.itemName,
-                      partNo: grouped.partNo,
-                      costCode: latestBatch.costCode,
-                      availableStock: grouped.totalStockCount,
-                    ),
-                  );
-                },
-              ),
+              );
+            }
+          },
+          child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                // 1. "Find & Add Product" Component
+                PosProductSearchCard(
+                  onProductSelected: (latestBatch, grouped) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    context.read<PosBloc>().add(
+                      AddToCartEvent(
+                        productId: grouped.partNo,
+                        itemName: grouped.itemName,
+                        partNo: grouped.partNo,
+                        costCode: latestBatch.costCode,
+                        availableStock: grouped.totalStockCount,
+                      ),
+                    );
+                  },
+                ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // 2. "Sales Cart" Component
-              const PosCartCard(),
-            ],
+                // 2. "Sales Cart" Component
+                const PosCartCard(),
+              ],
+            ),
           ),
         ),
       ),

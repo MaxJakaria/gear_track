@@ -7,12 +7,12 @@ import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.da
 class QuickAddStockSheet extends StatefulWidget {
   final GroupedProduct groupedProduct;
 
-  const QuickAddStockSheet({
-    super.key,
-    required this.groupedProduct,
-  });
+  const QuickAddStockSheet({super.key, required this.groupedProduct});
 
-  static Future<void> show(BuildContext context, GroupedProduct groupedProduct) {
+  static Future<void> show(
+    BuildContext context,
+    GroupedProduct groupedProduct,
+  ) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -27,13 +27,23 @@ class QuickAddStockSheet extends StatefulWidget {
 
 class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _partNoController;
   final _costCodeController = TextEditingController();
   final _stockCountController = TextEditingController(text: '1');
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _partNoController = TextEditingController(
+      text: widget.groupedProduct.partNo,
+    );
+  }
+
+  @override
   void dispose() {
+    _partNoController.dispose();
     _costCodeController.dispose();
     _stockCountController.dispose();
     super.dispose();
@@ -61,16 +71,16 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
       final completer = Completer<void>();
 
       context.read<InventoryBloc>().add(
-            AddProductEvent(
-              itemName: widget.groupedProduct.itemName,
-              partNo: widget.groupedProduct.partNo,
-              model: widget.groupedProduct.model,
-              costCode: _costCodeController.text.trim(),
-              stockCount: stock,
-              entryDate: _selectedDate,
-              completer: completer,
-            ),
-          );
+        AddProductEvent(
+          itemName: widget.groupedProduct.itemName,
+          partNo: _partNoController.text.trim(),
+          model: widget.groupedProduct.model,
+          costCode: _costCodeController.text.trim(),
+          stockCount: stock,
+          entryDate: _selectedDate,
+          completer: completer,
+        ),
+      );
 
       try {
         await completer.future;
@@ -120,7 +130,9 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.3,
+                      ),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -147,7 +159,9 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -159,29 +173,33 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'P/N: ${widget.groupedProduct.partNo}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                      if (widget.groupedProduct.model.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Model: ${widget.groupedProduct.model}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Model: ${widget.groupedProduct.model}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Mandatory Part Number Input Field
+                TextFormField(
+                  controller: _partNoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Part Number',
+                    prefixIcon: Icon(Icons.qr_code),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) => val == null || val.trim().isEmpty
+                      ? 'Part No is required'
+                      : null,
+                ),
+                const SizedBox(height: 12),
 
                 // Dynamic Input Fields (Cost Code & Stock Count)
                 Row(
@@ -189,7 +207,6 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                     Expanded(
                       child: TextFormField(
                         controller: _costCodeController,
-                        autofocus: true,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
                           prefixIcon: Icon(Icons.attach_money),

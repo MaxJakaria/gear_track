@@ -57,6 +57,7 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       // Add the new stock entry to the sub-collection
       transaction.set(entryRef, {
         'date': Timestamp.fromDate(productModel.entryDate),
+        'partNo': productModel.partNo,
         'quantity': productModel.initialQuantity,
         'remainingQuantity': productModel.stockCount,
         'costCode': productModel.costCode,
@@ -71,7 +72,7 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
     for (final productDoc in productsSnapshot.docs) {
       final productData = productDoc.data();
-      final partNo = productData['partNo'] ?? productDoc.id;
+      final defaultPartNo = productData['partNo'] ?? productDoc.id;
       final itemName = productData['itemName'] ?? '';
       final model = productData['model'] ?? '';
 
@@ -80,11 +81,16 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
           .get();
       for (final entryDoc in stockEntriesSnapshot.docs) {
         final entryData = entryDoc.data();
+        final batchPartNo =
+            (entryData['partNo'] as String?)?.isNotEmpty == true
+                ? entryData['partNo'] as String
+                : defaultPartNo;
+
         allBatches.add(
           ProductModel(
             id: entryDoc.id,
             entryDate: (entryData['date'] as Timestamp).toDate(),
-            partNo: partNo,
+            partNo: batchPartNo,
             itemName: itemName,
             model: model,
             costCode: entryData['costCode'] ?? '',
@@ -155,6 +161,7 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       if (entrySnapshot.exists) {
         transaction.update(entryRef, {
           'date': Timestamp.fromDate(productModel.entryDate),
+          'partNo': productModel.partNo,
           'remainingQuantity': productModel.stockCount,
           'costCode': productModel.costCode,
         });

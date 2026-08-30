@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -45,6 +46,77 @@ class _InventoryPageState extends State<InventoryPage> {
     _onSearch('');
   }
 
+  Future<void> _handleClearAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_forever_rounded, color: Color(0xFFD32F2F)),
+            SizedBox(width: 8),
+            Text('Delete All Products?'),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to delete all products and batches from Cloud Firestore? This cannot be undone.',
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_forever_rounded, size: 18),
+            label: const Text('Delete All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deleting all products...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      final firestore = FirebaseFirestore.instance;
+      final productsSnapshot = await firestore.collection('products').get();
+      for (final doc in productsSnapshot.docs) {
+        final entriesSnapshot = await doc.reference
+            .collection('stock_entries')
+            .get();
+        for (final entry in entriesSnapshot.docs) {
+          await entry.reference.delete();
+        }
+        await doc.reference.delete();
+      }
+      if (mounted) {
+        context.read<InventoryBloc>().add(const FetchProductsEvent());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All products deleted successfully!'),
+            backgroundColor: Color(0xFFD32F2F),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -62,6 +134,7 @@ class _InventoryPageState extends State<InventoryPage> {
             _searchController.clear();
             _onSearch('');
           },
+          onClearAll: _handleClearAll,
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => AddProductSheet.show(context),
@@ -78,7 +151,7 @@ class _InventoryPageState extends State<InventoryPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
-                  backgroundColor: Colors.red.shade700,
+                  backgroundColor: Theme.of(context).colorScheme.error,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -89,36 +162,37 @@ class _InventoryPageState extends State<InventoryPage> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (state is InventoryError) {
+            if (state is InventoryError && state.message.isNotEmpty) {
               return _buildErrorView(context, state.message);
             }
 
             if (state is InventoryLoaded) {
-              final products = state.filteredGroupedProducts;
-              if (products.isEmpty) {
+              final groupedList = state.filteredGroupedProducts;
+
+              if (groupedList.isEmpty) {
                 return _buildEmptyView(context);
               }
 
               return RefreshIndicator(
-                onRefresh: () async => context.read<InventoryBloc>().add(
-                  const FetchProductsEvent(),
-                ),
+                onRefresh: () async {
+                  context.read<InventoryBloc>().add(const FetchProductsEvent());
+                },
                 child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                  itemCount: products.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (context, index) => SizedBox(height: 12),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: groupedList.length,
                   itemBuilder: (context, index) {
-                    final item = products[index];
-                    final key = '${item.itemName}_${item.model}_${item.partNo}';
+                    final item = groupedList[index];
+                    final isCardExpanded = _expandedCardKey == item.itemName;
+
                     return ProductCard(
-                      key: ValueKey(key),
                       groupedProduct: item,
-                      isExpanded: _expandedCardKey == key,
+                      isExpanded: isCardExpanded,
                       onToggleExpand: () {
                         setState(() {
-                          _expandedCardKey = _expandedCardKey == key
+                          _expandedCardKey = isCardExpanded
                               ? null
-                              : key;
+                              : item.itemName;
                         });
                       },
                       onQuickAdd: () => QuickAddStockSheet.show(context, item),
@@ -161,7 +235,8 @@ class _InventoryPageState extends State<InventoryPage> {
             Text(
               _searchController.text.isNotEmpty
                   ? 'Try searching with a different term'
-                  : 'Tap below to add your first product',
+                  : 'Tap the "+ Add Product" button below to add your first product.',
+              textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

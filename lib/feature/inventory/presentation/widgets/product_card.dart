@@ -158,39 +158,11 @@ class _ProductCardState extends State<ProductCard> {
                                   ),
                                   const SizedBox(height: 6),
 
-                                  // Meta Chips Row: P/N & Model
+                                  // Meta Chips Row: Model
                                   Wrap(
                                     spacing: 6,
                                     runSpacing: 4,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 7,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.18,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            5,
-                                          ),
-                                          border: Border.all(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.25,
-                                            ),
-                                            width: 0.8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'Part No: ${grouped.partNo}',
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
                                       if (grouped.model.isNotEmpty)
                                         Container(
                                           padding: const EdgeInsets.symmetric(
