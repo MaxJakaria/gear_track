@@ -37,11 +37,11 @@ final class InventoryLoaded extends InventoryState {
   static List<GroupedProduct> _group(List<Product> list) {
     final Map<String, List<Product>> map = {};
     for (final p in list) {
-      final key = p.partNo.trim().toUpperCase();
+      final key = p.itemName.trim().toLowerCase();
       map.putIfAbsent(key, () => []).add(p);
     }
     return map.entries
-        .map((e) => GroupedProduct.fromBatches(e.key, e.value))
+        .map((e) => GroupedProduct.fromBatches(e.value.first.partNo, e.value))
         .toList();
   }
 

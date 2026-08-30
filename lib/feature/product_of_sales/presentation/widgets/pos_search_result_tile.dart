@@ -21,14 +21,13 @@ class PosSearchResultTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
             Expanded(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     grouped.itemName,
@@ -37,21 +36,50 @@ class PosSearchResultTile extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    grouped.partNo,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? const Color(0xFF818CF8)
-                          : const Color(0xFF6366F1),
-                    ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      if (grouped.model.isNotEmpty) ...[
+                        Flexible(
+                          child: Text(
+                            grouped.model,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          ' • ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
+                      Text(
+                        '${grouped.batchCount} ${grouped.batchCount == 1 ? 'Batch' : 'Batches'}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? const Color(0xFF818CF8)
+                              : const Color(0xFF6366F1),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             PosStockPill(totalStock: grouped.totalStockCount),
           ],
         ),

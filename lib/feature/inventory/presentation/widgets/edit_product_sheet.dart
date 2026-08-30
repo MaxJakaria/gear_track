@@ -1,15 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 
 class EditProductSheet extends StatefulWidget {
   final Product product;
 
-  const EditProductSheet({
-    super.key,
-    required this.product,
-  });
+  const EditProductSheet({super.key, required this.product});
 
   static Future<void> show(BuildContext context, Product product) {
     return showModalBottomSheet(
@@ -26,38 +25,34 @@ class EditProductSheet extends StatefulWidget {
 
 class _EditProductSheetState extends State<EditProductSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _itemNameController;
   late final TextEditingController _partNoController;
-  late final TextEditingController _modelController;
   late final TextEditingController _costCodeController;
   late final TextEditingController _stockCountController;
   late DateTime _selectedDate;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _itemNameController = TextEditingController(text: widget.product.itemName);
     _partNoController = TextEditingController(text: widget.product.partNo);
-    _modelController = TextEditingController(text: widget.product.model);
     _costCodeController = TextEditingController(text: widget.product.costCode);
-    _stockCountController =
-        TextEditingController(text: widget.product.stockCount.toString());
+    _stockCountController = TextEditingController(
+      text: widget.product.stockCount.toString(),
+    );
     _selectedDate = widget.product.entryDate;
   }
 
   @override
   void dispose() {
-    _itemNameController.dispose();
     _partNoController.dispose();
-    _modelController.dispose();
     _costCodeController.dispose();
     _stockCountController.dispose();
     super.dispose();
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await CustomDatePickerDialog.show(
+      context,
       initialDate: _selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
@@ -69,21 +64,37 @@ class _EditProductSheetState extends State<EditProductSheet> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isLoading) return;
     if (_formKey.currentState?.validate() ?? false) {
+      setState(() => _isLoading = true);
       final stock = int.tryParse(_stockCountController.text.trim()) ?? 0;
       final updatedProduct = Product(
         id: widget.product.id,
         entryDate: _selectedDate,
         partNo: _partNoController.text.trim(),
-        itemName: _itemNameController.text.trim(),
-        model: _modelController.text.trim(),
+        itemName: widget.product.itemName,
+        model: widget.product.model,
         costCode: _costCodeController.text.trim(),
         initialQuantity: widget.product.initialQuantity,
         stockCount: stock,
       );
 
-      context.read<InventoryBloc>().add(UpdateProductEvent(updatedProduct));
+      final completer = Completer<void>();
+      context.read<InventoryBloc>().add(
+        UpdateProductEvent(updatedProduct, completer: completer),
+      );
+
+      try {
+        await completer.future;
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     }
   }
 
@@ -122,7 +133,9 @@ class _EditProductSheetState extends State<EditProductSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.3,
+                      ),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -132,7 +145,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Edit Product',
+                      'Edit Batch Entry',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -143,49 +156,54 @@ class _EditProductSheetState extends State<EditProductSheet> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+
+                // Read-only Product Context Container
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.product.itemName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (widget.product.model.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Model: ${widget.product.model}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
+
+                // Editable Part Number Input Field (Matching Quick Add Stock Sheet)
                 TextFormField(
-                  controller: _itemNameController,
+                  controller: _partNoController,
                   decoration: const InputDecoration(
-                    labelText: 'Item Name',
-                    prefixIcon: Icon(Icons.label_outlined),
+                    labelText: 'Part Number',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (val) =>
-                      val == null || val.trim().isEmpty ? 'Item name is required' : null,
+                  validator: (val) => val == null || val.trim().isEmpty
+                      ? 'Part No is required'
+                      : null,
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _partNoController,
-                        decoration: const InputDecoration(
-                          labelText: 'Part Number',
-                          prefixIcon: Icon(Icons.qr_code),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Part No required'
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _modelController,
-                        decoration: const InputDecoration(
-                          labelText: 'Model',
-                          prefixIcon: Icon(Icons.precision_manufacturing_outlined),
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (val) =>
-                            val == null || val.trim().isEmpty ? 'Model required' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+
+                // Dynamic Input Fields (Cost Code & Stock Count)
                 Row(
                   children: [
                     Expanded(
@@ -193,11 +211,10 @@ class _EditProductSheetState extends State<EditProductSheet> {
                         controller: _costCodeController,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
-                          prefixIcon: Icon(Icons.attach_money),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Cost Code required'
+                            ? 'Cost code required'
                             : null,
                       ),
                     ),
@@ -207,8 +224,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
                         controller: _stockCountController,
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
-                          labelText: 'Stock Count',
-                          prefixIcon: Icon(Icons.inventory_outlined),
+                          labelText: 'Quantity / Count',
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) {
@@ -226,49 +242,47 @@ class _EditProductSheetState extends State<EditProductSheet> {
                   ],
                 ),
                 const SizedBox(height: 12),
+
+                // Entry Date Picker
                 InkWell(
                   onTap: _pickDate,
                   borderRadius: BorderRadius.circular(4),
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Entry Date',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
                       border: OutlineInputBorder(),
                     ),
                     child: Text(_formatDate(_selectedDate)),
                   ),
                 ),
                 const SizedBox(height: 24),
-                BlocBuilder<InventoryBloc, InventoryState>(
-                  builder: (context, state) {
-                    final isLoading = state is ProductUpdating;
 
-                    return FilledButton(
-                      onPressed: isLoading ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Update Product',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    );
-                  },
+                // Submit Button
+                FilledButton.icon(
+                  onPressed: _isLoading ? null : _submit,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_circle_outline),
+                  label: Text(
+                    _isLoading ? 'Updating Batch...' : 'Update Batch',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ],
             ),

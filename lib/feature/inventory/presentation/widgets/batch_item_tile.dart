@@ -4,6 +4,7 @@ import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 class BatchItemTile extends StatelessWidget {
   final Product batch;
   final int index;
+  final bool isDeleting;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -11,6 +12,7 @@ class BatchItemTile extends StatelessWidget {
     super.key,
     required this.batch,
     required this.index,
+    this.isDeleting = false,
     required this.onEdit,
     required this.onDelete,
   });
@@ -76,12 +78,39 @@ class BatchItemTile extends StatelessWidget {
           ),
           const SizedBox(width: 8),
 
-          // 2. Batch Meta (Cost Code & Date)
+          // 2. Batch Meta (Part No, Cost Code & Date)
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Text(
+                      'P/N: ',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Flexible(
+                      child: Text(
+                        batch.partNo,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? const Color(0xFF818CF8)
+                              : const Color(0xFF6366F1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Text(
@@ -98,22 +127,22 @@ class BatchItemTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSurface,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                Text(
-                  _formatDate(batch.entryDate),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 10,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.75,
+                    Text(
+                      ' • ${_formatDate(batch.entryDate)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 10,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.75,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -162,7 +191,7 @@ class BatchItemTile extends StatelessWidget {
             children: [
               // Edit Button
               InkWell(
-                onTap: onEdit,
+                onTap: isDeleting ? null : onEdit,
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.all(5),
@@ -181,7 +210,7 @@ class BatchItemTile extends StatelessWidget {
 
               // Delete Button
               InkWell(
-                onTap: onDelete,
+                onTap: isDeleting ? null : onDelete,
                 borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.all(5),
@@ -189,11 +218,20 @@ class BatchItemTile extends StatelessWidget {
                     color: theme.colorScheme.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Icon(
-                    Icons.delete_outline_rounded,
-                    size: 14,
-                    color: theme.colorScheme.error,
-                  ),
+                  child: isDeleting
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.error,
+                          ),
+                        )
+                      : Icon(
+                          Icons.delete_outline_rounded,
+                          size: 14,
+                          color: theme.colorScheme.error,
+                        ),
                 ),
               ),
             ],

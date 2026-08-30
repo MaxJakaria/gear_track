@@ -112,6 +112,18 @@ class _PosCartCardState extends State<PosCartCard> {
                           ),
                         );
                       },
+                      onProductChanged: (selectedBatch) {
+                        context.read<PosBloc>().add(
+                          UpdateCartProductEvent(
+                            cartItemId: item.id,
+                            productId: selectedBatch.partNo,
+                            partNo: selectedBatch.partNo,
+                            itemName: selectedBatch.itemName,
+                            costCode: selectedBatch.costCode,
+                            availableStock: selectedBatch.stockCount,
+                          ),
+                        );
+                      },
                       removeItem: () {
                         context.read<PosBloc>().add(
                           RemoveCartItemEvent(item.id),

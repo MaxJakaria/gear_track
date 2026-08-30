@@ -7,6 +7,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onStartSearch;
   final VoidCallback onStopSearch;
   final VoidCallback onClearSearch;
+  final VoidCallback? onClearAll;
   final String title;
 
   const InventoryAppBar({
@@ -17,6 +18,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onStartSearch,
     required this.onStopSearch,
     required this.onClearSearch,
+    this.onClearAll,
     required this.title,
   });
 
@@ -99,7 +101,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
       actions: [
-        if (!isSearching)
+        if (!isSearching) ...[
           IconButton(
             icon: Image.asset(
               'assets/icons/search-engine.png',
@@ -109,6 +111,41 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
             tooltip: 'Search Products',
             onPressed: onStartSearch,
           ),
+          if (onClearAll != null)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              onSelected: (val) {
+                if (val == 'clear_all') {
+                  onClearAll?.call();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'clear_all',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_forever_rounded,
+                        color: Color(0xFFD32F2F),
+                        size: 18,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Clear All',
+                        style: TextStyle(
+                          color: Color(0xFFD32F2F),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+        ],
       ],
     );
   }

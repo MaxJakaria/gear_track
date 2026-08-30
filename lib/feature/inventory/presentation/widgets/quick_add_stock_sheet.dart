@@ -1,17 +1,19 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 
 class QuickAddStockSheet extends StatefulWidget {
   final GroupedProduct groupedProduct;
 
-  const QuickAddStockSheet({
-    super.key,
-    required this.groupedProduct,
-  });
+  const QuickAddStockSheet({super.key, required this.groupedProduct});
 
-  static Future<void> show(BuildContext context, GroupedProduct groupedProduct) {
+  static Future<void> show(
+    BuildContext context,
+    GroupedProduct groupedProduct,
+  ) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -26,20 +28,31 @@ class QuickAddStockSheet extends StatefulWidget {
 
 class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _partNoController;
   final _costCodeController = TextEditingController();
   final _stockCountController = TextEditingController(text: '1');
   DateTime _selectedDate = DateTime.now();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _partNoController = TextEditingController(
+      text: widget.groupedProduct.partNo,
+    );
+  }
 
   @override
   void dispose() {
+    _partNoController.dispose();
     _costCodeController.dispose();
     _stockCountController.dispose();
     super.dispose();
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await CustomDatePickerDialog.show(
+      context,
       initialDate: _selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
@@ -51,19 +64,35 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isLoading) return;
     if (_formKey.currentState?.validate() ?? false) {
+      setState(() => _isLoading = true);
       final stock = int.tryParse(_stockCountController.text.trim()) ?? 0;
+      final completer = Completer<void>();
+
       context.read<InventoryBloc>().add(
-            AddProductEvent(
-              itemName: widget.groupedProduct.itemName,
-              partNo: widget.groupedProduct.partNo,
-              model: widget.groupedProduct.model,
-              costCode: _costCodeController.text.trim(),
-              stockCount: stock,
-              entryDate: _selectedDate,
-            ),
-          );
+        AddProductEvent(
+          itemName: widget.groupedProduct.itemName,
+          partNo: _partNoController.text.trim(),
+          model: widget.groupedProduct.model,
+          costCode: _costCodeController.text.trim(),
+          stockCount: stock,
+          entryDate: _selectedDate,
+          completer: completer,
+        ),
+      );
+
+      try {
+        await completer.future;
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     }
   }
 
@@ -102,7 +131,9 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.3,
+                      ),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -129,7 +160,9 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -141,29 +174,32 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            'P/N: ${widget.groupedProduct.partNo}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                      if (widget.groupedProduct.model.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Model: ${widget.groupedProduct.model}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Model: ${widget.groupedProduct.model}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Mandatory Part Number Input Field
+                TextFormField(
+                  controller: _partNoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Part Number',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (val) => val == null || val.trim().isEmpty
+                      ? 'Part No is required'
+                      : null,
+                ),
+                const SizedBox(height: 12),
 
                 // Dynamic Input Fields (Cost Code & Stock Count)
                 Row(
@@ -171,10 +207,8 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                     Expanded(
                       child: TextFormField(
                         controller: _costCodeController,
-                        autofocus: true,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
-                          prefixIcon: Icon(Icons.attach_money),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
@@ -189,7 +223,6 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Quantity / Count',
-                          prefixIcon: Icon(Icons.add_shopping_cart_outlined),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) {
@@ -214,7 +247,6 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Entry Date',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
                       border: OutlineInputBorder(),
                     ),
                     child: Text(_formatDate(_selectedDate)),
@@ -222,37 +254,31 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                 ),
                 const SizedBox(height: 24),
 
-                BlocBuilder<InventoryBloc, InventoryState>(
-                  builder: (context, state) {
-                    final isLoading = state is ProductAdding;
-
-                    return FilledButton.icon(
-                      onPressed: isLoading ? null : _submit,
-                      icon: isLoading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add_circle_outline),
-                      label: Text(
-                        isLoading ? 'Saving Batch...' : 'Add Stock Batch',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  },
+                FilledButton.icon(
+                  onPressed: _isLoading ? null : _submit,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.add_circle_outline),
+                  label: Text(
+                    _isLoading ? 'Saving Batch...' : 'Add Stock Batch',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
               ],
             ),

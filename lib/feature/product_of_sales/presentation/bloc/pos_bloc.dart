@@ -29,6 +29,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     on<AddToCartEvent>(_onAddToCart);
     on<UpdateCartQuantityEvent>(_onUpdateCartQuantity);
     on<UpdateCartPriceEvent>(_onUpdateCartPrice);
+    on<UpdateCartProductEvent>(_onUpdateCartProduct);
     on<RemoveCartItemEvent>(_onRemoveCartItem);
     on<ClearCartEvent>(_onClearCart);
     on<CheckoutCartEvent>(_onCheckoutCart);
@@ -172,6 +173,25 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     _cartItems = _cartItems.map((item) {
       if (item.id == event.cartItemId) {
         return item.copyWith(sellPrice: event.price);
+      }
+      return item;
+    }).toList();
+    _emitLoadedState(emit);
+  }
+
+  void _onUpdateCartProduct(
+    UpdateCartProductEvent event,
+    Emitter<PosState> emit,
+  ) {
+    _cartItems = _cartItems.map((item) {
+      if (item.id == event.cartItemId) {
+        return item.copyWith(
+          productId: event.productId,
+          partNo: event.partNo,
+          itemName: event.itemName,
+          costCode: event.costCode,
+          availableStock: event.availableStock,
+        );
       }
       return item;
     }).toList();

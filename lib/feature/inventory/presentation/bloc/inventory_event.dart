@@ -18,6 +18,7 @@ final class AddProductEvent extends InventoryEvent {
   final String costCode;
   final int stockCount;
   final DateTime entryDate;
+  final Completer<void>? completer;
 
   const AddProductEvent({
     required this.partNo,
@@ -26,6 +27,7 @@ final class AddProductEvent extends InventoryEvent {
     required this.costCode,
     required this.stockCount,
     required this.entryDate,
+    this.completer,
   });
 
   @override
@@ -56,8 +58,9 @@ final class SearchProductsEvent extends InventoryEvent {
 
 final class UpdateProductEvent extends InventoryEvent {
   final Product product;
+  final Completer<void>? completer;
 
-  const UpdateProductEvent(this.product);
+  const UpdateProductEvent(this.product, {this.completer});
 
   @override
   List<Object?> get props => [product];
@@ -65,8 +68,9 @@ final class UpdateProductEvent extends InventoryEvent {
 
 final class DeleteProductEvent extends InventoryEvent {
   final String productId;
+  final Completer<void>? completer;
 
-  const DeleteProductEvent(this.productId);
+  const DeleteProductEvent(this.productId, {this.completer});
 
   @override
   List<Object?> get props => [productId];

@@ -83,6 +83,34 @@ class UpdateCartPriceEvent extends PosEvent {
   List<Object?> get props => [cartItemId, price];
 }
 
+class UpdateCartProductEvent extends PosEvent {
+  final String cartItemId;
+  final String productId;
+  final String partNo;
+  final String itemName;
+  final String costCode;
+  final int availableStock;
+
+  const UpdateCartProductEvent({
+    required this.cartItemId,
+    required this.productId,
+    required this.partNo,
+    required this.itemName,
+    required this.costCode,
+    required this.availableStock,
+  });
+
+  @override
+  List<Object?> get props => [
+        cartItemId,
+        productId,
+        partNo,
+        itemName,
+        costCode,
+        availableStock,
+      ];
+}
+
 class RemoveCartItemEvent extends PosEvent {
   final String cartItemId;
 

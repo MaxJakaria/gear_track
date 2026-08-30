@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 
 class AddProductSheet extends StatefulWidget {
@@ -27,6 +29,7 @@ class _AddProductSheetState extends State<AddProductSheet> {
   final _stockCountController = TextEditingController(text: '0');
 
   DateTime _selectedDate = DateTime.now();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -39,8 +42,8 @@ class _AddProductSheetState extends State<AddProductSheet> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await CustomDatePickerDialog.show(
+      context,
       initialDate: _selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
@@ -52,9 +55,13 @@ class _AddProductSheetState extends State<AddProductSheet> {
     }
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_isLoading) return;
     if (_formKey.currentState?.validate() ?? false) {
+      setState(() => _isLoading = true);
       final stock = int.tryParse(_stockCountController.text.trim()) ?? 0;
+      final completer = Completer<void>();
+
       context.read<InventoryBloc>().add(
         AddProductEvent(
           itemName: _itemNameController.text.trim(),
@@ -63,8 +70,20 @@ class _AddProductSheetState extends State<AddProductSheet> {
           costCode: _costCodeController.text.trim(),
           stockCount: stock,
           entryDate: _selectedDate,
+          completer: completer,
         ),
       );
+
+      try {
+        await completer.future;
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
     }
   }
 
@@ -131,7 +150,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   controller: _itemNameController,
                   decoration: const InputDecoration(
                     labelText: 'Item Name',
-                    prefixIcon: Icon(Icons.label_outlined),
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) => val == null || val.trim().isEmpty
@@ -146,7 +164,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         controller: _partNoController,
                         decoration: const InputDecoration(
                           labelText: 'Part Number',
-                          prefixIcon: Icon(Icons.qr_code),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
@@ -160,9 +177,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         controller: _modelController,
                         decoration: const InputDecoration(
                           labelText: 'Model',
-                          prefixIcon: Icon(
-                            Icons.precision_manufacturing_outlined,
-                          ),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
@@ -180,7 +194,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         controller: _costCodeController,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
-                          prefixIcon: Icon(Icons.attach_money),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
@@ -195,7 +208,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Stock Count',
-                          prefixIcon: Icon(Icons.inventory_outlined),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) {
@@ -219,43 +231,36 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Entry Date',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
                       border: OutlineInputBorder(),
                     ),
                     child: Text(_formatDate(_selectedDate)),
                   ),
                 ),
                 const SizedBox(height: 24),
-                BlocBuilder<InventoryBloc, InventoryState>(
-                  builder: (context, state) {
-                    final isLoading = state is ProductAdding;
-
-                    return FilledButton(
-                      onPressed: isLoading ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                FilledButton(
+                  onPressed: _isLoading ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Save Product',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Save Product',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    );
-                  },
                 ),
               ],
             ),
