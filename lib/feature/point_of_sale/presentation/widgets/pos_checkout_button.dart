@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/bloc/pos_bloc.dart';
+import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 
 /// Primary "Generate PDF for Bill" Checkout Button Widget
 class PosCheckoutButton extends StatelessWidget {

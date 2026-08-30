@@ -1,7 +1,7 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
+import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 
 class PdfReceiptService {

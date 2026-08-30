@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/bloc/pos_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_cart_card.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_product_search_card.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_card.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_product_search_card.dart';
 
 /// Point of Sale (POS) Primary Screen Page
 class PosPage extends StatefulWidget {

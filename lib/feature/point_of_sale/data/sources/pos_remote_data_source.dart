@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:gear_track/feature/product_of_sales/data/models/sale_model.dart';
+import 'package:gear_track/feature/point_of_sale/data/models/sale_model.dart';
 
 abstract class PosRemoteDataSource {
   Future<void> addSale(SaleModel saleModel);

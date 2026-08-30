@@ -1,10 +1,10 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
-import 'package:gear_track/feature/product_of_sales/domain/entities/sale_entity.dart';
-import 'package:gear_track/feature/product_of_sales/domain/usecases/add_sale.dart';
-import 'package:gear_track/feature/product_of_sales/domain/usecases/get_product_sales.dart';
-import 'package:gear_track/feature/product_of_sales/domain/usecases/get_sales.dart';
+import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
+import 'package:gear_track/feature/point_of_sale/domain/entities/sale_entity.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/add_sale.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/get_product_sales.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/get_sales.dart';
 
 part 'pos_event.dart';
 part 'pos_state.dart';

@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_search_result_tile.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_search_result_tile.dart';
 
 /// "Find & Add Product" Card Component
 class PosProductSearchCard extends StatefulWidget {

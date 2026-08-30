@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
+import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/bloc/pos_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/pages/pdf_preview_page.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_cart_empty_view.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_cart_item_tile.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_checkout_button.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/pages/pdf_preview_page.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_empty_view.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_item_tile.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_checkout_button.dart';
 
-import 'package:gear_track/feature/product_of_sales/utils/pdf_receipt_service.dart';
+import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
 
 /// "Sales Cart" Card Component
 class PosCartCard extends StatefulWidget {

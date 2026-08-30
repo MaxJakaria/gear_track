@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
-import 'package:gear_track/feature/product_of_sales/domain/entities/cart_item.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_stock_pill.dart';
+import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_stock_pill.dart';
 
 class PosCartItemTile extends StatelessWidget {
   final CartItem item;
@@ -280,7 +280,7 @@ class PosCartItemTile extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            '৳',
+            'à§³',
             style: TextStyle(
               fontSize: 14,
               color: theme.colorScheme.onSurfaceVariant,
@@ -560,7 +560,7 @@ class _PartNoSelectorSheet extends StatelessWidget {
                                               ),
                                             ),
                                           Text(
-                                            ' • Date: ${_formatDate(batch.entryDate)}',
+                                            ' â€¢ Date: ${_formatDate(batch.entryDate)}',
                                             style: TextStyle(
                                               fontSize: 10,
                                               color: theme

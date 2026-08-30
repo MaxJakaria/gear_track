@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/widgets/pos_stock_pill.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_stock_pill.dart';
 
 /// Single Product Search Result Tile Widget for POS Dropdown List
 class PosSearchResultTile extends StatelessWidget {
@@ -56,7 +56,7 @@ class PosSearchResultTile extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          ' • ',
+                          ' â€¢ ',
                           style: TextStyle(
                             fontSize: 11,
                             color: theme.colorScheme.onSurfaceVariant
