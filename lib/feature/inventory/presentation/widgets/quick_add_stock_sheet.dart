@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 
@@ -50,8 +51,8 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await CustomDatePickerDialog.show(
+      context,
       initialDate: _selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
@@ -192,7 +193,6 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                   controller: _partNoController,
                   decoration: const InputDecoration(
                     labelText: 'Part Number',
-                    prefixIcon: Icon(Icons.qr_code),
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) => val == null || val.trim().isEmpty
@@ -209,7 +209,6 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                         controller: _costCodeController,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
-                          prefixIcon: Icon(Icons.attach_money),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
@@ -224,7 +223,6 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Quantity / Count',
-                          prefixIcon: Icon(Icons.add_shopping_cart_outlined),
                           border: OutlineInputBorder(),
                         ),
                         validator: (val) {
@@ -249,7 +247,6 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Entry Date',
-                      prefixIcon: Icon(Icons.calendar_today_outlined),
                       border: OutlineInputBorder(),
                     ),
                     child: Text(_formatDate(_selectedDate)),

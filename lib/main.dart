@@ -39,12 +39,20 @@ class MyApp extends StatelessWidget {
             seedColor: const Color(0xFF3F51B5),
             brightness: Brightness.light,
           ),
+          inputDecorationTheme: const InputDecorationTheme(
+            prefixIconConstraints: BoxConstraints(minWidth: 36, minHeight: 0),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
         ),
         darkTheme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xFF3F51B5),
             brightness: Brightness.dark,
+          ),
+          inputDecorationTheme: const InputDecorationTheme(
+            prefixIconConstraints: BoxConstraints(minWidth: 36, minHeight: 0),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
         ),
         themeMode: ThemeMode.system,
