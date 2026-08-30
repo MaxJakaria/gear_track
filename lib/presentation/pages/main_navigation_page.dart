@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/inventory_page.dart';
 import 'package:gear_track/feature/product_of_sales/presentation/pages/pos_page.dart';
-import 'package:gear_track/presentation/pages/reports_page.dart';
+import 'package:gear_track/feature/reports/presentation/pages/reports_page.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/product_of_sales/presentation/bloc/pos_bloc.dart';
+import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
 import 'package:gear_track/firebase_options.dart';
 import 'package:gear_track/init_dependencies.dart';
 import 'package:gear_track/presentation/pages/main_navigation_page.dart';
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (context) => serviceLocator<InventoryBloc>()),
         BlocProvider(create: (context) => serviceLocator<PosBloc>()),
+        BlocProvider(create: (context) => serviceLocator<ReportsBloc>()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
