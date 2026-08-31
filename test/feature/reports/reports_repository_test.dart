@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gear_track/feature/inventory/data/models/product_model.dart';
-import 'package:gear_track/feature/product_of_sales/data/models/sale_model.dart';
+import 'package:gear_track/feature/point_of_sale/data/models/sale_model.dart';
 import 'package:gear_track/feature/reports/data/repository/reports_repository_impl.dart';
 import 'package:gear_track/feature/reports/data/sources/reports_remote_data_source.dart';
 import 'package:gear_track/feature/reports/domain/entities/report_period.dart';

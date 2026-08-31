@@ -1,10 +1,10 @@
-import 'package:gear_track/feature/product_of_sales/data/repository/pos_repository_impl.dart';
-import 'package:gear_track/feature/product_of_sales/data/sources/pos_remote_data_source.dart';
-import 'package:gear_track/feature/product_of_sales/domain/repository/pos_repository.dart';
-import 'package:gear_track/feature/product_of_sales/domain/usecases/add_sale.dart';
-import 'package:gear_track/feature/product_of_sales/domain/usecases/get_product_sales.dart';
-import 'package:gear_track/feature/product_of_sales/domain/usecases/get_sales.dart';
-import 'package:gear_track/feature/product_of_sales/presentation/bloc/pos_bloc.dart';
+import 'package:gear_track/feature/point_of_sale/data/repository/pos_repository_impl.dart';
+import 'package:gear_track/feature/point_of_sale/data/sources/pos_remote_data_source.dart';
+import 'package:gear_track/feature/point_of_sale/domain/repository/pos_repository.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/add_sale.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/get_product_sales.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/get_sales.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:get_it/get_it.dart';
 
 void posDependencies(GetIt sl) {

@@ -41,7 +41,7 @@ final class AddProductEvent extends InventoryEvent {
       ];
 }
 
-enum StockFilter { all, lowStock, inStock }
+enum StockFilter { all, lowStock, outOfStock, inStock }
 
 final class SearchProductsEvent extends InventoryEvent {
   final String query;
@@ -74,6 +74,15 @@ final class DeleteProductEvent extends InventoryEvent {
 
   @override
   List<Object?> get props => [productId];
+}
+
+final class ClearAllProductsEvent extends InventoryEvent {
+  final Completer<void>? completer;
+
+  const ClearAllProductsEvent({this.completer});
+
+  @override
+  List<Object?> get props => [];
 }
 
 

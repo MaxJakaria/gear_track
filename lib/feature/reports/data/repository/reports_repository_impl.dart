@@ -2,7 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
-import '../../../../feature/product_of_sales/data/models/sale_model.dart';
+import '../../../../feature/point_of_sale/data/models/sale_model.dart';
 import '../../domain/entities/analytics_report.dart';
 import '../../domain/entities/daily_sales_point.dart';
 import '../../domain/entities/monthly_profit_point.dart';

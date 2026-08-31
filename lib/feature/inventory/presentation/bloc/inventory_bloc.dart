@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/add_product.dart';
+import 'package:gear_track/feature/inventory/domain/usecases/clear_all_products.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/delete_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/get_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/update_product.dart';
@@ -16,6 +17,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
   final GetProducts getProducts;
   final UpdateProduct updateProduct;
   final DeleteProduct deleteProduct;
+  final ClearAllProducts clearAllProducts;
 
   List<Product> _allProducts = [];
 
@@ -24,12 +26,14 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     required this.getProducts,
     required this.updateProduct,
     required this.deleteProduct,
+    required this.clearAllProducts,
   }) : super(InventoryInitial()) {
     on<FetchProductsEvent>(_onFetchProducts);
     on<AddProductEvent>(_onAddProduct);
     on<SearchProductsEvent>(_onSearchProducts);
     on<UpdateProductEvent>(_onUpdateProduct);
     on<DeleteProductEvent>(_onDeleteProduct);
+    on<ClearAllProductsEvent>(_onClearAllProducts);
   }
 
   List<Product> _filterProducts(
@@ -46,8 +50,10 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
 
       final matchesFilter = switch (filter) {
         StockFilter.all => true,
-        StockFilter.lowStock => product.stockCount <= 5,
-        StockFilter.inStock => product.stockCount > 5,
+        StockFilter.inStock => product.stockCount > 0,
+        StockFilter.lowStock =>
+            product.stockCount > 0 && product.stockCount <= 5,
+        StockFilter.outOfStock => product.stockCount <= 0,
       };
 
       return matchesQuery && matchesFilter;
@@ -153,6 +159,32 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       },
       (_) async {
         await _fetchAndEmit(emit);
+        event.completer?.complete();
+      },
+    );
+  }
+
+  Future<void> _onClearAllProducts(
+    ClearAllProductsEvent event,
+    Emitter<InventoryState> emit,
+  ) async {
+    emit(InventoryLoading());
+    final result = await clearAllProducts();
+    await result.fold(
+      (failure) async {
+        emit(InventoryError(failure.message));
+        event.completer?.completeError(failure.message);
+      },
+      (_) async {
+        _allProducts = [];
+        emit(
+          const InventoryLoaded(
+            products: [],
+            filteredProducts: [],
+            searchQuery: '',
+            activeFilter: StockFilter.all,
+          ),
+        );
         event.completer?.complete();
       },
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 
 enum CalendarSelectionMode {
@@ -133,8 +134,7 @@ class _CustomCalendarViewState extends State<CustomCalendarView> {
     int tempYear = _displayedMonth.year;
     int tempMonth = _displayedMonth.month;
 
-    final primaryBlue =
-        isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+    final primaryBlue = AppColors.primaryButton(context);
 
     final result = await showDialog<DateTime>(
       context: context,
@@ -431,13 +431,9 @@ class _CustomCalendarViewState extends State<CustomCalendarView> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    final primaryBlue =
-        isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
-    final selectedBorderColor =
-        isDark ? const Color(0xFF818CF8) : const Color(0xFF3B82F6);
-    final selectedBgColor =
-        (isDark ? const Color(0xFF6366F1) : const Color(0xFF3B82F6))
-            .withValues(alpha: 0.14);
+    final primaryBlue = AppColors.primaryButton(context);
+    final selectedBorderColor = primaryBlue;
+    final selectedBgColor = primaryBlue.withValues(alpha: 0.14);
 
     final firstDayOfMonth = _displayedMonth;
     final daysInMonth =
@@ -656,7 +652,7 @@ class _CustomCalendarViewState extends State<CustomCalendarView> {
 
             Color textColor;
             if (isSelected) {
-              textColor = isDark ? Colors.white : const Color(0xFF2563EB);
+              textColor = isDark ? Colors.white : AppColors.primaryButton(context);
             } else if (isFuture) {
               textColor =
                   isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1);

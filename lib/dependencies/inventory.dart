@@ -2,6 +2,7 @@ import 'package:gear_track/feature/inventory/data/repository/inventory_repositor
 import 'package:gear_track/feature/inventory/data/sources/inventory_remote_data_source.dart';
 import 'package:gear_track/feature/inventory/domain/repository/inventory_repository.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/add_product.dart';
+import 'package:gear_track/feature/inventory/domain/usecases/clear_all_products.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/delete_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/get_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/update_product.dart';
@@ -24,6 +25,7 @@ void inventoryDependencies(GetIt sl) {
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => UpdateProduct(sl()));
   sl.registerLazySingleton(() => DeleteProduct(sl()));
+  sl.registerLazySingleton(() => ClearAllProducts(sl()));
 
   // BLoCs
   sl.registerFactory(
@@ -32,6 +34,7 @@ void inventoryDependencies(GetIt sl) {
       getProducts: sl(),
       updateProduct: sl(),
       deleteProduct: sl(),
+      clearAllProducts: sl(),
     ),
   );
 }

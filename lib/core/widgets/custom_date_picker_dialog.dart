@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'custom_calendar_view.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
+import 'package:gear_track/core/widgets/custom_calendar_view.dart';
 
 class CustomDatePickerDialog extends StatefulWidget {
   final DateTime initialDate;
@@ -46,9 +47,7 @@ class _CustomDatePickerDialogState extends State<CustomDatePickerDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryBlue = isDark
-        ? const Color(0xFF60A5FA)
-        : const Color(0xFF2563EB);
+    final primaryBlue = AppColors.primaryButton(context);
 
     final dialogBg = isDark
         ? theme.colorScheme.surfaceContainerHigh
@@ -100,24 +99,37 @@ class _CustomDatePickerDialogState extends State<CustomDatePickerDialog> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, _selectedDate),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 9,
-                    ),
+                Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient(context),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryBlue.withValues(alpha: 0.30),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'Apply',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => Navigator.pop(context, _selectedDate),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Center(
+                          child: Text(
+                            'Apply',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

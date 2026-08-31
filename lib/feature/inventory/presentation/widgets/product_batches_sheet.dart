@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -222,19 +223,13 @@ class _ProductBatchesSheetState extends State<ProductBatchesSheet> {
             const SizedBox(height: 12),
 
             // Quick Add Batch Action Button
-            FilledButton.icon(
+            AppGradientButton(
               onPressed: () {
                 Navigator.pop(context);
                 QuickAddStockSheet.show(context, widget.groupedProduct);
               },
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Add New Stock Batch'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+              height: 44,
+              label: 'Add New Stock Batch',
             ),
           ],
         ),

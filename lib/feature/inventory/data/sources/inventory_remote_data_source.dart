@@ -6,6 +6,7 @@ abstract class InventoryRemoteDataSource {
   Future<List<ProductModel>> getProducts();
   Future<void> updateProduct(ProductModel productModel);
   Future<void> deleteProduct(String productId);
+  Future<void> clearAllProducts();
 }
 
 class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
@@ -81,10 +82,9 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
           .get();
       for (final entryDoc in stockEntriesSnapshot.docs) {
         final entryData = entryDoc.data();
-        final batchPartNo =
-            (entryData['partNo'] as String?)?.isNotEmpty == true
-                ? entryData['partNo'] as String
-                : defaultPartNo;
+        final batchPartNo = (entryData['partNo'] as String?)?.isNotEmpty == true
+            ? entryData['partNo'] as String
+            : defaultPartNo;
 
         allBatches.add(
           ProductModel(
@@ -229,5 +229,19 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       code: 'not-found',
       message: 'Product or batch not found with ID: $productId',
     );
+  }
+
+  @override
+  Future<void> clearAllProducts() async {
+    final productsSnapshot = await firestore.collection('products').get();
+    for (final doc in productsSnapshot.docs) {
+      final entriesSnapshot = await doc.reference
+          .collection('stock_entries')
+          .get();
+      for (final entry in entriesSnapshot.docs) {
+        await entry.reference.delete();
+      }
+      await doc.reference.delete();
+    }
   }
 }

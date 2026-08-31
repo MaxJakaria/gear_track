@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
-import '../../../../feature/product_of_sales/data/models/sale_model.dart';
+import '../../../../feature/point_of_sale/data/models/sale_model.dart';
 
 abstract class ReportsRemoteDataSource {
   Future<List<SaleModel>> getAllSales();

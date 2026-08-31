@@ -7,5 +7,6 @@ abstract class InventoryRepository {
   Future<Either<Failure, List<Product>>> getProducts();
   Future<Either<Failure, void>> updateProduct(Product product);
   Future<Either<Failure, void>> deleteProduct(String productId);
+  Future<Either<Failure, void>> clearAllProducts();
 }
 
