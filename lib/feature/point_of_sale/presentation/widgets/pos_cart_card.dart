@@ -8,6 +8,9 @@ import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_e
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_item_tile.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_checkout_button.dart';
 
+import 'package:gear_track/init_dependencies.dart';
+import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
+import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
 
 /// "Sales Cart" Card Component
@@ -37,9 +40,17 @@ class _PosCartCardState extends State<PosCartCard> {
               _isPdfGenerating = true;
             });
           }
+          ShopSettings shopSettings = const ShopSettings();
+          try {
+            final getShopSettings = serviceLocator<GetShopSettings>();
+            final result = await getShopSettings();
+            result.fold((_) {}, (settings) => shopSettings = settings);
+          } catch (_) {}
+
           final doc = await PdfReceiptService.generateReceipt(
             state.checkoutCartItems,
             state.totalPaid,
+            shopSettings: shopSettings,
           );
           final bytes = await doc.save();
           if (mounted) {

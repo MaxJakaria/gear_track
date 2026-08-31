@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../../domain/entities/monthly_profit_point.dart';
 
-class MonthlyProfitChartCard extends StatelessWidget {
+class MonthlyProfitChartCard extends StatefulWidget {
   final List<MonthlyProfitPoint> monthlyData;
   final String currencySymbol;
 
@@ -13,12 +13,41 @@ class MonthlyProfitChartCard extends StatelessWidget {
     this.currencySymbol = '৳',
   });
 
+  @override
+  State<MonthlyProfitChartCard> createState() => _MonthlyProfitChartCardState();
+}
+
+class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
+  // Zoom scale dynamically scales both X (width) and Y (height) for 2D scrolling
+  double _zoomScale = 1.0;
+
+  void _zoomIn() {
+    setState(() {
+      _zoomScale = (_zoomScale + 0.25).clamp(1.0, 2.25);
+    });
+  }
+
+  void _zoomOut() {
+    setState(() {
+      _zoomScale = (_zoomScale - 0.25).clamp(1.0, 2.25);
+    });
+  }
+
+  void _resetZoom() {
+    setState(() {
+      _zoomScale = 1.0;
+    });
+  }
+
   String _formatYAxisValue(double value) {
     if (value <= 0) return '0';
-    if (value >= 1000) {
-      return '$currencySymbol${(value / 1000).toStringAsFixed(0)}k';
+    if (value >= 1000000) {
+      return '${widget.currencySymbol}${(value / 1000000).toStringAsFixed(1)}M';
     }
-    return '$currencySymbol${value.toInt()}';
+    if (value >= 1000) {
+      return '${widget.currencySymbol}${(value / 1000).toStringAsFixed(0)}k';
+    }
+    return '${widget.currencySymbol}${value.toInt()}';
   }
 
   @override
@@ -31,24 +60,34 @@ class MonthlyProfitChartCard extends StatelessWidget {
         : Colors.white;
 
     double maxVal = 1000.0;
-    for (final pt in monthlyData) {
+    for (final pt in widget.monthlyData) {
       maxVal = math.max(maxVal, math.max(pt.sales, pt.profit));
     }
     final double maxY = (maxVal <= 0 ? 1000.0 : maxVal * 1.25);
 
+    // 2D Dimensions inside fixed 200px viewport
+    final double columnSpacing = 56.0 * _zoomScale;
+    final double rodWidth = (12.0 * math.min(1.4, _zoomScale)).clamp(7.0, 18.0);
+    final double innerSpace = (4.0 * math.min(1.4, _zoomScale)).clamp(2.0, 8.0);
+    final double chartContentWidth =
+        math.max(320.0, widget.monthlyData.length * columnSpacing);
+    final double innerChartHeight = 200.0 * _zoomScale;
+    final double yInterval = (maxY / 4).clamp(1.0, double.infinity);
+    final int zoomPercent = (_zoomScale * 100).toInt();
+
     final List<BarChartGroupData> barGroups = [];
-    for (int i = 0; i < monthlyData.length; i++) {
-      final point = monthlyData[i];
+    for (int i = 0; i < widget.monthlyData.length; i++) {
+      final point = widget.monthlyData[i];
       barGroups.add(
         BarChartGroupData(
           x: i,
-          barsSpace: 4,
+          barsSpace: innerSpace,
           barRods: [
             // 1. Sales Bar (Indigo)
             BarChartRodData(
               toY: point.sales,
               color: const Color(0xFF6366F1),
-              width: 12,
+              width: rodWidth,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(4),
               ),
@@ -57,7 +96,7 @@ class MonthlyProfitChartCard extends StatelessWidget {
             BarChartRodData(
               toY: point.profit,
               color: const Color(0xFF10B981),
-              width: 12,
+              width: rodWidth,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(4),
               ),
@@ -67,18 +106,11 @@ class MonthlyProfitChartCard extends StatelessWidget {
       );
     }
 
-    final double chartContentWidth = math.max(300.0, monthlyData.length * 52.0);
-    final double yInterval = (maxY / 4).clamp(1.0, double.infinity);
-
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          width: 1,
-        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
@@ -90,219 +122,326 @@ class MonthlyProfitChartCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Clean Header Row: Title & Legend only
+          // Responsive Header: Title + Legend on left, Zoom Pill on right (Zero Overflow)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                'Monthly Sales vs. Profit',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Monthly Sales vs. Profit',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // Legend Sub-Row
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF6366F1),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Sales',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Profit',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              // Legend
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF6366F1),
-                      shape: BoxShape.circle,
+              const SizedBox(width: 8),
+
+              // Zoom Control Pill
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF0F172A).withValues(alpha: 0.6)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: _zoomOut,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.remove_rounded,
+                          size: 15,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Sales',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
+                    InkWell(
+                      onTap: _resetZoom,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5.0,
+                          vertical: 2.0,
+                        ),
+                        child: Text(
+                          '$zoomPercent%',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: zoomPercent != 100
+                                ? const Color(0xFF6366F1)
+                                : (isDark
+                                    ? const Color(0xFFCBD5E1)
+                                    : const Color(0xFF475569)),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
+                    InkWell(
+                      onTap: _zoomIn,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          Icons.add_rounded,
+                          size: 15,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Profit',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // Pinned Y-Axis + Scrollable Chart Body
+          // STRICTLY FIXED HEIGHT (200px) Card with 2D Scrollable Viewport
           SizedBox(
-            height: 210,
-            child: monthlyData.isEmpty
+            height: 200,
+            child: widget.monthlyData.isEmpty
                 ? const Center(child: Text('No monthly data available'))
-                : Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // 1. PINNED Y-Axis Column (Never scrolls!)
-                      SizedBox(
-                        width: 44,
-                        child: BarChart(
-                          BarChartData(
-                            maxY: maxY,
-                            barGroups: const [],
-                            gridData: const FlGridData(show: false),
-                            borderData: FlBorderData(show: false),
-                            titlesData: FlTitlesData(
-                              rightTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              topTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false),
-                              ),
-                              bottomTitles: const AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 26,
-                                  getTitlesWidget: _emptyTitles,
-                                ),
-                              ),
-                              leftTitles: AxisTitles(
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 44,
-                                  interval: yInterval,
-                                  getTitlesWidget: (value, meta) {
-                                    if (value == meta.max && maxVal <= 0) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return Text(
-                                      _formatYAxisValue(value),
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? const Color(0xFF64748B)
-                                            : const Color(0xFF94A3B8),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // 2. Horizontally Scrollable Bar Chart Area
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          reverse: true, // Auto-scroll to current month on right
-                          child: SizedBox(
-                            width: chartContentWidth,
+                : SingleChildScrollView(
+                    scrollDirection: Axis.vertical, // Y-Axis Scroll
+                    child: SizedBox(
+                      height: innerChartHeight,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Y-Axis Column
+                          SizedBox(
+                            width: 48,
                             child: BarChart(
                               BarChartData(
                                 maxY: maxY,
-                                barGroups: barGroups,
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: false,
-                                  horizontalInterval: yInterval,
-                                  getDrawingHorizontalLine: (value) => FlLine(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.08)
-                                        : Colors.black.withValues(alpha: 0.06),
-                                    strokeWidth: 1,
-                                    dashArray: [4, 4],
-                                  ),
-                                ),
+                                barGroups: const [],
+                                gridData: const FlGridData(show: false),
+                                borderData: FlBorderData(show: false),
                                 titlesData: FlTitlesData(
-                                  show: true,
-                                  leftTitles: const AxisTitles(
-                                    sideTitles: SideTitles(
-                                        showTitles: false), // Hidden on scrolling body
-                                  ),
                                   rightTitles: const AxisTitles(
                                     sideTitles: SideTitles(showTitles: false),
                                   ),
                                   topTitles: const AxisTitles(
                                     sideTitles: SideTitles(showTitles: false),
                                   ),
-                                  bottomTitles: AxisTitles(
+                                  bottomTitles: const AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
                                       reservedSize: 26,
+                                      getTitlesWidget: _emptyTitles,
+                                    ),
+                                  ),
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 48,
+                                      interval: yInterval,
                                       getTitlesWidget: (value, meta) {
-                                        final int index = value.toInt();
-                                        if (index < 0 ||
-                                            index >= monthlyData.length) {
+                                        if (value == meta.max && maxVal <= 0) {
                                           return const SizedBox.shrink();
                                         }
-                                        return Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 6.0),
-                                          child: Text(
-                                            monthlyData[index].monthLabel,
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? const Color(0xFF94A3B8)
-                                                  : const Color(0xFF64748B),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                        return Text(
+                                          _formatYAxisValue(value),
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? const Color(0xFF64748B)
+                                                : const Color(0xFF94A3B8),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         );
                                       },
                                     ),
                                   ),
                                 ),
-                                borderData: FlBorderData(show: false),
-                                barTouchData: BarTouchData(
-                                  touchTooltipData: BarTouchTooltipData(
-                                    getTooltipItem:
-                                        (group, groupIndex, rod, rodIndex) {
-                                      final point = monthlyData[groupIndex];
-                                      final isSales = rodIndex == 0;
-                                      final label =
-                                          isSales ? 'Sales' : 'Profit';
-                                      final amount = isSales
-                                          ? point.sales
-                                          : point.profit;
-                                      return BarTooltipItem(
-                                        '${point.monthLabel}\n$label: $currencySymbol${amount.toInt()}',
-                                        const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
+                              ),
+                            ),
+                          ),
+
+                          // X-Axis Horizontally Scrollable Bar Chart
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal, // X-Axis Scroll
+                              reverse: true,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 6.0),
+                                child: SizedBox(
+                                  width: chartContentWidth,
+                                  child: BarChart(
+                                    BarChartData(
+                                      maxY: maxY,
+                                      barGroups: barGroups,
+                                      gridData: FlGridData(
+                                        show: true,
+                                        drawVerticalLine: false,
+                                        horizontalInterval: yInterval,
+                                        getDrawingHorizontalLine: (value) =>
+                                            FlLine(
+                                          color: isDark
+                                              ? Colors.white
+                                                  .withValues(alpha: 0.08)
+                                              : Colors.black
+                                                  .withValues(alpha: 0.06),
+                                          strokeWidth: 1,
+                                          dashArray: [4, 4],
                                         ),
-                                      );
-                                    },
+                                      ),
+                                      titlesData: FlTitlesData(
+                                        show: true,
+                                        leftTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                        rightTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                        topTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 26,
+                                            getTitlesWidget: (value, meta) {
+                                              final int index = value.toInt();
+                                              if (index < 0 ||
+                                                  index >=
+                                                      widget.monthlyData.length) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              return Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 6.0,
+                                                ),
+                                                child: Text(
+                                                  widget
+                                                      .monthlyData[index].monthLabel,
+                                                  style: TextStyle(
+                                                    color: isDark
+                                                        ? const Color(
+                                                            0xFF94A3B8)
+                                                        : const Color(
+                                                            0xFF64748B),
+                                                    fontSize: 10.5,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      borderData: FlBorderData(show: false),
+                                      barTouchData: BarTouchData(
+                                        enabled: true,
+                                        touchTooltipData: BarTouchTooltipData(
+                                          fitInsideHorizontally: true,
+                                          fitInsideVertically: true,
+                                          getTooltipItem: (group, groupIndex,
+                                              rod, rodIndex) {
+                                            if (groupIndex < 0 ||
+                                                groupIndex >=
+                                                    widget.monthlyData.length) {
+                                              return null;
+                                            }
+                                            final point =
+                                                widget.monthlyData[groupIndex];
+                                            final isSales = rodIndex == 0;
+                                            final label =
+                                                isSales ? 'Sales' : 'Profit';
+                                            final amount = isSales
+                                                ? point.sales
+                                                : point.profit;
+
+                                            return BarTooltipItem(
+                                              '${point.monthLabel}\n$label: ${widget.currencySymbol}${amount.toInt()}',
+                                              const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
           ),
         ],

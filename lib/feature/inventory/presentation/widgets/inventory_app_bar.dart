@@ -8,6 +8,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onStopSearch;
   final VoidCallback onClearSearch;
   final VoidCallback? onClearAll;
+  final VoidCallback? onOpenSettings;
   final String title;
 
   const InventoryAppBar({
@@ -19,6 +20,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onStopSearch,
     required this.onClearSearch,
     this.onClearAll,
+    this.onOpenSettings,
     required this.title,
   });
 
@@ -111,18 +113,40 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
             tooltip: 'Search Products',
             onPressed: onStartSearch,
           ),
-          if (onClearAll != null)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              onSelected: (val) {
-                if (val == 'clear_all') {
-                  onClearAll?.call();
-                }
-              },
-              itemBuilder: (context) => [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (val) {
+              if (val == 'settings') {
+                onOpenSettings?.call();
+              } else if (val == 'clear_all') {
+                onClearAll?.call();
+              }
+            },
+            itemBuilder: (context) => [
+              if (onOpenSettings != null)
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.settings_outlined,
+                        color: Color(0xFF4F46E5),
+                        size: 18,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Settings',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (onClearAll != null)
                 const PopupMenuItem(
                   value: 'clear_all',
                   child: Row(
@@ -143,8 +167,8 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ],
                   ),
                 ),
-              ],
-            ),
+            ],
+          ),
         ],
       ],
     );

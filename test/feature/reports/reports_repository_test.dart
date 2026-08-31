@@ -1,4 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:gear_track/core/domain/repository/settings_repository.dart';
+import 'package:gear_track/core/entities/cost_code_mapping.dart';
+import 'package:gear_track/core/entities/shop_settings.dart';
+import 'package:gear_track/core/error/failure.dart';
 import 'package:gear_track/feature/inventory/data/models/product_model.dart';
 import 'package:gear_track/feature/point_of_sale/data/models/sale_model.dart';
 import 'package:gear_track/feature/reports/data/repository/reports_repository_impl.dart';
@@ -16,6 +21,41 @@ class MockReportsRemoteDataSource implements ReportsRemoteDataSource {
 
   @override
   Future<List<ProductModel>> getAllProducts() async => products;
+}
+
+class MockSettingsRepository implements SettingsRepository {
+  final CostCodeMapping mapping;
+  final ShopSettings shopSettings;
+
+  MockSettingsRepository({
+    CostCodeMapping? mapping,
+    ShopSettings? shopSettings,
+  })  : mapping = mapping ?? CostCodeMapping.defaultMapping(),
+        shopSettings = shopSettings ?? const ShopSettings();
+
+  @override
+  Future<Either<Failure, CostCodeMapping>> getCostCodeMapping() async {
+    return Right(mapping);
+  }
+
+  @override
+  Future<Either<Failure, void>> saveCostCodeMapping(
+    CostCodeMapping mapping,
+  ) async {
+    return const Right(null);
+  }
+
+  @override
+  Future<Either<Failure, ShopSettings>> getShopSettings() async {
+    return Right(shopSettings);
+  }
+
+  @override
+  Future<Either<Failure, void>> saveShopSettings(
+    ShopSettings settings,
+  ) async {
+    return const Right(null);
+  }
 }
 
 void main() {
@@ -73,7 +113,10 @@ void main() {
         sales: testSales,
         products: testProducts,
       );
-      final repo = ReportsRepositoryImpl(remoteDataSource: mockSource);
+      final repo = ReportsRepositoryImpl(
+        remoteDataSource: mockSource,
+        settingsRepository: MockSettingsRepository(),
+      );
 
       final result = await repo.getAnalyticsReport(ReportPeriod.today);
 
@@ -101,7 +144,10 @@ void main() {
         sales: testSales,
         products: testProducts,
       );
-      final repo = ReportsRepositoryImpl(remoteDataSource: mockSource);
+      final repo = ReportsRepositoryImpl(
+        remoteDataSource: mockSource,
+        settingsRepository: MockSettingsRepository(),
+      );
 
       final result = await repo.getAnalyticsReport(ReportPeriod.thisMonth);
 
@@ -126,7 +172,10 @@ void main() {
         sales: testSales,
         products: testProducts,
       );
-      final repo = ReportsRepositoryImpl(remoteDataSource: mockSource);
+      final repo = ReportsRepositoryImpl(
+        remoteDataSource: mockSource,
+        settingsRepository: MockSettingsRepository(),
+      );
 
       final result = await repo.getAnalyticsReport(ReportPeriod.trends);
 
@@ -155,7 +204,10 @@ void main() {
         sales: testSales,
         products: testProducts,
       );
-      final repo = ReportsRepositoryImpl(remoteDataSource: mockSource);
+      final repo = ReportsRepositoryImpl(
+        remoteDataSource: mockSource,
+        settingsRepository: MockSettingsRepository(),
+      );
 
       final customStart = DateTime(now.year, now.month, now.day);
       final customEnd = DateTime(now.year, now.month, now.day);

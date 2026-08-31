@@ -1,4 +1,6 @@
 import 'package:fpdart/fpdart.dart';
+import 'package:gear_track/core/domain/repository/settings_repository.dart';
+import 'package:gear_track/core/entities/cost_code_mapping.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
@@ -15,8 +17,12 @@ import '../sources/reports_remote_data_source.dart';
 
 class ReportsRepositoryImpl implements ReportsRepository {
   final ReportsRemoteDataSource remoteDataSource;
+  final SettingsRepository settingsRepository;
 
-  ReportsRepositoryImpl({required this.remoteDataSource});
+  ReportsRepositoryImpl({
+    required this.remoteDataSource,
+    required this.settingsRepository,
+  });
 
   @override
   Future<Either<Failure, AnalyticsReport>> getAnalyticsReport(
@@ -28,10 +34,16 @@ class ReportsRepositoryImpl implements ReportsRepository {
       final results = await Future.wait([
         remoteDataSource.getAllSales(),
         remoteDataSource.getAllProducts(),
+        settingsRepository.getCostCodeMapping(),
       ]);
 
       final allSales = results[0] as List<SaleModel>;
       final allProducts = results[1] as List<ProductModel>;
+      final costCodeMappingEither =
+          results[2] as Either<Failure, CostCodeMapping>;
+      final costCodeMapping = costCodeMappingEither.getOrElse(
+        (_) => CostCodeMapping.defaultMapping(),
+      );
 
       final now = DateTime.now();
 
@@ -97,7 +109,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
       for (final sale in periodSales) {
         final revenue = sale.sellPrice * sale.quantity;
-        final costPerUnit = _parseCostCode(sale.costCode);
+        final costPerUnit = costCodeMapping.decode(sale.costCode);
         final profitPerUnit = (costPerUnit > 0)
             ? (sale.sellPrice - costPerUnit)
             : sale.sellPrice;
@@ -208,7 +220,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
         for (final s in monthSalesList) {
           final rev = s.sellPrice * s.quantity;
-          final cost = _parseCostCode(s.costCode);
+          final cost = costCodeMapping.decode(s.costCode);
           final profitUnit = (cost > 0) ? (s.sellPrice - cost) : s.sellPrice;
           mSales += rev;
           mProfit += profitUnit * s.quantity;
@@ -243,11 +255,5 @@ class ReportsRepositoryImpl implements ReportsRepository {
     } catch (e) {
       return Left(Failure(e.toString()));
     }
-  }
-
-  double _parseCostCode(String costCode) {
-    if (costCode.isEmpty) return 0.0;
-    final cleaned = costCode.replaceAll(RegExp(r'[^0-9.]'), '');
-    return double.tryParse(cleaned) ?? 0.0;
   }
 }

@@ -1,3 +1,4 @@
+import 'package:gear_track/core/domain/repository/settings_repository.dart';
 import 'package:get_it/get_it.dart';
 import '../feature/reports/data/repository/reports_repository_impl.dart';
 import '../feature/reports/data/sources/reports_remote_data_source.dart';
@@ -13,7 +14,10 @@ void reportsDependencies(GetIt sl) {
 
   // Repositories
   sl.registerLazySingleton<ReportsRepository>(
-    () => ReportsRepositoryImpl(remoteDataSource: sl()),
+    () => ReportsRepositoryImpl(
+      remoteDataSource: sl(),
+      settingsRepository: sl<SettingsRepository>(),
+    ),
   );
 
   // Use Cases
