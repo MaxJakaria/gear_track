@@ -167,7 +167,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
           final dayRevenue = daySales.fold<double>(
             0.0,
-            (sum, s) => sum + (s.sellPrice * s.quantity),
+            (acc, s) => acc + (s.sellPrice * s.quantity),
           );
 
           dailySalesTrend.add(
@@ -193,7 +193,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
           final dayRevenue = daySales.fold<double>(
             0.0,
-            (sum, s) => sum + (s.sellPrice * s.quantity),
+            (acc, s) => acc + (s.sellPrice * s.quantity),
           );
 
           dailySalesTrend.add(

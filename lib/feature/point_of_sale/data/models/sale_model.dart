@@ -10,6 +10,7 @@ class SaleModel extends SaleEntity {
     required super.quantity,
     required super.sellPrice,
     required super.costCode,
+    super.invoiceId = '',
   });
 
   factory SaleModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -22,6 +23,7 @@ class SaleModel extends SaleEntity {
       quantity: data['quantity'] ?? 0,
       sellPrice: (data['sellPrice'] ?? 0.0).toDouble(),
       costCode: data['costCode'] ?? '',
+      invoiceId: data['invoiceId'] ?? '',
     );
   }
 
@@ -33,6 +35,7 @@ class SaleModel extends SaleEntity {
       'quantity': quantity,
       'sellPrice': sellPrice,
       'costCode': costCode,
+      'invoiceId': invoiceId,
     };
   }
 
@@ -45,6 +48,7 @@ class SaleModel extends SaleEntity {
       quantity: saleEntity.quantity,
       sellPrice: saleEntity.sellPrice,
       costCode: saleEntity.costCode,
+      invoiceId: saleEntity.invoiceId,
     );
   }
 }

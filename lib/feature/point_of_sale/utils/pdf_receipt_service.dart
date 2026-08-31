@@ -1,8 +1,10 @@
+import 'dart:math';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
+import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 
 class PdfReceiptService {
@@ -10,21 +12,38 @@ class PdfReceiptService {
     List<CartItem> items,
     double totalAmount, {
     ShopSettings shopSettings = const ShopSettings(),
+    InvoiceEntity? invoice,
   }) async {
     final pdf = pw.Document();
 
-    final now = DateTime.now();
+    final now = invoice?.saleDate ?? DateTime.now();
     final dateStr =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    final invoiceId =
-        'INV-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch.toString().substring(8)}';
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+    final invoiceId = invoice?.invoiceId ??
+        'GT-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${(Random().nextInt(900000) + 100000)}';
+
+    // QR Data containing unique ID, Date, Time & Total Amount
+    final qrPayload = invoice?.qrPayload ??
+        'GT-RECEIPT|ID:$invoiceId|DATE:$dateStr|TIME:$timeStr|TOTAL:${totalAmount.toStringAsFixed(2)}';
 
     final banglaFont = await PdfGoogleFonts.notoSansBengaliRegular();
     final banglaFontBold = await PdfGoogleFonts.notoSansBengaliBold();
 
     final displayedShopName = shopSettings.shopName.trim().isNotEmpty
         ? shopSettings.shopName.trim()
-        : 'GearTrack POS';
+        : (invoice?.shopName.trim().isNotEmpty == true
+            ? invoice!.shopName.trim()
+            : 'GearTrack POS');
+
+    final displayedAddress = shopSettings.address.trim().isNotEmpty
+        ? shopSettings.address.trim()
+        : (invoice?.shopAddress.trim() ?? '');
+
+    final displayedPhone = shopSettings.phone.trim().isNotEmpty
+        ? shopSettings.phone.trim()
+        : (invoice?.shopPhone.trim() ?? '');
 
     pdf.addPage(
       pw.Page(
@@ -52,17 +71,17 @@ class PdfReceiptService {
                             fontWeight: pw.FontWeight.bold,
                           ),
                         ),
-                        if (shopSettings.address.trim().isNotEmpty) ...[
+                        if (displayedAddress.isNotEmpty) ...[
                           pw.SizedBox(height: 3),
                           pw.Text(
-                            shopSettings.address.trim(),
+                            displayedAddress,
                             style: const pw.TextStyle(fontSize: 9),
                           ),
                         ],
-                        if (shopSettings.phone.trim().isNotEmpty) ...[
+                        if (displayedPhone.isNotEmpty) ...[
                           pw.SizedBox(height: 2),
                           pw.Text(
-                            'Tel: ${shopSettings.phone.trim()}',
+                            'Phone: $displayedPhone',
                             style: const pw.TextStyle(fontSize: 8.5),
                           ),
                         ],
@@ -72,23 +91,29 @@ class PdfReceiptService {
                   pw.SizedBox(width: 8),
                   pw.BarcodeWidget(
                     barcode: pw.Barcode.qrCode(),
-                    data: invoiceId, // Sale ID
-                    width: 40,
-                    height: 40,
+                    data: qrPayload, // Encodes ID, Date, Time & Total
+                    width: 44,
+                    height: 44,
                   ),
                 ],
               ),
               pw.SizedBox(height: 12),
 
-              // Meta Info
+              // Meta Info: Invoice, Date & Time
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
                     'Invoice: $invoiceId',
+                    style: pw.TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    '$dateStr $timeStr',
                     style: const pw.TextStyle(fontSize: 8),
                   ),
-                  pw.Text(dateStr, style: const pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.SizedBox(height: 6),
@@ -99,7 +124,6 @@ class PdfReceiptService {
                 data: <List<String>>[
                   <String>['Item', 'Count', 'Price', 'Total'],
                   ...items.map((item) {
-                    // Ensure item title stays on a single line by truncating
                     final title = item.itemName.length > 16
                         ? '${item.itemName.substring(0, 15)}.'
                         : item.itemName;
@@ -113,7 +137,7 @@ class PdfReceiptService {
                 ],
                 border: pw.TableBorder.all(
                   width: 0.2,
-                ), // Table borders restored
+                ),
                 headerStyle: pw.TextStyle(
                   fontSize: 8,
                   fontWeight: pw.FontWeight.bold,
@@ -146,9 +170,9 @@ class PdfReceiptService {
                   pw.Expanded(
                     flex: 60,
                     child: pw.SizedBox(),
-                  ), // Matches 'Item' (4) + 'Count' (2)
+                  ),
                   pw.Expanded(
-                    flex: 18, // Matches 'Price' (1.8)
+                    flex: 18,
                     child: pw.Text(
                       'Total :',
                       textAlign: pw.TextAlign.right,
@@ -159,7 +183,7 @@ class PdfReceiptService {
                     ),
                   ),
                   pw.Expanded(
-                    flex: 22, // Matches 'Total' (2.2)
+                    flex: 22,
                     child: pw.Padding(
                       padding: const pw.EdgeInsets.only(right: 2),
                       child: pw.Text(

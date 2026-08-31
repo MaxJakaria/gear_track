@@ -51,15 +51,17 @@ final class SaleAddedSuccess extends PosState {
   final List<CartItem> checkoutCartItems;
   final double totalPaid;
   final String message;
+  final InvoiceEntity? invoice;
 
   const SaleAddedSuccess({
     this.checkoutCartItems = const [],
     this.totalPaid = 0.0,
     this.message = 'Bill generated & sale recorded successfully!',
+    this.invoice,
   });
 
   @override
-  List<Object?> get props => [checkoutCartItems, totalPaid, message];
+  List<Object?> get props => [checkoutCartItems, totalPaid, message, invoice];
 }
 
 final class PosError extends PosState {

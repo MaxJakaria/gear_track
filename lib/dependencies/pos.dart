@@ -4,6 +4,7 @@ import 'package:gear_track/feature/point_of_sale/domain/repository/pos_repositor
 import 'package:gear_track/feature/point_of_sale/domain/usecases/add_sale.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/get_product_sales.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/get_sales.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/save_invoice.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:get_it/get_it.dart';
 
@@ -22,6 +23,7 @@ void posDependencies(GetIt sl) {
   sl.registerLazySingleton(() => AddSale(sl()));
   sl.registerLazySingleton(() => GetSales(sl()));
   sl.registerLazySingleton(() => GetProductSales(sl()));
+  sl.registerLazySingleton(() => SaveInvoice(sl()));
 
   // BLoC
   sl.registerFactory(
@@ -29,6 +31,7 @@ void posDependencies(GetIt sl) {
       addSale: sl(),
       getSales: sl(),
       getProductSales: sl(),
+      saveInvoice: sl(),
     ),
   );
 }

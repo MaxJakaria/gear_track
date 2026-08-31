@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gear_track/feature/point_of_sale/data/models/sale_model.dart';
+import 'package:gear_track/feature/receipt_verification/data/models/invoice_model.dart';
 
 abstract class PosRemoteDataSource {
   Future<void> addSale(SaleModel saleModel);
   Future<List<SaleModel>> getSales();
   Future<List<SaleModel>> getProductSales(String productId);
+  Future<void> saveInvoice(InvoiceModel invoiceModel);
 }
 
 class PosRemoteDataSourceImpl implements PosRemoteDataSource {
@@ -152,5 +154,13 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
         .get();
 
     return snapshot.docs.map((doc) => SaleModel.fromFirestore(doc)).toList();
+  }
+
+  @override
+  Future<void> saveInvoice(InvoiceModel invoiceModel) async {
+    await firestore
+        .collection('invoices')
+        .doc(invoiceModel.invoiceId)
+        .set(invoiceModel.toMap(), SetOptions(merge: true));
   }
 }

@@ -13,7 +13,11 @@ class MainNavigationPage extends StatefulWidget {
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0; // Default to Inventory (Index 0)
 
-  final List<Widget> _pages = const [InventoryPage(), PosPage(), ReportsPage()];
+  final List<Widget> _pages = const [
+    InventoryPage(),
+    PosPage(),
+    ReportsPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
