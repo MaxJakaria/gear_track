@@ -56,7 +56,7 @@ class PosSearchResultTile extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          ' â€¢ ',
+                          ' • ',
                           style: TextStyle(
                             fontSize: 11,
                             color: theme.colorScheme.onSurfaceVariant

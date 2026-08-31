@@ -51,5 +51,15 @@ class InventoryRepositoryImpl implements InventoryRepository {
       return Left(Failure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> clearAllProducts() async {
+    try {
+      await remoteDataSource.clearAllProducts();
+      return const Right(null);
+    } catch (e) {
+      return Left(Failure(e.toString()));
+    }
+  }
 }
 

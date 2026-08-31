@@ -1,12 +1,17 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/add_product_fab.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_sheet.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/clear_inventory_dialog.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/inventory_app_bar.dart';
-import 'package:gear_track/feature/inventory/presentation/widgets/product_card.dart';
-import 'package:gear_track/feature/inventory/presentation/widgets/quick_add_stock_sheet.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/inventory_empty_view.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/inventory_error_view.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/product_list_view.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/stock_filter_bar.dart';
 
+/// Clean Architecture Inventory Presentation Page
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
 
@@ -33,86 +38,62 @@ class _InventoryPageState extends State<InventoryPage> {
 
   void _onSearch(String query) {
     setState(() => _expandedCardKey = null);
-    context.read<InventoryBloc>().add(SearchProductsEvent(query: query));
+    final currentFilter =
+        (context.read<InventoryBloc>().state is InventoryLoaded)
+            ? (context.read<InventoryBloc>().state as InventoryLoaded)
+                .activeFilter
+            : StockFilter.all;
+    context.read<InventoryBloc>().add(
+          SearchProductsEvent(query: query, filter: currentFilter),
+        );
   }
 
   void _stopSearch() {
     FocusScope.of(context).unfocus();
+    final currentFilter =
+        (context.read<InventoryBloc>().state is InventoryLoaded)
+            ? (context.read<InventoryBloc>().state as InventoryLoaded)
+                .activeFilter
+            : StockFilter.all;
     setState(() {
       _isSearching = false;
       _expandedCardKey = null;
       _searchController.clear();
     });
-    _onSearch('');
+    context.read<InventoryBloc>().add(
+          SearchProductsEvent(query: '', filter: currentFilter),
+        );
   }
 
   Future<void> _handleClearAll() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.delete_forever_rounded, color: Color(0xFFD32F2F)),
-            SizedBox(width: 8),
-            Text('Delete All Products?'),
-          ],
-        ),
-        content: const Text(
-          'Are you sure you want to delete all products and batches from Cloud Firestore? This cannot be undone.',
-          style: TextStyle(height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFD32F2F),
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.delete_forever_rounded, size: 18),
-            label: const Text('Delete All'),
-          ),
-        ],
-      ),
-    );
-
+    final confirmed = await ClearInventoryDialog.show(context);
     if (confirmed != true || !mounted) return;
 
+    final completer = Completer<void>();
+    context.read<InventoryBloc>().add(
+          ClearAllProductsEvent(completer: completer),
+        );
+
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Deleting all products...'),
-          duration: Duration(seconds: 1),
-        ),
-      );
-      final firestore = FirebaseFirestore.instance;
-      final productsSnapshot = await firestore.collection('products').get();
-      for (final doc in productsSnapshot.docs) {
-        final entriesSnapshot = await doc.reference
-            .collection('stock_entries')
-            .get();
-        for (final entry in entriesSnapshot.docs) {
-          await entry.reference.delete();
-        }
-        await doc.reference.delete();
-      }
+      await completer.future;
       if (mounted) {
-        context.read<InventoryBloc>().add(const FetchProductsEvent());
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('All products deleted successfully!'),
             backgroundColor: Color(0xFFD32F2F),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete products: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -136,10 +117,9 @@ class _InventoryPageState extends State<InventoryPage> {
           },
           onClearAll: _handleClearAll,
         ),
-        floatingActionButton: FloatingActionButton.extended(
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: AddProductFab(
           onPressed: () => AddProductSheet.show(context),
-          icon: const Icon(Icons.add),
-          label: const Text('Add Product'),
         ),
         body: BlocConsumer<InventoryBloc, InventoryState>(
           buildWhen: (_, current) =>
@@ -163,120 +143,75 @@ class _InventoryPageState extends State<InventoryPage> {
             }
 
             if (state is InventoryError && state.message.isNotEmpty) {
-              return _buildErrorView(context, state.message);
+              return InventoryErrorView(
+                message: state.message,
+                onRetry: () => context
+                    .read<InventoryBloc>()
+                    .add(const FetchProductsEvent()),
+              );
             }
 
             if (state is InventoryLoaded) {
               final groupedList = state.filteredGroupedProducts;
 
-              if (groupedList.isEmpty) {
-                return _buildEmptyView(context);
-              }
+              return Column(
+                children: [
+                  // Stock Filter Bar
+                  StockFilterBar(
+                    activeFilter: state.activeFilter,
+                    totalCount: state.totalSkus,
+                    lowStockCount: state.lowStockCount,
+                    outOfStockCount: state.outOfStockCount,
+                    inStockCount: state.inStockCount,
+                    onFilterSelected: (filter) {
+                      setState(() => _expandedCardKey = null);
+                      context.read<InventoryBloc>().add(
+                            SearchProductsEvent(
+                              query: _searchController.text,
+                              filter: filter,
+                            ),
+                          );
+                    },
+                  ),
 
-              return RefreshIndicator(
-                onRefresh: () async {
-                  context.read<InventoryBloc>().add(const FetchProductsEvent());
-                },
-                child: ListView.separated(
-                  separatorBuilder: (context, index) => SizedBox(height: 12),
-                  padding: const EdgeInsets.all(16),
-                  itemCount: groupedList.length,
-                  itemBuilder: (context, index) {
-                    final item = groupedList[index];
-                    final isCardExpanded = _expandedCardKey == item.itemName;
-
-                    return ProductCard(
-                      groupedProduct: item,
-                      isExpanded: isCardExpanded,
-                      onToggleExpand: () {
-                        setState(() {
-                          _expandedCardKey = isCardExpanded
-                              ? null
-                              : item.itemName;
-                        });
-                      },
-                      onQuickAdd: () => QuickAddStockSheet.show(context, item),
-                    );
-                  },
-                ),
+                  // Products List or Empty View
+                  Expanded(
+                    child: groupedList.isEmpty
+                        ? InventoryEmptyView(
+                            hasSearch: _searchController.text.isNotEmpty,
+                            activeFilter: state.activeFilter,
+                            onClearSearch: () {
+                              _searchController.clear();
+                              _onSearch('');
+                            },
+                            onResetFilter: () {
+                              context.read<InventoryBloc>().add(
+                                    SearchProductsEvent(
+                                      query: _searchController.text,
+                                      filter: StockFilter.all,
+                                    ),
+                                  );
+                            },
+                          )
+                        : ProductListView(
+                            products: groupedList,
+                            expandedCardKey: _expandedCardKey,
+                            onToggleExpand: (key) {
+                              setState(() => _expandedCardKey = key);
+                            },
+                            onRefresh: () async {
+                              context.read<InventoryBloc>().add(
+                                    const FetchProductsEvent(),
+                                  );
+                            },
+                          ),
+                  ),
+                ],
               );
             }
 
             return const SizedBox.shrink();
           },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyView(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 64,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _searchController.text.isNotEmpty
-                  ? 'No matching products found'
-                  : 'No products in inventory yet',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _searchController.text.isNotEmpty
-                  ? 'Try searching with a different term'
-                  : 'Tap the "+ Add Product" button below to add your first product.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorView(BuildContext context, String message) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 56, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text(
-              'Failed to load inventory',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () =>
-                  context.read<InventoryBloc>().add(const FetchProductsEvent()),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
         ),
       ),
     );

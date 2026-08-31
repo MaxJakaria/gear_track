@@ -26,13 +26,39 @@ final class InventoryLoaded extends InventoryState {
 
   List<GroupedProduct> get groupedProducts => _group(products);
 
-  List<GroupedProduct> get filteredGroupedProducts => _group(filteredProducts);
+  List<GroupedProduct> get filteredGroupedProducts {
+    final q = searchQuery.toLowerCase().trim();
+    return groupedProducts.where((grouped) {
+      final matchesQuery = q.isEmpty ||
+          grouped.itemName.toLowerCase().contains(q) ||
+          grouped.partNo.toLowerCase().contains(q) ||
+          grouped.model.toLowerCase().contains(q) ||
+          grouped.batches.any((b) => b.partNo.toLowerCase().contains(q));
+
+      final matchesFilter = switch (activeFilter) {
+        StockFilter.all => true,
+        StockFilter.inStock => grouped.totalStockCount > 0,
+        StockFilter.lowStock =>
+            grouped.totalStockCount > 0 && grouped.totalStockCount <= 5,
+        StockFilter.outOfStock => grouped.totalStockCount <= 0,
+      };
+
+      return matchesQuery && matchesFilter;
+    }).toList();
+  }
 
   int get totalSkus => groupedProducts.length;
 
   int get totalStockUnits => products.fold(0, (sum, item) => sum + item.stockCount);
 
-  int get lowStockCount => groupedProducts.where((item) => item.totalStockCount <= 5).length;
+  int get lowStockCount =>
+      groupedProducts.where((item) => item.totalStockCount > 0 && item.totalStockCount <= 5).length;
+
+  int get outOfStockCount =>
+      groupedProducts.where((item) => item.totalStockCount <= 0).length;
+
+  int get inStockCount =>
+      groupedProducts.where((item) => item.totalStockCount > 0).length;
 
   static List<GroupedProduct> _group(List<Product> list) {
     final Map<String, List<Product>> map = {};

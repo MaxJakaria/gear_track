@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
@@ -184,7 +185,7 @@ class PosCartItemTile extends StatelessWidget {
           Row(
             children: [
               // Quantity Stepper [-] Qty [+]
-              _buildQuantityStepper(theme),
+              _buildQuantityStepper(theme, context),
 
               const SizedBox(width: 12),
 
@@ -209,56 +210,112 @@ class PosCartItemTile extends StatelessWidget {
     );
   }
 
-  Widget _buildQuantityStepper(ThemeData theme) {
+  void _showQuantityEditDialog(BuildContext context) {
+    final controller = TextEditingController(text: '${item.quantity}');
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Set Quantity',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.itemName,
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Quantity',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              onSubmitted: (val) {
+                final qty = int.tryParse(val.trim());
+                if (qty != null && qty > 0) {
+                  onQuantityChanged(qty);
+                  Navigator.pop(dialogContext);
+                }
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final qty = int.tryParse(controller.text.trim());
+              if (qty != null && qty > 0) {
+                onQuantityChanged(qty);
+                Navigator.pop(dialogContext);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuantityStepper(ThemeData theme, BuildContext context) {
+    final canDecrement = item.quantity > 1;
+
     return Row(
       children: [
-        _buildStepperButton(
-          theme: theme,
+        _HoldableStepperButton(
           icon: Icons.remove_rounded,
-          onTap: () {
+          enabled: canDecrement,
+          tooltip: 'Hold to decrease rapidly',
+          onStep: () {
             if (item.quantity > 1) {
               onQuantityChanged(item.quantity - 1);
             }
           },
         ),
-        SizedBox(
-          width: 32,
-          child: Text(
-            '${item.quantity}',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
+        InkWell(
+          onTap: () => _showQuantityEditDialog(context),
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 34),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+            child: Text(
+              '${item.quantity}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
             ),
           ),
         ),
-        _buildStepperButton(
-          theme: theme,
+        _HoldableStepperButton(
           icon: Icons.add_rounded,
-          onTap: () => onQuantityChanged(item.quantity + 1),
+          enabled: true,
+          tooltip: 'Hold to increase rapidly',
+          onStep: () => onQuantityChanged(item.quantity + 1),
         ),
       ],
-    );
-  }
-
-  Widget _buildStepperButton({
-    required ThemeData theme,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
-      ),
     );
   }
 
@@ -280,7 +337,7 @@ class PosCartItemTile extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            'à§³',
+            '৳',
             style: TextStyle(
               fontSize: 14,
               color: theme.colorScheme.onSurfaceVariant,
@@ -560,7 +617,7 @@ class _PartNoSelectorSheet extends StatelessWidget {
                                               ),
                                             ),
                                           Text(
-                                            ' â€¢ Date: ${_formatDate(batch.entryDate)}',
+                                            ' • Date: ${_formatDate(batch.entryDate)}',
                                             style: TextStyle(
                                               fontSize: 10,
                                               color: theme
@@ -584,6 +641,105 @@ class _PartNoSelectorSheet extends StatelessWidget {
                     ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Holdable Stepper Button supporting continuous auto-increment / auto-decrement on long press
+class _HoldableStepperButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onStep;
+  final bool enabled;
+  final String tooltip;
+
+  const _HoldableStepperButton({
+    required this.icon,
+    required this.onStep,
+    this.enabled = true,
+    this.tooltip = '',
+  });
+
+  @override
+  State<_HoldableStepperButton> createState() => _HoldableStepperButtonState();
+}
+
+class _HoldableStepperButtonState extends State<_HoldableStepperButton> {
+  Timer? _initialDelayTimer;
+  Timer? _periodicTimer;
+  bool _isPressed = false;
+
+  void _startHolding() {
+    if (!widget.enabled) return;
+    setState(() => _isPressed = true);
+    widget.onStep();
+
+    _initialDelayTimer = Timer(const Duration(milliseconds: 320), () {
+      _periodicTimer = Timer.periodic(const Duration(milliseconds: 75), (_) {
+        if (!widget.enabled) {
+          _stopHolding();
+          return;
+        }
+        widget.onStep();
+      });
+    });
+  }
+
+  void _stopHolding() {
+    _initialDelayTimer?.cancel();
+    _periodicTimer?.cancel();
+    _initialDelayTimer = null;
+    _periodicTimer = null;
+    if (_isPressed && mounted) {
+      setState(() => _isPressed = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopHolding();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final baseColor = widget.enabled
+        ? (_isPressed
+            ? theme.colorScheme.primary.withValues(alpha: 0.2)
+            : theme.colorScheme.surfaceContainerHighest)
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35);
+
+    final iconColor = widget.enabled
+        ? (_isPressed
+            ? theme.colorScheme.primary
+            : theme.colorScheme.onSurfaceVariant)
+        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.35);
+
+    return Tooltip(
+      message: widget.tooltip,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _startHolding(),
+        onTapUp: (_) => _stopHolding(),
+        onTapCancel: () => _stopHolding(),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 90),
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: baseColor,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(
+              color: _isPressed
+                  ? theme.colorScheme.primary.withValues(alpha: 0.45)
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+              width: 0.8,
+            ),
+          ),
+          child: Icon(widget.icon, size: 15, color: iconColor),
         ),
       ),
     );

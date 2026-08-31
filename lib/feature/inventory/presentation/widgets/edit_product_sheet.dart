@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -257,32 +258,10 @@ class _EditProductSheetState extends State<EditProductSheet> {
                 ),
                 const SizedBox(height: 24),
 
-                // Submit Button
-                FilledButton.icon(
+                AppGradientButton(
                   onPressed: _isLoading ? null : _submit,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.check_circle_outline),
-                  label: Text(
-                    _isLoading ? 'Updating Batch...' : 'Update Batch',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                  isLoading: _isLoading,
+                  label: 'Update Batch',
                 ),
               ],
             ),

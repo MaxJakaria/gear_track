@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 
@@ -237,30 +238,10 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                FilledButton(
+                AppGradientButton(
                   onPressed: _isLoading ? null : _submit,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Save Product',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  isLoading: _isLoading,
+                  label: 'Save Product',
                 ),
               ],
             ),

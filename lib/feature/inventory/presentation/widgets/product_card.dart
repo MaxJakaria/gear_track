@@ -263,47 +263,33 @@ class _ProductCardState extends State<ProductCard> {
                               ),
                             ),
 
-                            // Quick Add Stock Pill Button
+                            // Quick Add Stock Frosted Glass Button
                             if (widget.onQuickAdd != null)
                               InkWell(
                                 onTap: widget.onQuickAdd,
                                 borderRadius: BorderRadius.circular(20),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
+                                    horizontal: 12,
                                     vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFD32F2F),
+                                    color: Colors.white.withValues(alpha: 0.28),
                                     borderRadius: BorderRadius.circular(20),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFFD32F2F,
-                                        ).withValues(alpha: 0.35),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.45,
                                       ),
-                                    ],
+                                      width: 1,
+                                    ),
                                   ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.add_rounded,
-                                        size: 14,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(width: 3),
-                                      Text(
-                                        'Add Stock',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
+                                  child: const Text(
+                                    'Add Stock',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),

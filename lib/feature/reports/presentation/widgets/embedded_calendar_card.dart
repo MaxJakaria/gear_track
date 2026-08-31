@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/widgets/custom_calendar_view.dart';
 import 'package:intl/intl.dart';
 
@@ -70,8 +71,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final primaryBlue =
-        isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+    final primaryBlue = AppColors.primaryButton(context);
 
     final cardBg = isDark
         ? theme.colorScheme.surfaceContainerHigh
@@ -171,39 +171,63 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
                 ),
                 const SizedBox(width: 8),
               ],
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: primaryBlue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  minimumSize: const Size(64, 32),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              Container(
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: (hasSelection && !widget.isLoading)
+                      ? AppColors.primaryGradient(context)
+                      : null,
+                  color: (hasSelection && !widget.isLoading)
+                      ? null
+                      : (isDark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: (hasSelection && !widget.isLoading)
+                      ? [
+                          BoxShadow(
+                            color: primaryBlue.withValues(alpha: 0.30),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
-                onPressed: (hasSelection && !widget.isLoading)
-                    ? _applySelection
-                    : null,
-                child: isApplyLoading
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Apply',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: (hasSelection && !widget.isLoading)
+                        ? _applySelection
+                        : null,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Center(
+                        child: isApplyLoading
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Apply',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: (hasSelection && !widget.isLoading)
+                                      ? Colors.white
+                                      : (isDark
+                                          ? const Color(0xFF64748B)
+                                          : const Color(0xFF94A3B8)),
+                                ),
+                              ),
                       ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

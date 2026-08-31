@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -37,9 +38,7 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   @override
   void initState() {
     super.initState();
-    _partNoController = TextEditingController(
-      text: widget.groupedProduct.partNo,
-    );
+    _partNoController = TextEditingController();
   }
 
   @override
@@ -193,6 +192,7 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                   controller: _partNoController,
                   decoration: const InputDecoration(
                     labelText: 'Part Number',
+                    hintText: 'Enter part number for this batch',
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) => val == null || val.trim().isEmpty
@@ -254,31 +254,10 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                 ),
                 const SizedBox(height: 24),
 
-                FilledButton.icon(
+                AppGradientButton(
                   onPressed: _isLoading ? null : _submit,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.add_circle_outline),
-                  label: Text(
-                    _isLoading ? 'Saving Batch...' : 'Add Stock Batch',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                  isLoading: _isLoading,
+                  label: 'Add Stock Batch',
                 ),
               ],
             ),
