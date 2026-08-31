@@ -59,6 +59,8 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
         ? theme.colorScheme.surfaceContainerHigh
         : Colors.white;
 
+    final int count = widget.monthlyData.length;
+
     double maxVal = 1000.0;
     for (final pt in widget.monthlyData) {
       maxVal = math.max(maxVal, math.max(pt.sales, pt.profit));
@@ -66,36 +68,44 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
     final double maxY = (maxVal <= 0 ? 1000.0 : maxVal * 1.25);
 
     // 2D Dimensions inside fixed 200px viewport
-    final double columnSpacing = 56.0 * _zoomScale;
-    final double rodWidth = (12.0 * math.min(1.4, _zoomScale)).clamp(7.0, 18.0);
-    final double innerSpace = (4.0 * math.min(1.4, _zoomScale)).clamp(2.0, 8.0);
-    final double chartContentWidth =
-        math.max(320.0, widget.monthlyData.length * columnSpacing);
+    final double columnSpacing =
+        math.max(48.0, (320.0 / math.max(1, count))) * _zoomScale;
+    final double rodWidth = (9.0 * math.min(1.4, _zoomScale)).clamp(6.0, 16.0);
+    final double innerSpace = (3.0 * math.min(1.4, _zoomScale)).clamp(2.0, 6.0);
+    final double chartContentWidth = math.max(320.0, count * columnSpacing);
     final double innerChartHeight = 200.0 * _zoomScale;
     final double yInterval = (maxY / 4).clamp(1.0, double.infinity);
     final int zoomPercent = (_zoomScale * 100).toInt();
 
     final List<BarChartGroupData> barGroups = [];
-    for (int i = 0; i < widget.monthlyData.length; i++) {
+    for (int i = 0; i < count; i++) {
       final point = widget.monthlyData[i];
       barGroups.add(
         BarChartGroupData(
           x: i,
           barsSpace: innerSpace,
           barRods: [
-            // 1. Sales Bar (Indigo)
+            // 1. Sales Bar (Indigo Gradient)
             BarChartRodData(
-              toY: point.sales,
-              color: const Color(0xFF6366F1),
+              toY: math.max(0.0, point.sales),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+              ),
               width: rodWidth,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(4),
               ),
             ),
-            // 2. Profit Bar (Emerald)
+            // 2. Profit Bar (Emerald Gradient)
             BarChartRodData(
-              toY: point.profit,
-              color: const Color(0xFF10B981),
+              toY: math.max(0.0, point.profit),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF10B981), Color(0xFF059669)],
+              ),
               width: rodWidth,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(4),
@@ -234,8 +244,8 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                             color: zoomPercent != 100
                                 ? const Color(0xFF6366F1)
                                 : (isDark
-                                    ? const Color(0xFFCBD5E1)
-                                    : const Color(0xFF475569)),
+                                      ? const Color(0xFFCBD5E1)
+                                      : const Color(0xFF475569)),
                           ),
                         ),
                       ),
@@ -276,9 +286,10 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                         children: [
                           // Y-Axis Column
                           SizedBox(
-                            width: 48,
+                            width: 46,
                             child: BarChart(
                               BarChartData(
+                                minY: 0,
                                 maxY: maxY,
                                 barGroups: const [],
                                 gridData: const FlGridData(show: false),
@@ -293,14 +304,14 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                   bottomTitles: const AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 26,
+                                      reservedSize: 28,
                                       getTitlesWidget: _emptyTitles,
                                     ),
                                   ),
                                   leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 48,
+                                      reservedSize: 46,
                                       interval: yInterval,
                                       getTitlesWidget: (value, meta) {
                                         if (value == meta.max && maxVal <= 0) {
@@ -330,12 +341,15 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                               scrollDirection: Axis.horizontal, // X-Axis Scroll
                               reverse: true,
                               child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6.0),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6.0,
+                                ),
                                 child: SizedBox(
                                   width: chartContentWidth,
                                   child: BarChart(
                                     BarChartData(
+                                      alignment: BarChartAlignment.spaceAround,
+                                      minY: 0,
                                       maxY: maxY,
                                       barGroups: barGroups,
                                       gridData: FlGridData(
@@ -344,38 +358,41 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                         horizontalInterval: yInterval,
                                         getDrawingHorizontalLine: (value) =>
                                             FlLine(
-                                          color: isDark
-                                              ? Colors.white
-                                                  .withValues(alpha: 0.08)
-                                              : Colors.black
-                                                  .withValues(alpha: 0.06),
-                                          strokeWidth: 1,
-                                          dashArray: [4, 4],
-                                        ),
+                                              color: isDark
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.08,
+                                                    )
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.06,
+                                                    ),
+                                              strokeWidth: 1,
+                                              dashArray: [4, 4],
+                                            ),
                                       ),
                                       titlesData: FlTitlesData(
                                         show: true,
                                         leftTitles: const AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
                                         ),
                                         rightTitles: const AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
                                         ),
                                         topTitles: const AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
                                         ),
                                         bottomTitles: AxisTitles(
                                           sideTitles: SideTitles(
                                             showTitles: true,
-                                            reservedSize: 26,
+                                            reservedSize: 28,
                                             getTitlesWidget: (value, meta) {
                                               final int index = value.toInt();
-                                              if (index < 0 ||
-                                                  index >=
-                                                      widget.monthlyData.length) {
+                                              if (index < 0 || index >= count) {
                                                 return const SizedBox.shrink();
                                               }
                                               return Padding(
@@ -384,15 +401,18 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                                 ),
                                                 child: Text(
                                                   widget
-                                                      .monthlyData[index].monthLabel,
+                                                      .monthlyData[index]
+                                                      .monthLabel,
                                                   style: TextStyle(
                                                     color: isDark
                                                         ? const Color(
-                                                            0xFF94A3B8)
+                                                            0xFF94A3B8,
+                                                          )
                                                         : const Color(
-                                                            0xFF64748B),
+                                                            0xFF64748B,
+                                                          ),
                                                     fontSize: 10.5,
-                                                    fontWeight: FontWeight.w600,
+                                                    fontWeight: FontWeight.w700,
                                                   ),
                                                 ),
                                               );
@@ -406,31 +426,57 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                         touchTooltipData: BarTouchTooltipData(
                                           fitInsideHorizontally: true,
                                           fitInsideVertically: true,
-                                          getTooltipItem: (group, groupIndex,
-                                              rod, rodIndex) {
-                                            if (groupIndex < 0 ||
-                                                groupIndex >=
-                                                    widget.monthlyData.length) {
-                                              return null;
-                                            }
-                                            final point =
-                                                widget.monthlyData[groupIndex];
-                                            final isSales = rodIndex == 0;
-                                            final label =
-                                                isSales ? 'Sales' : 'Profit';
-                                            final amount = isSales
-                                                ? point.sales
-                                                : point.profit;
+                                          getTooltipColor: (_) => isDark
+                                              ? const Color(0xFF1E293B)
+                                              : const Color(0xFF0F172A),
+                                          getTooltipItem:
+                                              (
+                                                group,
+                                                groupIndex,
+                                                rod,
+                                                rodIndex,
+                                              ) {
+                                                if (groupIndex < 0 ||
+                                                    groupIndex >= count) {
+                                                  return null;
+                                                }
+                                                final point = widget
+                                                    .monthlyData[groupIndex];
+                                                final isSales = rodIndex == 0;
+                                                final label = isSales
+                                                    ? 'Sales'
+                                                    : 'Profit';
+                                                final amount = isSales
+                                                    ? point.sales
+                                                    : point.profit;
 
-                                            return BarTooltipItem(
-                                              '${point.monthLabel}\n$label: ${widget.currencySymbol}${amount.toInt()}',
-                                              const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            );
-                                          },
+                                                return BarTooltipItem(
+                                                  '${point.monthLabel}\n',
+                                                  const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12.5,
+                                                  ),
+                                                  children: [
+                                                    TextSpan(
+                                                      text:
+                                                          '$label: ${widget.currencySymbol}${amount.toInt()}',
+                                                      style: TextStyle(
+                                                        color: isSales
+                                                            ? const Color(
+                                                                0xFF818CF8,
+                                                              )
+                                                            : const Color(
+                                                                0xFF34D399,
+                                                              ),
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 11.5,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              },
                                         ),
                                       ),
                                     ),

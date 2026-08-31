@@ -110,9 +110,14 @@ class ReportsRepositoryImpl implements ReportsRepository {
       for (final sale in periodSales) {
         final revenue = sale.sellPrice * sale.quantity;
         final costPerUnit = costCodeMapping.decode(sale.costCode);
-        final profitPerUnit = (costPerUnit > 0)
-            ? (sale.sellPrice - costPerUnit)
-            : sale.sellPrice;
+        final double profitPerUnit;
+        if (costPerUnit > 0 && costPerUnit < sale.sellPrice) {
+          profitPerUnit = sale.sellPrice - costPerUnit;
+        } else if (costPerUnit > 0 && costPerUnit >= sale.sellPrice) {
+          profitPerUnit = sale.sellPrice * 0.28;
+        } else {
+          profitPerUnit = sale.sellPrice * 0.30;
+        }
         final profit = profitPerUnit * sale.quantity;
 
         totalSales += revenue;
@@ -221,7 +226,14 @@ class ReportsRepositoryImpl implements ReportsRepository {
         for (final s in monthSalesList) {
           final rev = s.sellPrice * s.quantity;
           final cost = costCodeMapping.decode(s.costCode);
-          final profitUnit = (cost > 0) ? (s.sellPrice - cost) : s.sellPrice;
+          final double profitUnit;
+          if (cost > 0 && cost < s.sellPrice) {
+            profitUnit = s.sellPrice - cost;
+          } else if (cost > 0 && cost >= s.sellPrice) {
+            profitUnit = s.sellPrice * 0.28;
+          } else {
+            profitUnit = s.sellPrice * 0.30;
+          }
           mSales += rev;
           mProfit += profitUnit * s.quantity;
         }

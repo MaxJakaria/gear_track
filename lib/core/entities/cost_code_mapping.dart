@@ -1,35 +1,38 @@
 import 'package:equatable/equatable.dart';
 
 /// Entity representing Character-to-Digit mapping for Cost Codes (0-9).
-/// Supports alphabetic characters, digits, and special characters (e.g. @, #, *, !, -, _, +, %, etc.).
+/// Supports multiple characters/symbols per digit (e.g. A, @ -> 3; S, $ -> 6; C, # -> 4, etc.).
 class CostCodeMapping extends Equatable {
   /// Map of character -> digit (0 to 9)
-  /// e.g. {'B': 1, 'L': 2, '@': 3, '#': 4, '*': 5, 'S': 6, 'M': 7, '!': 8, 'T': 9, 'H': 0}
+  /// e.g. {'B': 1, 'L': 2, 'A': 3, '@': 3, 'C': 4, '#': 4, 'K': 5, 'S': 6, '$': 6, 'M': 7, 'I': 8, '!': 8, 'T': 9, 'H': 0}
   final Map<String, int> charToDigit;
 
   const CostCodeMapping({required this.charToDigit});
 
-  /// Default 10-character keyword mapping (BLACKSMITH -> 1234567890)
+  /// Default 10-character keyword mapping with common symbol aliases
   factory CostCodeMapping.defaultMapping() {
     return const CostCodeMapping(
       charToDigit: {
         'B': 1,
         'L': 2,
         'A': 3,
+        '@': 3,
         'C': 4,
+        '#': 4,
         'K': 5,
         'S': 6,
+        r'$': 6,
         'M': 7,
         'I': 8,
+        '!': 8,
         'T': 9,
         'H': 0,
       },
     );
   }
 
-  /// Create from a raw 10-character keyword/phrase (including special characters, symbols, and letters)
+  /// Create from a raw 10-character keyword/phrase
   factory CostCodeMapping.fromKeyword(String keyword) {
-    // Only strip whitespace; allow all symbols and characters
     final clean = keyword.trim().replaceAll(RegExp(r'\s+'), '');
     final map = <String, int>{};
     for (int i = 0; i < clean.length && i < 10; i++) {
@@ -41,8 +44,7 @@ class CostCodeMapping extends Equatable {
   }
 
   /// Decodes an encrypted cost code string (with letters, special characters, or numbers) into a numeric value.
-  /// Example: With {'@': 1, 'A': 3, '*': 9}, '@A*' -> '139' -> 139.0
-  /// Supports direct numeric digits and decimals (e.g. '@A*.5' -> 139.5)
+  /// Example: With {'@': 3, 'A': 3, 'B': 1, 'T': 9}, 'BL@CK' -> '12345' -> 12345.0
   double decode(String costCode) {
     if (costCode.trim().isEmpty) return 0.0;
 
@@ -67,13 +69,19 @@ class CostCodeMapping extends Equatable {
     return double.tryParse(decodedStr) ?? 0.0;
   }
 
-  /// Get the character assigned to a specific digit (0-9)
-  String getCharForDigit(int digit) {
+  /// Get all characters assigned to a specific digit (0-9), e.g. "A, @" or "S, $"
+  String getCharsForDigit(int digit, {String separator = ', '}) {
+    final chars = <String>[];
     for (final entry in charToDigit.entries) {
-      if (entry.value == digit) return entry.key;
+      if (entry.value == digit && !chars.contains(entry.key)) {
+        chars.add(entry.key);
+      }
     }
-    return '';
+    return chars.join(separator);
   }
+
+  /// Alias for backward compatibility
+  String getCharForDigit(int digit) => getCharsForDigit(digit);
 
   Map<String, dynamic> toMap() {
     return charToDigit.map((key, value) => MapEntry(key, value));
