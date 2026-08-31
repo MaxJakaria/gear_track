@@ -68,38 +68,46 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<List<ProductModel>> getProducts() async {
-    final productsSnapshot = await firestore.collection('products').get();
-    final List<ProductModel> allBatches = [];
+    final results = await Future.wait([
+      firestore.collection('products').get(),
+      firestore.collectionGroup('stock_entries').get(),
+    ]);
 
-    for (final productDoc in productsSnapshot.docs) {
-      final productData = productDoc.data();
-      final defaultPartNo = productData['partNo'] ?? productDoc.id;
+    final productsSnapshot = results[0];
+    final stockEntriesSnapshot = results[1];
+
+    final Map<String, Map<String, dynamic>> productInfoMap = {};
+    for (final doc in productsSnapshot.docs) {
+      productInfoMap[doc.id] = doc.data();
+    }
+
+    final List<ProductModel> allBatches = [];
+    for (final entryDoc in stockEntriesSnapshot.docs) {
+      final entryData = entryDoc.data();
+      final parentProductId = entryDoc.reference.parent.parent?.id ?? '';
+      final productData = productInfoMap[parentProductId] ?? {};
+
+      final defaultPartNo = productData['partNo'] ?? parentProductId;
       final itemName = productData['itemName'] ?? '';
       final model = productData['model'] ?? '';
+      final batchPartNo = (entryData['partNo'] as String?)?.isNotEmpty == true
+          ? entryData['partNo'] as String
+          : defaultPartNo;
 
-      final stockEntriesSnapshot = await productDoc.reference
-          .collection('stock_entries')
-          .get();
-      for (final entryDoc in stockEntriesSnapshot.docs) {
-        final entryData = entryDoc.data();
-        final batchPartNo = (entryData['partNo'] as String?)?.isNotEmpty == true
-            ? entryData['partNo'] as String
-            : defaultPartNo;
-
-        allBatches.add(
-          ProductModel(
-            id: entryDoc.id,
-            entryDate: (entryData['date'] as Timestamp).toDate(),
-            partNo: batchPartNo,
-            itemName: itemName,
-            model: model,
-            costCode: entryData['costCode'] ?? '',
-            initialQuantity: entryData['quantity'] ?? 0,
-            stockCount: entryData['remainingQuantity'] ?? 0,
-          ),
-        );
-      }
+      allBatches.add(
+        ProductModel(
+          id: entryDoc.id,
+          entryDate: (entryData['date'] as Timestamp).toDate(),
+          partNo: batchPartNo,
+          itemName: itemName,
+          model: model,
+          costCode: entryData['costCode'] ?? '',
+          initialQuantity: entryData['quantity'] ?? 0,
+          stockCount: entryData['remainingQuantity'] ?? 0,
+        ),
+      );
     }
+
     return allBatches;
   }
 

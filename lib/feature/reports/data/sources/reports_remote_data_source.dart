@@ -14,35 +14,35 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
 
   @override
   Future<List<SaleModel>> getAllSales() async {
-    try {
-      final snapshot = await firestore
-          .collectionGroup('sales_records')
-          .orderBy('saleDate', descending: true)
-          .get();
-
-      return snapshot.docs.map((doc) => SaleModel.fromFirestore(doc)).toList();
-    } catch (e) {
-      // Fallback if collectionGroup index is building or not present
-      final salesDocSnapshot = await firestore.collection('sales').get();
-      final List<SaleModel> allSales = [];
-
-      for (final doc in salesDocSnapshot.docs) {
-        final subSnapshot = await doc.reference
-            .collection('sales_records')
-            .orderBy('saleDate', descending: true)
-            .get();
-        for (final saleDoc in subSnapshot.docs) {
-          allSales.add(SaleModel.fromFirestore(saleDoc));
-        }
-      }
-      return allSales;
-    }
+    final snapshot = await firestore.collectionGroup('sales_records').get();
+    final list = snapshot.docs.map((doc) => SaleModel.fromFirestore(doc)).toList();
+    list.sort((a, b) => b.saleDate.compareTo(a.saleDate));
+    return list;
   }
 
   @override
   Future<List<ProductModel>> getAllProducts() async {
-    final productsSnapshot = await firestore.collection('products').get();
+    final results = await Future.wait([
+      firestore.collection('products').get(),
+      firestore.collectionGroup('stock_entries').get(),
+    ]);
+
+    final productsSnapshot = results[0];
+    final stockEntriesSnapshot = results[1];
+
+    final Map<String, Map<String, dynamic>> productInfoMap = {};
+    for (final doc in productsSnapshot.docs) {
+      productInfoMap[doc.id] = doc.data();
+    }
+
     final List<ProductModel> allBatches = [];
+
+    // Group batches under products
+    final Map<String, List<DocumentSnapshot<Map<String, dynamic>>>> entriesByProduct = {};
+    for (final entryDoc in stockEntriesSnapshot.docs) {
+      final parentProductId = entryDoc.reference.parent.parent?.id ?? '';
+      entriesByProduct.putIfAbsent(parentProductId, () => []).add(entryDoc);
+    }
 
     for (final productDoc in productsSnapshot.docs) {
       final productData = productDoc.data();
@@ -51,11 +51,8 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
       final model = productData['model'] ?? '';
       final totalStock = (productData['totalStock'] as num?)?.toInt() ?? 0;
 
-      final stockEntriesSnapshot =
-          await productDoc.reference.collection('stock_entries').get();
-
-      if (stockEntriesSnapshot.docs.isEmpty) {
-        // Direct product entry without batches
+      final entries = entriesByProduct[productDoc.id];
+      if (entries == null || entries.isEmpty) {
         allBatches.add(
           ProductModel(
             id: productDoc.id,
@@ -71,8 +68,8 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
           ),
         );
       } else {
-        for (final entryDoc in stockEntriesSnapshot.docs) {
-          final entryData = entryDoc.data();
+        for (final entryDoc in entries) {
+          final entryData = entryDoc.data()!;
           final batchPartNo =
               (entryData['partNo'] as String?)?.isNotEmpty == true
                   ? entryData['partNo'] as String
@@ -95,6 +92,7 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
         }
       }
     }
+
     return allBatches;
   }
 }

@@ -25,6 +25,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
   DateTime? _startDate;
   DateTime? _endDate;
   String? _loadingAction; // 'apply' or 'reset'
+  bool _isLocalLoading = false;
 
   @override
   void initState() {
@@ -36,8 +37,11 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
   @override
   void didUpdateWidget(covariant EmbeddedCalendarCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!widget.isLoading) {
-      _loadingAction = null;
+    if (oldWidget.isLoading && !widget.isLoading) {
+      setState(() {
+        _isLocalLoading = false;
+        _loadingAction = null;
+      });
     }
     if (oldWidget.selectedStartDate != widget.selectedStartDate ||
         oldWidget.selectedEndDate != widget.selectedEndDate) {
@@ -52,6 +56,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
     if (_startDate != null) {
       setState(() {
         _loadingAction = 'apply';
+        _isLocalLoading = true;
       });
       widget.onDateRangeChanged(_startDate, _endDate ?? _startDate);
     }
@@ -60,6 +65,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
   void _clearSelection() {
     setState(() {
       _loadingAction = 'reset';
+      _isLocalLoading = true;
       _startDate = null;
       _endDate = null;
     });
@@ -78,17 +84,16 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
         : Colors.white;
 
     final hasSelection = _startDate != null;
-    final bool isResetLoading = widget.isLoading && _loadingAction == 'reset';
-    final bool isApplyLoading = widget.isLoading && _loadingAction == 'apply';
+    final bool isResetLoading =
+        (widget.isLoading || _isLocalLoading) && _loadingAction == 'reset';
+    final bool isApplyLoading =
+        (widget.isLoading || _isLocalLoading) && _loadingAction == 'apply';
+    final bool isBusy = isResetLoading || isApplyLoading;
 
     return Container(
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          width: 1,
-        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
@@ -174,16 +179,16 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
               Container(
                 height: 34,
                 decoration: BoxDecoration(
-                  gradient: (hasSelection && !widget.isLoading)
+                  gradient: (hasSelection && !isBusy)
                       ? AppColors.primaryGradient(context)
                       : null,
-                  color: (hasSelection && !widget.isLoading)
+                  color: (hasSelection && !isBusy)
                       ? null
                       : (isDark
                           ? const Color(0xFF334155)
                           : const Color(0xFFE2E8F0)),
                   borderRadius: BorderRadius.circular(8),
-                  boxShadow: (hasSelection && !widget.isLoading)
+                  boxShadow: (hasSelection && !isBusy)
                       ? [
                           BoxShadow(
                             color: primaryBlue.withValues(alpha: 0.30),
@@ -197,7 +202,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
-                    onTap: (hasSelection && !widget.isLoading)
+                    onTap: (hasSelection && !isBusy)
                         ? _applySelection
                         : null,
                     child: Padding(
@@ -217,7 +222,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
                                 style: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.bold,
-                                  color: (hasSelection && !widget.isLoading)
+                                  color: (hasSelection && !isBusy)
                                       ? Colors.white
                                       : (isDark
                                           ? const Color(0xFF64748B)

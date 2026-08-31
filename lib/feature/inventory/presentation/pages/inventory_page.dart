@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_fab.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_sheet.dart';
+import 'package:gear_track/feature/inventory/presentation/pages/settings_page.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/clear_inventory_dialog.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/inventory_app_bar.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/inventory_empty_view.dart';
@@ -116,6 +117,8 @@ class _InventoryPageState extends State<InventoryPage> {
             _onSearch('');
           },
           onClearAll: _handleClearAll,
+          onOpenSettings: () =>
+              Navigator.push(context, SettingsPage.route()),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: AddProductFab(

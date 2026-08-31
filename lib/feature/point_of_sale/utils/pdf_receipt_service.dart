@@ -1,14 +1,16 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 
 class PdfReceiptService {
   static Future<pw.Document> generateReceipt(
     List<CartItem> items,
-    double totalAmount,
-  ) async {
+    double totalAmount, {
+    ShopSettings shopSettings = const ShopSettings(),
+  }) async {
     final pdf = pw.Document();
 
     final now = DateTime.now();
@@ -19,6 +21,10 @@ class PdfReceiptService {
 
     final banglaFont = await PdfGoogleFonts.notoSansBengaliRegular();
     final banglaFontBold = await PdfGoogleFonts.notoSansBengaliBold();
+
+    final displayedShopName = shopSettings.shopName.trim().isNotEmpty
+        ? shopSettings.shopName.trim()
+        : 'GearTrack POS';
 
     pdf.addPage(
       pw.Page(
@@ -35,23 +41,35 @@ class PdfReceiptService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'GearTrack POS',
-                        style: pw.TextStyle(
-                          fontSize: 16,
-                          fontWeight: pw.FontWeight.bold,
+                  pw.Expanded(
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          displayedShopName,
+                          style: pw.TextStyle(
+                            fontSize: 16,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        '123 Gear Street, Auto City',
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
-                    ],
+                        if (shopSettings.address.trim().isNotEmpty) ...[
+                          pw.SizedBox(height: 3),
+                          pw.Text(
+                            shopSettings.address.trim(),
+                            style: const pw.TextStyle(fontSize: 9),
+                          ),
+                        ],
+                        if (shopSettings.phone.trim().isNotEmpty) ...[
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            'Tel: ${shopSettings.phone.trim()}',
+                            style: const pw.TextStyle(fontSize: 8.5),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
+                  pw.SizedBox(width: 8),
                   pw.BarcodeWidget(
                     barcode: pw.Barcode.qrCode(),
                     data: invoiceId, // Sale ID
