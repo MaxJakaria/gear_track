@@ -51,6 +51,7 @@ class _PosCartCardState extends State<PosCartCard> {
             state.checkoutCartItems,
             state.totalPaid,
             shopSettings: shopSettings,
+            invoice: state.invoice,
           );
           final bytes = await doc.save();
           if (mounted) {
@@ -106,6 +107,7 @@ class _PosCartCardState extends State<PosCartCard> {
                 Column(
                   children: cartItems.map((item) {
                     return PosCartItemTile(
+                      key: ValueKey(item.id),
                       item: item,
                       onQuantityChanged: (newQty) {
                         context.read<PosBloc>().add(

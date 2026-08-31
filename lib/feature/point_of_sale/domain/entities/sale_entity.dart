@@ -8,6 +8,7 @@ class SaleEntity extends Equatable {
   final int quantity;
   final double sellPrice;
   final String costCode;
+  final String invoiceId;
 
   const SaleEntity({
     required this.id,
@@ -17,6 +18,7 @@ class SaleEntity extends Equatable {
     required this.quantity,
     required this.sellPrice,
     required this.costCode,
+    this.invoiceId = '',
   });
 
   @override
@@ -28,5 +30,6 @@ class SaleEntity extends Equatable {
     quantity,
     sellPrice,
     costCode,
+    invoiceId,
   ];
 }

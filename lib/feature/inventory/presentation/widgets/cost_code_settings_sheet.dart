@@ -154,27 +154,32 @@ class _CostCodeSettingsSheetState extends State<CostCodeSettingsSheet> {
         ? const Color(0xFF334155)
         : const Color(0xFFE2E8F0);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: sheetBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        top: 12,
-        left: 20,
-        right: 20,
-      ),
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.88,
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              height: 250,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          : SingleChildScrollView(
-              child: Column(
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
+        decoration: BoxDecoration(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          top: 12,
+          left: 20,
+          right: 20,
+        ),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 250,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            : SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -504,6 +509,7 @@ class _CostCodeSettingsSheetState extends State<CostCodeSettingsSheet> {
                 ],
               ),
             ),
+      ),
     );
   }
 }

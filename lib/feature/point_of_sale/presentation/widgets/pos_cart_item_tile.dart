@@ -283,6 +283,7 @@ class PosCartItemTile extends StatelessWidget {
     return Row(
       children: [
         _HoldableStepperButton(
+          key: ValueKey('dec_${item.id}'),
           icon: Icons.remove_rounded,
           enabled: canDecrement,
           tooltip: 'Hold to decrease rapidly',
@@ -310,6 +311,7 @@ class PosCartItemTile extends StatelessWidget {
           ),
         ),
         _HoldableStepperButton(
+          key: ValueKey('inc_${item.id}'),
           icon: Icons.add_rounded,
           enabled: true,
           tooltip: 'Hold to increase rapidly',
@@ -647,7 +649,7 @@ class _PartNoSelectorSheet extends StatelessWidget {
   }
 }
 
-/// Holdable Stepper Button supporting continuous auto-increment / auto-decrement on long press
+/// Holdable Stepper Button supporting continuous auto-increment / auto-decrement on long press / hold
 class _HoldableStepperButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback onStep;
@@ -655,6 +657,7 @@ class _HoldableStepperButton extends StatefulWidget {
   final String tooltip;
 
   const _HoldableStepperButton({
+    super.key,
     required this.icon,
     required this.onStep,
     this.enabled = true,
@@ -675,9 +678,11 @@ class _HoldableStepperButtonState extends State<_HoldableStepperButton> {
     setState(() => _isPressed = true);
     widget.onStep();
 
-    _initialDelayTimer = Timer(const Duration(milliseconds: 320), () {
+    _initialDelayTimer?.cancel();
+    _periodicTimer?.cancel();
+    _initialDelayTimer = Timer(const Duration(milliseconds: 300), () {
       _periodicTimer = Timer.periodic(const Duration(milliseconds: 75), (_) {
-        if (!widget.enabled) {
+        if (!widget.enabled || !mounted) {
           _stopHolding();
           return;
         }
@@ -693,6 +698,14 @@ class _HoldableStepperButtonState extends State<_HoldableStepperButton> {
     _periodicTimer = null;
     if (_isPressed && mounted) {
       setState(() => _isPressed = false);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _HoldableStepperButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled && _isPressed) {
+      _stopHolding();
     }
   }
 
@@ -720,26 +733,32 @@ class _HoldableStepperButtonState extends State<_HoldableStepperButton> {
 
     return Tooltip(
       message: widget.tooltip,
-      child: GestureDetector(
+      triggerMode: TooltipTriggerMode.manual,
+      child: Listener(
         behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => _startHolding(),
-        onTapUp: (_) => _stopHolding(),
-        onTapCancel: () => _stopHolding(),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 90),
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: baseColor,
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(
-              color: _isPressed
-                  ? theme.colorScheme.primary.withValues(alpha: 0.45)
-                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-              width: 0.8,
+        onPointerDown: (_) => _startHolding(),
+        onPointerUp: (_) => _stopHolding(),
+        onPointerCancel: (_) => _stopHolding(),
+        child: MouseRegion(
+          cursor: widget.enabled
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 90),
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: baseColor,
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(
+                color: _isPressed
+                    ? theme.colorScheme.primary.withValues(alpha: 0.45)
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+                width: 0.8,
+              ),
             ),
+            child: Icon(widget.icon, size: 15, color: iconColor),
           ),
-          child: Icon(widget.icon, size: 15, color: iconColor),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
+import 'package:gear_track/feature/receipt_verification/presentation/bloc/receipt_verification_bloc.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
 import 'package:gear_track/firebase_options.dart';
 import 'package:gear_track/init_dependencies.dart';
@@ -29,6 +30,9 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider(create: (context) => serviceLocator<InventoryBloc>()),
         BlocProvider(create: (context) => serviceLocator<PosBloc>()),
+        BlocProvider(
+          create: (context) => serviceLocator<ReceiptVerificationBloc>(),
+        ),
         BlocProvider(create: (context) => serviceLocator<ReportsBloc>()),
       ],
       child: MaterialApp(

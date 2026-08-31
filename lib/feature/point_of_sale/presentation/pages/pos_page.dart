@@ -4,6 +4,7 @@ import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.da
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_card.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_product_search_card.dart';
+import 'package:gear_track/feature/receipt_verification/presentation/pages/receipt_verification_page.dart';
 
 /// Point of Sale (POS) Primary Screen Page
 class PosPage extends StatefulWidget {
@@ -33,6 +34,19 @@ class _PosPageState extends State<PosPage> {
             'Sales & Billing',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              tooltip: 'Verify Receipt',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ReceiptVerificationPage(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
         ),
         body: BlocListener<PosBloc, PosState>(
           listener: (context, state) {
