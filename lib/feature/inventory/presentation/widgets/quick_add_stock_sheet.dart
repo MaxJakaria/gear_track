@@ -124,151 +124,146 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.3,
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Quick Add Stock Batch',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.3,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Read-only Product Context Container
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.5,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        widget.groupedProduct.itemName,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        'Quick Add Stock Batch',
+                        style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (widget.groupedProduct.model.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Model: ${widget.groupedProduct.model}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                // Mandatory Part Number Input Field
-                TextFormField(
-                  controller: _partNoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Part Number',
-                    hintText: 'Enter part number for this batch',
-                    border: OutlineInputBorder(),
+                  // Read-only Product Context Container
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.groupedProduct.itemName,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (widget.groupedProduct.model.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Model: ${widget.groupedProduct.model}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                  validator: (val) => val == null || val.trim().isEmpty
-                      ? 'Part No is required'
-                      : null,
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-                // Dynamic Input Fields (Cost Code & Stock Count)
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _costCodeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cost Code',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Cost code required'
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _stockCountController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Quantity / Count',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          final parsed = int.tryParse(val.trim());
-                          if (parsed == null || parsed <= 0) {
-                            return 'Enter > 0';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                InkWell(
-                  onTap: _pickDate,
-                  borderRadius: BorderRadius.circular(4),
-                  child: InputDecorator(
+                  // Mandatory Part Number Input Field
+                  TextFormField(
+                    controller: _partNoController,
                     decoration: const InputDecoration(
-                      labelText: 'Entry Date',
-                      border: OutlineInputBorder(),
+                      labelText: 'Part Number',
+                      hintText: 'Enter part number for this batch',
                     ),
-                    child: Text(_formatDate(_selectedDate)),
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Part No is required'
+                        : null,
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
-                AppGradientButton(
-                  onPressed: _isLoading ? null : _submit,
-                  isLoading: _isLoading,
-                  label: 'Add Stock Batch',
-                ),
-              ],
+                  // Dynamic Input Fields (Cost Code & Stock Count)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _costCodeController,
+                          decoration: const InputDecoration(
+                            labelText: 'Cost Code',
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty
+                              ? 'Cost code required'
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _stockCountController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Quantity / Count',
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            final parsed = int.tryParse(val.trim());
+                            if (parsed == null || parsed <= 0) {
+                              return 'Enter > 0';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(4),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Entry Date',
+                      ),
+                      child: Text(_formatDate(_selectedDate)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  AppGradientButton(
+                    onPressed: _isLoading ? null : _submit,
+                    isLoading: _isLoading,
+                    label: 'Add Stock Batch',
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }

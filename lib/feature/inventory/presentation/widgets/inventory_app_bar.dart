@@ -76,7 +76,13 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                               color: theme.colorScheme.onSurfaceVariant
                                   .withValues(alpha: 0.7),
                             ),
+                            filled: false,
+                            fillColor: Colors.transparent,
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
                           ),

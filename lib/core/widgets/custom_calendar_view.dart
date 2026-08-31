@@ -145,11 +145,13 @@ class _CustomCalendarViewState extends State<CustomCalendarView> {
                 widget.allowFutureDates || tempYear < now.year;
 
             return Dialog(
-              backgroundColor: isDark
-                  ? theme.colorScheme.surfaceContainerHigh
-                  : Colors.white,
+              backgroundColor:
+                  isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                ),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(18.0),
@@ -514,13 +516,13 @@ class _CustomCalendarViewState extends State<CustomCalendarView> {
                 ),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF334155)
-                      : const Color(0xFFF1F5F9),
+                      ? AppColors.surfaceContainerDark
+                      : AppColors.surfaceContainerLight,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isDark
-                        ? const Color(0xFF475569)
-                        : const Color(0xFFE2E8F0),
+                        ? AppColors.borderDark
+                        : AppColors.borderLight,
                     width: 1,
                   ),
                 ),

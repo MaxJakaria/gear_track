@@ -32,6 +32,7 @@ class ProductListView extends StatelessWidget {
 
           return ProductCard(
             groupedProduct: item,
+            cardIndex: index,
             isExpanded: isCardExpanded,
             onToggleExpand: () {
               onToggleExpand(isCardExpanded ? null : item.itemName);

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -244,7 +245,6 @@ class PosCartItemTile extends StatelessWidget {
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Quantity',
-                border: OutlineInputBorder(),
                 isDense: true,
               ),
               onSubmitted: (val) {
@@ -322,19 +322,23 @@ class PosCartItemTile extends StatelessWidget {
   }
 
   Widget _buildPriceInput(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     final initialPriceStr = item.sellPrice > 0
         ? (item.sellPrice % 1 == 0
               ? item.sellPrice.toInt().toString()
               : item.sellPrice.toString())
         : '';
 
+    final fieldBg = isDark
+        ? AppColors.surfaceContainerDark
+        : AppColors.surfaceContainerLight;
+
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: fieldBg,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
       child: Row(
         children: [
@@ -342,7 +346,9 @@ class PosCartItemTile extends StatelessWidget {
             '৳',
             style: TextStyle(
               fontSize: 14,
-              color: theme.colorScheme.onSurfaceVariant,
+              color: isDark
+                  ? const Color(0xFF94A3B8)
+                  : const Color(0xFF64748B),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -356,17 +362,23 @@ class PosCartItemTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
               decoration: InputDecoration(
                 isDense: true,
+                filled: false,
+                fillColor: Colors.transparent,
                 contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
                 hintText: '0',
                 hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant.withValues(
-                    alpha: 0.5,
-                  ),
+                  color: isDark
+                      ? const Color(0xFF64748B)
+                      : const Color(0xFF94A3B8),
                   fontSize: 14,
                 ),
               ),
@@ -718,18 +730,27 @@ class _HoldableStepperButtonState extends State<_HoldableStepperButton> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     final baseColor = widget.enabled
         ? (_isPressed
-            ? theme.colorScheme.primary.withValues(alpha: 0.2)
-            : theme.colorScheme.surfaceContainerHighest)
-        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35);
+            ? (isDark
+                ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+                : const Color(0xFF4F46E5).withValues(alpha: 0.15))
+            : (isDark
+                ? AppColors.surfaceContainerDark
+                : AppColors.surfaceContainerLight))
+        : (isDark
+            ? AppColors.surfaceContainerDark.withValues(alpha: 0.4)
+            : AppColors.surfaceContainerLight.withValues(alpha: 0.4));
 
     final iconColor = widget.enabled
         ? (_isPressed
-            ? theme.colorScheme.primary
-            : theme.colorScheme.onSurfaceVariant)
-        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.35);
+            ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
+            : (isDark ? Colors.white : const Color(0xFF0F172A)))
+        : (isDark
+            ? const Color(0xFF64748B)
+            : const Color(0xFF94A3B8));
 
     return Tooltip(
       message: widget.tooltip,
@@ -750,12 +771,6 @@ class _HoldableStepperButtonState extends State<_HoldableStepperButton> {
             decoration: BoxDecoration(
               color: baseColor,
               borderRadius: BorderRadius.circular(7),
-              border: Border.all(
-                color: _isPressed
-                    ? theme.colorScheme.primary.withValues(alpha: 0.45)
-                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-                width: 0.8,
-              ),
             ),
             child: Icon(widget.icon, size: 15, color: iconColor),
           ),

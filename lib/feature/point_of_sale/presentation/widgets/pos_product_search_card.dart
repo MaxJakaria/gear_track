@@ -84,65 +84,57 @@ class _PosProductSearchCardState extends State<PosProductSearchCard> {
   }
 
   Widget _buildSearchInputField(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      child: TextField(
-        controller: _searchController,
-        focusNode: _searchFocusNode,
-        onChanged: (val) {
-          setState(() {
-            _searchQuery = val.trim().toLowerCase();
-          });
-        },
-        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: 'Search by name, model or part no...',
-          hintStyle: TextStyle(
-            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-            fontSize: 12,
-          ),
-          prefixIcon: Icon(
-            Icons.search_rounded,
-            color: theme.colorScheme.onSurfaceVariant,
-            size: 18,
-          ),
-          prefixIconConstraints: const BoxConstraints(
-            minWidth: 32,
-            minHeight: 20,
-          ),
-          suffixIconConstraints: const BoxConstraints(
-            minWidth: 32,
-            minHeight: 20,
-          ),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Icon(
-                      Icons.clear_rounded,
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+    return TextField(
+      controller: _searchController,
+      focusNode: _searchFocusNode,
+      onChanged: (val) {
+        setState(() {
+          _searchQuery = val.trim().toLowerCase();
+        });
+      },
+      style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: 'Search by name, model or part no...',
+        hintStyle: TextStyle(
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          fontSize: 12,
+        ),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: theme.colorScheme.onSurfaceVariant,
+          size: 18,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 34,
+          minHeight: 20,
+        ),
+        suffixIconConstraints: const BoxConstraints(
+          minWidth: 34,
+          minHeight: 20,
+        ),
+        suffixIcon: _searchController.text.isNotEmpty
+            ? GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Icon(
+                    Icons.clear_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                )
-              : const SizedBox(width: 32, height: 20),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 8,
-          ),
+                ),
+              )
+            : const SizedBox(width: 34, height: 20),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 10,
         ),
       ),
     );

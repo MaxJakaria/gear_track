@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import '../../domain/entities/analytics_summary.dart';
 import 'kpi_metric_card.dart';
 
@@ -25,6 +26,8 @@ class KpiSummaryGrid extends StatelessWidget {
         ? (summary.totalProfit / summary.totalSales) * 100
         : 0.0;
 
+    final primaryColor = AppColors.primaryButton(context);
+
     return Row(
       children: [
         // 1. Total Revenue
@@ -32,7 +35,7 @@ class KpiSummaryGrid extends StatelessWidget {
           child: KpiMetricCard(
             label: 'Total Revenue',
             value: _formatAmount(summary.totalSales),
-            accentColor: const Color(0xFF4F46E5), // Indigo
+            accentColor: primaryColor,
             icon: Icons.trending_up_rounded,
             subtitle: 'Gross sales',
           ),
@@ -43,7 +46,7 @@ class KpiSummaryGrid extends StatelessWidget {
           child: KpiMetricCard(
             label: 'Total Profit',
             value: _formatAmount(summary.totalProfit),
-            accentColor: const Color(0xFF059669), // Emerald
+            accentColor: const Color(0xFF10B981), // Emerald
             icon: Icons.account_balance_wallet_outlined,
             subtitle: marginPercent > 0
                 ? '${marginPercent.toStringAsFixed(1)}% margin'

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/inventory_page.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/pages/pos_page.dart';
 import 'package:gear_track/feature/reports/presentation/pages/reports_page.dart';
@@ -45,11 +46,11 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           },
           backgroundColor: theme.colorScheme.surface,
           selectedItemColor: isDark
-              ? const Color(0xFF818CF8)
-              : const Color(0xFF6366F1),
-          unselectedItemColor: theme.colorScheme.onSurfaceVariant.withValues(
-            alpha: 0.7,
-          ),
+              ? AppColors.primaryButtonDark
+              : AppColors.primaryButtonLight,
+          unselectedItemColor: isDark
+              ? const Color(0xFF94A3B8)
+              : const Color(0xFF64748B),
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 12,

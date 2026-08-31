@@ -38,12 +38,12 @@ class BatchItemTile extends StatelessWidget {
         : const Color(0xFF00875A);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: isDark
             ? theme.colorScheme.surfaceContainer
             : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: isDark
               ? theme.colorScheme.outline.withValues(alpha: 0.15)
@@ -53,30 +53,28 @@ class BatchItemTile extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+            blurRadius: 3,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: Row(
         children: [
-          // 1. Compact Batch # Tag
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(4),
-            ),
+          // 1. Plain Number (No Background)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               '${index + 1}',
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onPrimaryContainer,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.8,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
 
           // 2. Batch Meta (Part No, Cost Code & Date)
           Expanded(
@@ -100,7 +98,7 @@ class BatchItemTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.bold,
                           color: isDark
                               ? const Color(0xFF818CF8)
@@ -110,33 +108,44 @@ class BatchItemTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Row(
                   children: [
-                    Text(
-                      'Cost: ',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Flexible(
-                      child: Text(
-                        batch.costCode.isEmpty ? 'N/A' : batch.costCode,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
+                    if (batch.costCode.isNotEmpty) ...[
+                      Text(
+                        'Cost: ',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 9.5,
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ),
+                      Flexible(
+                        child: Text(
+                          batch.costCode,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        ' • ',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
                     Text(
-                      ' • ${_formatDate(batch.entryDate)}',
+                      _formatDate(batch.entryDate),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
+                        fontSize: 9.5,
                         color: theme.colorScheme.onSurfaceVariant.withValues(
                           alpha: 0.75,
                         ),
@@ -147,41 +156,31 @@ class BatchItemTile extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 4),
 
           // 3. Intuitive Stock Ratio Pill (Available / Initial)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: statusColor.withValues(alpha: 0.3),
-                width: 0.8,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${batch.stockCount}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: statusColor,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${batch.stockCount}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: statusColor,
+              Text(
+                ' / ${batch.initialQuantity}',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.75,
                   ),
                 ),
-                Text(
-                  ' / ${batch.initialQuantity}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.75,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
           const SizedBox(width: 4),
 
@@ -192,44 +191,44 @@ class BatchItemTile extends StatelessWidget {
               // Edit Button
               InkWell(
                 onTap: isDeleting ? null : onEdit,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(5),
                 child: Container(
-                  padding: const EdgeInsets.all(5),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   child: Icon(
                     Icons.edit_outlined,
-                    size: 14,
+                    size: 13,
                     color: theme.colorScheme.primary,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
 
               // Delete Button
               InkWell(
                 onTap: isDeleting ? null : onDelete,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(5),
                 child: Container(
-                  padding: const EdgeInsets.all(5),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.error.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   child: isDeleting
                       ? SizedBox(
-                          width: 14,
-                          height: 14,
+                          width: 13,
+                          height: 13,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
+                            strokeWidth: 1.8,
                             color: theme.colorScheme.error,
                           ),
                         )
                       : Icon(
                           Icons.delete_outline_rounded,
-                          size: 14,
+                          size: 13,
                           color: theme.colorScheme.error,
                         ),
                 ),

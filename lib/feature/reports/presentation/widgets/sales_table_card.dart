@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/report_period.dart';
 import '../../domain/entities/sales_record_detail.dart';
@@ -58,16 +59,15 @@ class SalesTableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryBlue = AppColors.primaryButton(context);
 
     final headerBg = isDark
-        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4)
-        : const Color(0xFFF8FAFC);
+        ? AppColors.surfaceContainerDark
+        : AppColors.surfaceContainerLight;
 
-    final cardBg = isDark
-        ? theme.colorScheme.surfaceContainerHigh
-        : Colors.white;
+    final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     final headerTextStyle = TextStyle(
       fontSize: 10.5,
@@ -112,10 +112,10 @@ class SalesTableCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.table_chart_outlined,
                       size: 18,
-                      color: Color(0xFF4F46E5),
+                      color: primaryBlue,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -134,11 +134,7 @@ class SalesTableCard extends StatelessWidget {
                     vertical: 3.5,
                   ),
                   decoration: BoxDecoration(
-                    color:
-                        (isDark
-                                ? const Color(0xFF6366F1)
-                                : const Color(0xFF4F46E5))
-                            .withValues(alpha: 0.12),
+                    color: primaryBlue.withValues(alpha: isDark ? 0.20 : 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -156,7 +152,7 @@ class SalesTableCard extends StatelessWidget {
             ),
           ),
 
-          const Divider(height: 1, thickness: 1),
+          Divider(height: 1, thickness: 1, color: borderColor.withValues(alpha: 0.6)),
 
           // Table Column Headers
           Container(

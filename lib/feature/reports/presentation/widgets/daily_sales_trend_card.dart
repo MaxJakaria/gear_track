@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/daily_sales_point.dart';
 
@@ -53,12 +54,12 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final cardBg = isDark
-        ? theme.colorScheme.surfaceContainerHigh
-        : Colors.white;
+    final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final pillBg = isDark
+        ? AppColors.surfaceContainerDark
+        : AppColors.surfaceContainerLight;
 
     final int count = widget.trendPoints.length;
     final double maxRevenue = widget.trendPoints.isEmpty
@@ -79,7 +80,7 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
     final int zoomPercent = (_zoomScale * 100).toInt();
 
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -140,13 +141,13 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                   // Zoom Control Pill
                   Container(
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF0F172A).withValues(alpha: 0.6)
-                          : const Color(0xFFF1F5F9),
+                      color: pillBg,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -180,8 +181,8 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                 color: zoomPercent != 100
                                     ? const Color(0xFF6366F1)
                                     : (isDark
-                                        ? const Color(0xFFCBD5E1)
-                                        : const Color(0xFF475569)),
+                                          ? const Color(0xFFCBD5E1)
+                                          : const Color(0xFF475569)),
                               ),
                             ),
                           ),
@@ -208,7 +209,7 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
             ],
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
 
           // STRICTLY FIXED HEIGHT (200px) Card with 2D Scrollable Viewport
           SizedBox(
@@ -224,7 +225,7 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                         children: [
                           // Y-Axis Column
                           SizedBox(
-                            width: 48,
+                            width: 40,
                             child: LineChart(
                               LineChartData(
                                 minY: 0,
@@ -243,14 +244,14 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                   bottomTitles: const AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 26,
+                                      reservedSize: 22,
                                       getTitlesWidget: _emptyTitles,
                                     ),
                                   ),
                                   leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 48,
+                                      reservedSize: 40,
                                       interval: yInterval,
                                       getTitlesWidget: (value, meta) {
                                         if (value == meta.max &&
@@ -263,7 +264,7 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                             color: isDark
                                                 ? const Color(0xFF64748B)
                                                 : const Color(0xFF94A3B8),
-                                            fontSize: 10,
+                                            fontSize: 9.5,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         );
@@ -289,7 +290,7 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                               reverse: true,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 10.0,
+                                  horizontal: 4.0,
                                 ),
                                 child: SizedBox(
                                   width: chartContentWidth,
@@ -305,28 +306,33 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                         horizontalInterval: yInterval,
                                         getDrawingHorizontalLine: (value) =>
                                             FlLine(
-                                          color: isDark
-                                              ? Colors.white
-                                                  .withValues(alpha: 0.08)
-                                              : Colors.black
-                                                  .withValues(alpha: 0.06),
-                                          strokeWidth: 1,
-                                          dashArray: [4, 4],
-                                        ),
+                                              color: isDark
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.08,
+                                                    )
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.06,
+                                                    ),
+                                              strokeWidth: 1,
+                                              dashArray: [4, 4],
+                                            ),
                                       ),
                                       titlesData: FlTitlesData(
                                         show: true,
                                         leftTitles: const AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
                                         ),
                                         rightTitles: const AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
                                         ),
                                         topTitles: const AxisTitles(
-                                          sideTitles:
-                                              SideTitles(showTitles: false),
+                                          sideTitles: SideTitles(
+                                            showTitles: false,
+                                          ),
                                         ),
                                         bottomTitles: AxisTitles(
                                           sideTitles: SideTitles(
@@ -349,13 +355,16 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                                 ),
                                                 child: Text(
                                                   widget
-                                                      .trendPoints[index].label,
+                                                      .trendPoints[index]
+                                                      .label,
                                                   style: TextStyle(
                                                     color: isDark
                                                         ? const Color(
-                                                            0xFF94A3B8)
+                                                            0xFF94A3B8,
+                                                          )
                                                         : const Color(
-                                                            0xFF64748B),
+                                                            0xFF64748B,
+                                                          ),
                                                     fontSize: 10.5,
                                                     fontWeight: FontWeight.w600,
                                                   ),
@@ -373,21 +382,32 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                           preventCurveOverShooting: true,
                                           curveSmoothness: 0.20,
                                           color: const Color(0xFF6366F1),
-                                          barWidth: 2.5 *
-                                              math.min(1.4, _zoomScale),
+                                          barWidth:
+                                              2.5 * math.min(1.4, _zoomScale),
                                           isStrokeCapRound: true,
                                           dotData: FlDotData(
                                             show: true,
-                                            getDotPainter: (spot, percent,
-                                                barData, index) {
-                                              return FlDotCirclePainter(
-                                                radius: 3.5 *
-                                                    math.min(1.3, _zoomScale),
-                                                color: const Color(0xFF6366F1),
-                                                strokeWidth: 1.5,
-                                                strokeColor: Colors.white,
-                                              );
-                                            },
+                                            getDotPainter:
+                                                (
+                                                  spot,
+                                                  percent,
+                                                  barData,
+                                                  index,
+                                                ) {
+                                                  return FlDotCirclePainter(
+                                                    radius:
+                                                        3.5 *
+                                                        math.min(
+                                                          1.3,
+                                                          _zoomScale,
+                                                        ),
+                                                    color: const Color(
+                                                      0xFF6366F1,
+                                                    ),
+                                                    strokeWidth: 1.5,
+                                                    strokeColor: Colors.white,
+                                                  );
+                                                },
                                           ),
                                           belowBarData: BarAreaData(
                                             show: true,
@@ -395,10 +415,12 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                               begin: Alignment.topCenter,
                                               end: Alignment.bottomCenter,
                                               colors: [
-                                                const Color(0xFF6366F1)
-                                                    .withValues(alpha: 0.25),
-                                                const Color(0xFF6366F1)
-                                                    .withValues(alpha: 0.0),
+                                                const Color(
+                                                  0xFF6366F1,
+                                                ).withValues(alpha: 0.25),
+                                                const Color(
+                                                  0xFF6366F1,
+                                                ).withValues(alpha: 0.0),
                                               ],
                                             ),
                                           ),
@@ -411,11 +433,12 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
                                               final int idx = spot.x.round();
                                               final point =
                                                   (idx >= 0 && idx < count)
-                                                      ? widget.trendPoints[idx]
-                                                      : null;
+                                                  ? widget.trendPoints[idx]
+                                                  : null;
                                               final tooltipDate = point != null
-                                                  ? DateFormat('MMM d')
-                                                      .format(point.date)
+                                                  ? DateFormat(
+                                                      'MMM d',
+                                                    ).format(point.date)
                                                   : '';
                                               return LineTooltipItem(
                                                 '$tooltipDate\n${widget.currencySymbol}${spot.y.toInt()}',

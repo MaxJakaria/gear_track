@@ -77,7 +77,11 @@ class _EditProductSheetState extends State<EditProductSheet> {
         itemName: widget.product.itemName,
         model: widget.product.model,
         costCode: _costCodeController.text.trim(),
-        initialQuantity: widget.product.initialQuantity,
+        initialQuantity: stock > widget.product.initialQuantity
+            ? stock
+            : (widget.product.initialQuantity > 0
+                ? widget.product.initialQuantity
+                : stock),
         stockCount: stock,
       );
 
@@ -200,7 +204,6 @@ class _EditProductSheetState extends State<EditProductSheet> {
                   controller: _partNoController,
                   decoration: const InputDecoration(
                     labelText: 'Part Number',
-                    border: OutlineInputBorder(),
                   ),
                   validator: (val) => val == null || val.trim().isEmpty
                       ? 'Part No is required'
@@ -216,7 +219,6 @@ class _EditProductSheetState extends State<EditProductSheet> {
                         controller: _costCodeController,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
-                          border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
                             ? 'Cost code required'
@@ -230,7 +232,6 @@ class _EditProductSheetState extends State<EditProductSheet> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Quantity / Count',
-                          border: OutlineInputBorder(),
                         ),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
@@ -255,7 +256,6 @@ class _EditProductSheetState extends State<EditProductSheet> {
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Entry Date',
-                      border: OutlineInputBorder(),
                     ),
                     child: Text(_formatDate(_selectedDate)),
                   ),

@@ -14,6 +14,8 @@ class ProductCard extends StatefulWidget {
   final VoidCallback? onQuickAdd;
   final bool isExpanded;
   final VoidCallback? onToggleExpand;
+  final int cardIndex;
+  final String? cardBgAsset;
 
   const ProductCard({
     super.key,
@@ -21,6 +23,8 @@ class ProductCard extends StatefulWidget {
     this.onQuickAdd,
     this.isExpanded = false,
     this.onToggleExpand,
+    this.cardIndex = 0,
+    this.cardBgAsset,
   });
 
   @override
@@ -29,6 +33,17 @@ class ProductCard extends StatefulWidget {
 
 class _ProductCardState extends State<ProductCard> {
   String? _deletingBatchId;
+
+  static const List<String> _cardVariants = [
+    'assets/images/card_bg.png',
+    'assets/images/card_bg_green.jpg',
+    'assets/images/card_bg_gold.jpg',
+  ];
+
+  String get _cardBgImage {
+    if (widget.cardBgAsset != null) return widget.cardBgAsset!;
+    return _cardVariants[widget.cardIndex % _cardVariants.length];
+  }
 
   String _formatDate(DateTime date) {
     final year = date.year;
@@ -116,7 +131,7 @@ class _ProductCardState extends State<ProductCard> {
             // Background Artwork Image (Fully Visible)
             Positioned.fill(
               child: Image.asset(
-                'assets/images/card_bg.png',
+                _cardBgImage,
                 fit: BoxFit.cover,
                 gaplessPlayback: true,
               ),

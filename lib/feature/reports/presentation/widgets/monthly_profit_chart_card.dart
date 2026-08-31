@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import '../../domain/entities/monthly_profit_point.dart';
 
 class MonthlyProfitChartCard extends StatefulWidget {
@@ -52,12 +53,12 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final cardBg = isDark
-        ? theme.colorScheme.surfaceContainerHigh
-        : Colors.white;
+    final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final pillBg = isDark
+        ? AppColors.surfaceContainerDark
+        : AppColors.surfaceContainerLight;
 
     final int count = widget.monthlyData.length;
 
@@ -117,7 +118,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -205,9 +206,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
               // Zoom Control Pill
               Container(
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF0F172A).withValues(alpha: 0.6)
-                      : const Color(0xFFF1F5F9),
+                  color: pillBg,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -270,7 +269,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
 
           // STRICTLY FIXED HEIGHT (200px) Card with 2D Scrollable Viewport
           SizedBox(
@@ -286,7 +285,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                         children: [
                           // Y-Axis Column
                           SizedBox(
-                            width: 46,
+                            width: 40,
                             child: BarChart(
                               BarChartData(
                                 minY: 0,
@@ -304,14 +303,14 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                   bottomTitles: const AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 28,
+                                      reservedSize: 22,
                                       getTitlesWidget: _emptyTitles,
                                     ),
                                   ),
                                   leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 46,
+                                      reservedSize: 40,
                                       interval: yInterval,
                                       getTitlesWidget: (value, meta) {
                                         if (value == meta.max && maxVal <= 0) {
@@ -323,7 +322,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                             color: isDark
                                                 ? const Color(0xFF64748B)
                                                 : const Color(0xFF94A3B8),
-                                            fontSize: 10,
+                                            fontSize: 9.5,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         );
@@ -342,7 +341,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                               reverse: true,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6.0,
+                                  horizontal: 4.0,
                                 ),
                                 child: SizedBox(
                                   width: chartContentWidth,

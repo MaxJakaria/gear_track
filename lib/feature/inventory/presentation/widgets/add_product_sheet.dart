@@ -155,7 +155,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   controller: _itemNameController,
                   decoration: const InputDecoration(
                     labelText: 'Item Name',
-                    border: OutlineInputBorder(),
                   ),
                   validator: (val) => val == null || val.trim().isEmpty
                       ? 'Item name is required'
@@ -169,7 +168,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         controller: _partNoController,
                         decoration: const InputDecoration(
                           labelText: 'Part Number',
-                          border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
                             ? 'Part No required'
@@ -182,7 +180,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         controller: _modelController,
                         decoration: const InputDecoration(
                           labelText: 'Model',
-                          border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
                             ? 'Model required'
@@ -199,7 +196,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         controller: _costCodeController,
                         decoration: const InputDecoration(
                           labelText: 'Cost Code',
-                          border: OutlineInputBorder(),
                         ),
                         validator: (val) => val == null || val.trim().isEmpty
                             ? 'Cost Code required'
@@ -213,7 +209,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Stock Count',
-                          border: OutlineInputBorder(),
                         ),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
@@ -236,7 +231,6 @@ class _AddProductSheetState extends State<AddProductSheet> {
                   child: InputDecorator(
                     decoration: const InputDecoration(
                       labelText: 'Entry Date',
-                      border: OutlineInputBorder(),
                     ),
                     child: Text(_formatDate(_selectedDate)),
                   ),
