@@ -72,15 +72,15 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
       spots.add(FlSpot(i.toDouble(), widget.trendPoints[i].revenue));
     }
 
-    // 2D Dimensions inside fixed 200px viewport
-    final double pointSpacing = 44.0 * _zoomScale;
+    // 2D Dimensions inside fixed 310px viewport (Reduced row gap for more visible rows & denser grid)
+    final double pointSpacing = 32.0 * _zoomScale;
     final double chartContentWidth = math.max(320.0, count * pointSpacing);
-    final double innerChartHeight = 200.0 * _zoomScale;
-    final double yInterval = (maxY / 4).clamp(1.0, double.infinity);
+    final double innerChartHeight = 310.0 * _zoomScale;
+    final double yInterval = (maxY / 6).clamp(1.0, double.infinity);
     final int zoomPercent = (_zoomScale * 100).toInt();
 
     return Container(
-      padding: const EdgeInsets.all(12.0),
+      padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -211,9 +211,9 @@ class _DailySalesTrendCardState extends State<DailySalesTrendCard> {
 
           const SizedBox(height: 10),
 
-          // STRICTLY FIXED HEIGHT (200px) Card with 2D Scrollable Viewport
+          // STRICTLY FIXED HEIGHT (310px) Card with 2D Scrollable Viewport
           SizedBox(
-            height: 200,
+            height: 310,
             child: widget.trendPoints.isEmpty
                 ? const Center(child: Text('No trend data available'))
                 : SingleChildScrollView(

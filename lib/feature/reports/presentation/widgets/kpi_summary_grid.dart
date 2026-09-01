@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gear_track/core/theme/app_colors.dart';
+import 'package:intl/intl.dart';
 import '../../domain/entities/analytics_summary.dart';
 import 'kpi_metric_card.dart';
 
@@ -13,44 +13,34 @@ class KpiSummaryGrid extends StatelessWidget {
     this.currencySymbol = '৳',
   });
 
-  String _formatAmount(double amount) {
-    if (amount % 1 == 0) {
-      return '$currencySymbol${amount.toInt()}';
-    }
-    return '$currencySymbol${amount.toStringAsFixed(1)}';
+  String _formatCurrency(double amount) {
+    final formatter = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: currencySymbol,
+      decimalDigits: amount % 1 == 0 ? 0 : 1,
+    );
+    return formatter.format(amount);
   }
 
   @override
   Widget build(BuildContext context) {
-    final double marginPercent = summary.totalSales > 0
-        ? (summary.totalProfit / summary.totalSales) * 100
-        : 0.0;
-
-    final primaryColor = AppColors.primaryButton(context);
-
     return Row(
       children: [
-        // 1. Total Revenue
+        // 1. Total Revenue Card
         Expanded(
           child: KpiMetricCard(
             label: 'Total Revenue',
-            value: _formatAmount(summary.totalSales),
-            accentColor: primaryColor,
-            icon: Icons.trending_up_rounded,
-            subtitle: 'Gross sales',
+            value: _formatCurrency(summary.totalSales),
           ),
         ),
+
         const SizedBox(width: 12),
-        // 2. Total Profit
+
+        // 2. Total Profit Card
         Expanded(
           child: KpiMetricCard(
             label: 'Total Profit',
-            value: _formatAmount(summary.totalProfit),
-            accentColor: const Color(0xFF10B981), // Emerald
-            icon: Icons.account_balance_wallet_outlined,
-            subtitle: marginPercent > 0
-                ? '${marginPercent.toStringAsFixed(1)}% margin'
-                : 'Gross profit',
+            value: _formatCurrency(summary.totalProfit),
           ),
         ),
       ],

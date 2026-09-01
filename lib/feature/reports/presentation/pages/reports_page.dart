@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/reports_bloc.dart';
-import '../widgets/daily_sales_trend_card.dart';
 import '../widgets/embedded_calendar_card.dart';
 import '../widgets/kpi_summary_grid.dart';
-import '../widgets/monthly_profit_chart_card.dart';
+import '../widgets/performance_trends_section.dart';
+import '../widgets/reports_error_view.dart';
 import '../widgets/sales_table_card.dart';
 
 class ReportsPage extends StatefulWidget {
@@ -33,8 +33,6 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -49,53 +47,16 @@ class _ReportsPageState extends State<ReportsPage> {
           }
 
           if (state is ReportsError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      size: 48,
-                      color: Color(0xFFDC2626),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Failed to load analytics',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      state.message,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () {
-                        context.read<ReportsBloc>().add(
-                          const FetchReportsEvent(),
-                        );
-                      },
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label: const Text('Try Again'),
-                    ),
-                  ],
-                ),
-              ),
+            return ReportsErrorView(
+              message: state.message,
+              onRetry: () {
+                context.read<ReportsBloc>().add(const FetchReportsEvent());
+              },
             );
           }
 
           if (state is ReportsLoaded) {
-            final activePeriod = state.activePeriod;
             final report = state.report;
-            final customStart = state.customStartDate;
-            final customEnd = state.customEndDate;
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -110,10 +71,10 @@ class _ReportsPageState extends State<ReportsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Section 1: Embedded Interactive Calendar (Fixed in UI)
+                    // Section 1: Embedded Interactive Calendar
                     EmbeddedCalendarCard(
-                      selectedStartDate: customStart,
-                      selectedEndDate: customEnd,
+                      selectedStartDate: state.customStartDate,
+                      selectedEndDate: state.customEndDate,
                       onDateRangeChanged: _handleDateRangeChanged,
                       isLoading: state.isUpdating,
                     ),
@@ -125,17 +86,10 @@ class _ReportsPageState extends State<ReportsPage> {
 
                     const SizedBox(height: 20),
 
-                    // Section 3: Visual Performance Trends (Horizontally Scrollable Charts)
-                    // Chart 1: Daily Revenue Trend (Full Month / Scrollable)
-                    DailySalesTrendCard(
-                      trendPoints: report.dailySalesTrend,
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Chart 2: Monthly Sales vs Profit Comparison (12-Month / Scrollable)
-                    MonthlyProfitChartCard(
-                      monthlyData: report.monthlyProfitTrend,
+                    // Section 3: Visual Performance Trends (Daily & Monthly Chart Switcher)
+                    PerformanceTrendsSection(
+                      dailySalesTrend: report.dailySalesTrend,
+                      monthlyProfitTrend: report.monthlyProfitTrend,
                     ),
 
                     const SizedBox(height: 20),
@@ -143,9 +97,9 @@ class _ReportsPageState extends State<ReportsPage> {
                     // Section 4: Transactions Breakdown (Sales Table)
                     SalesTableCard(
                       salesRecords: report.salesRecords,
-                      period: activePeriod,
-                      startDate: customStart,
-                      endDate: customEnd,
+                      period: state.activePeriod,
+                      startDate: state.customStartDate,
+                      endDate: state.customEndDate,
                     ),
 
                     const SizedBox(height: 36),
