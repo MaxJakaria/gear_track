@@ -1,8 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gear_track/core/pages/main_navigation_page.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
+import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
+import 'package:gear_track/feature/auth/presentation/widgets/auth_gate.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/receipt_verification/presentation/bloc/receipt_verification_bloc.dart';
@@ -28,6 +29,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider(
+          create: (context) =>
+              serviceLocator<AuthBloc>()..add(const AuthCheckRequested()),
+        ),
         BlocProvider(create: (context) => serviceLocator<InventoryBloc>()),
         BlocProvider(create: (context) => serviceLocator<PosBloc>()),
         BlocProvider(
@@ -233,7 +238,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         themeMode: ThemeMode.system,
-        home: const MainNavigationPage(),
+        home: const AuthGate(),
       ),
     );
   }

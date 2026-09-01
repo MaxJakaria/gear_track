@@ -14,19 +14,24 @@ class MainNavigationPage extends StatefulWidget {
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0; // Default to Inventory (Index 0)
 
-  final List<Widget> _pages = const [
-    InventoryPage(),
-    PosPage(),
-    ReportsPage(),
-  ];
+  void _onTabSelected(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      InventoryPage(onNavigateToTab: _onTabSelected),
+      const PosPage(),
+      const ReportsPage(),
+    ];
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,

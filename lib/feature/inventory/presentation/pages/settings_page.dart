@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/domain/usecases/get_cost_code_mapping.dart';
 import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
 import 'package:gear_track/core/domain/usecases/save_cost_code_mapping.dart';
@@ -7,6 +8,7 @@ import 'package:gear_track/core/entities/cost_code_mapping.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
+import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/init_dependencies.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -183,7 +185,9 @@ class _SettingsPageState extends State<SettingsPage> {
           builder: (context, setModalState) {
             final theme = Theme.of(context);
             final isDark = theme.brightness == Brightness.dark;
-            final sheetBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+            final sheetBg = isDark
+                ? AppColors.surfaceDark
+                : AppColors.surfaceLight;
             final inputBg = isDark
                 ? AppColors.surfaceContainerDark
                 : AppColors.surfaceContainerLight;
@@ -707,7 +711,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final inputFillColor = isDark
         ? AppColors.surfaceContainerDark
         : AppColors.surfaceContainerLight;
@@ -1021,8 +1026,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                   vertical: 6,
                                 ),
                                 minimumSize: Size.zero,
-                                tapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                               onPressed: () {
                                 if (_keywordController.text.trim().isNotEmpty) {
@@ -1193,12 +1197,178 @@ class _SettingsPageState extends State<SettingsPage> {
                         isLoading: _isSaving,
                         onPressed: _isSaving ? null : _save,
                       ),
+                      const SizedBox(height: 32),
+
+                      // 3. ACCOUNT & SECURITY SECTION
+                      _buildSectionHeader(
+                        icon: Icons.shield_rounded,
+                        title: 'ADMIN ACCOUNT & SECURITY',
+                        isDark: isDark,
+                        primaryColor: primaryColor,
+                      ),
+                      const SizedBox(height: 12),
+
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: primaryColor.withValues(
+                                      alpha: isDark ? 0.25 : 0.15,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.admin_panel_settings_rounded,
+                                    color: primaryColor,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Authorized Admin',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: primaryColor,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 13,
+                                            color: AppColors.success,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        AuthBloc.adminEmail,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? const Color(0xFFE2E8F0)
+                                              : const Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            const Divider(),
+                            const SizedBox(height: 12),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () => _confirmSignOut(context),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(
+                                    alpha: isDark ? 0.15 : 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: AppColors.error.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.logout_rounded,
+                                      color: AppColors.error,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Log Out from GearTrack',
+                                      style: TextStyle(
+                                        color: AppColors.error,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 24),
                     ],
                   ),
                 ),
               ),
       ),
+    );
+  }
+
+  void _confirmSignOut(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.logout_rounded, color: AppColors.error, size: 22),
+              SizedBox(width: 8),
+              Text('Log Out'),
+            ],
+          ),
+          content: const Text(
+            'Are you sure you want to log out of the GearTrack Admin Portal?',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () {
+                Navigator.of(dialogCtx).pop();
+                Navigator.of(context).pop();
+                context.read<AuthBloc>().add(const AuthSignOutRequested());
+              },
+              child: const Text('Log Out'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1216,11 +1386,7 @@ class _SettingsPageState extends State<SettingsPage> {
             color: primaryColor.withValues(alpha: isDark ? 0.2 : 0.12),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icon,
-            size: 16,
-            color: primaryColor,
-          ),
+          child: Icon(icon, size: 16, color: primaryColor),
         ),
         const SizedBox(width: 10),
         Text(

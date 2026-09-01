@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/app_drawer.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_fab.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_sheet.dart';
@@ -14,7 +15,9 @@ import 'package:gear_track/feature/inventory/presentation/widgets/stock_filter_b
 
 /// Clean Architecture Inventory Presentation Page
 class InventoryPage extends StatefulWidget {
-  const InventoryPage({super.key});
+  final ValueChanged<int>? onNavigateToTab;
+
+  const InventoryPage({super.key, this.onNavigateToTab});
 
   @override
   State<InventoryPage> createState() => _InventoryPageState();
@@ -105,6 +108,11 @@ class _InventoryPageState extends State<InventoryPage> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         resizeToAvoidBottomInset: false,
+        drawer: AppDrawer(
+          currentIndex: 0,
+          onNavigateToTab: widget.onNavigateToTab,
+          onClearAllProducts: _handleClearAll,
+        ),
         appBar: InventoryAppBar(
           title: 'Products',
           isSearching: _isSearching,
