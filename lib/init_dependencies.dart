@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:gear_track/dependencies/auth.dart';
 import 'package:gear_track/dependencies/inventory.dart';
 import 'package:gear_track/dependencies/pos.dart';
 import 'package:gear_track/dependencies/receipt_verification.dart';
@@ -18,8 +19,10 @@ Future<void> initDependencies() async {
   settingsDependencies(serviceLocator);
 
   // Feature Dependencies
+  authDependencies(serviceLocator);
   inventoryDependencies(serviceLocator);
   posDependencies(serviceLocator);
   receiptVerificationDependencies(serviceLocator);
   reportsDependencies(serviceLocator);
 }
+

@@ -6,6 +6,11 @@ import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_
 abstract class PosRepository {
   Future<Either<Failure, void>> addSale(SaleEntity saleEntity);
 
+  Future<Either<Failure, void>> checkoutCart({
+    required List<SaleEntity> sales,
+    required InvoiceEntity invoice,
+  });
+
   Future<Either<Failure, List<SaleEntity>>> getSales();
 
   Future<Either<Failure, List<SaleEntity>>> getProductSales(String productId);

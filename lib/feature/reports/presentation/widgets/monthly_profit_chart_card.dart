@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import '../../domain/entities/monthly_profit_point.dart';
 
 class MonthlyProfitChartCard extends StatefulWidget {
@@ -52,12 +53,12 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final cardBg = isDark
-        ? theme.colorScheme.surfaceContainerHigh
-        : Colors.white;
+    final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final pillBg = isDark
+        ? AppColors.surfaceContainerDark
+        : AppColors.surfaceContainerLight;
 
     final int count = widget.monthlyData.length;
 
@@ -67,14 +68,14 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
     }
     final double maxY = (maxVal <= 0 ? 1000.0 : maxVal * 1.25);
 
-    // 2D Dimensions inside fixed 200px viewport
+    // 2D Dimensions inside fixed 310px viewport (Reduced row gap for more visible rows & denser grid)
     final double columnSpacing =
-        math.max(48.0, (320.0 / math.max(1, count))) * _zoomScale;
-    final double rodWidth = (9.0 * math.min(1.4, _zoomScale)).clamp(6.0, 16.0);
-    final double innerSpace = (3.0 * math.min(1.4, _zoomScale)).clamp(2.0, 6.0);
+        math.max(38.0, (280.0 / math.max(1, count))) * _zoomScale;
+    final double rodWidth = (8.0 * math.min(1.4, _zoomScale)).clamp(5.0, 14.0);
+    final double innerSpace = (2.5 * math.min(1.4, _zoomScale)).clamp(1.5, 5.0);
     final double chartContentWidth = math.max(320.0, count * columnSpacing);
-    final double innerChartHeight = 200.0 * _zoomScale;
-    final double yInterval = (maxY / 4).clamp(1.0, double.infinity);
+    final double innerChartHeight = 310.0 * _zoomScale;
+    final double yInterval = (maxY / 6).clamp(1.0, double.infinity);
     final int zoomPercent = (_zoomScale * 100).toInt();
 
     final List<BarChartGroupData> barGroups = [];
@@ -85,26 +86,32 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
           x: i,
           barsSpace: innerSpace,
           barRods: [
-            // 1. Sales Bar (Indigo Gradient)
+            // 1. Sales Bar (Deep Indigo at Top -> Light Indigo at Bottom)
             BarChartRodData(
               toY: math.max(0.0, point.sales),
               gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                colors: [
+                  Color(0xFF3730A3), // Deep Indigo (Top)
+                  Color(0xFF6366F1), // Indigo (Middle)
+                ],
               ),
               width: rodWidth,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(4),
               ),
             ),
-            // 2. Profit Bar (Emerald Gradient)
+            // 2. Profit Bar (Deep Emerald at Top -> Light Mint at Bottom)
             BarChartRodData(
               toY: math.max(0.0, point.profit),
               gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF10B981), Color(0xFF059669)],
+                colors: [
+                  Color(0xFF047857), // Deep Emerald (Top)
+                  Color(0xFF10B981), // Emerald (Middle)
+                ],
               ),
               width: rodWidth,
               borderRadius: const BorderRadius.vertical(
@@ -115,6 +122,10 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
         ),
       );
     }
+
+    final int displayYear = widget.monthlyData.isNotEmpty
+        ? widget.monthlyData.first.monthDate.year
+        : DateTime.now().year;
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -143,7 +154,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Monthly Sales vs. Profit',
+                      'Sales vs. Profit ($displayYear)',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -205,9 +216,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
               // Zoom Control Pill
               Container(
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF0F172A).withValues(alpha: 0.6)
-                      : const Color(0xFFF1F5F9),
+                  color: pillBg,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -270,11 +279,11 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
 
-          // STRICTLY FIXED HEIGHT (200px) Card with 2D Scrollable Viewport
+          // STRICTLY FIXED HEIGHT (310px) Card with 2D Scrollable Viewport
           SizedBox(
-            height: 200,
+            height: 310,
             child: widget.monthlyData.isEmpty
                 ? const Center(child: Text('No monthly data available'))
                 : SingleChildScrollView(
@@ -286,7 +295,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                         children: [
                           // Y-Axis Column
                           SizedBox(
-                            width: 46,
+                            width: 40,
                             child: BarChart(
                               BarChartData(
                                 minY: 0,
@@ -304,14 +313,14 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                   bottomTitles: const AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 28,
+                                      reservedSize: 22,
                                       getTitlesWidget: _emptyTitles,
                                     ),
                                   ),
                                   leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 46,
+                                      reservedSize: 40,
                                       interval: yInterval,
                                       getTitlesWidget: (value, meta) {
                                         if (value == meta.max && maxVal <= 0) {
@@ -323,7 +332,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                             color: isDark
                                                 ? const Color(0xFF64748B)
                                                 : const Color(0xFF94A3B8),
-                                            fontSize: 10,
+                                            fontSize: 9.5,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         );
@@ -335,14 +344,13 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                             ),
                           ),
 
-                          // X-Axis Horizontally Scrollable Bar Chart
+                          // X-Axis Horizontally Scrollable Bar Chart (Starts from Jan on the left)
                           Expanded(
                             child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal, // X-Axis Scroll
-                              reverse: true,
+                              scrollDirection: Axis.horizontal,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 6.0,
+                                  horizontal: 4.0,
                                 ),
                                 child: SizedBox(
                                   width: chartContentWidth,

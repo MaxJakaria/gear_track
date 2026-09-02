@@ -206,14 +206,15 @@ class ReportsRepositoryImpl implements ReportsRepository {
         }
       }
 
-      // 6. Generate 12-Month (Full 1 Year) Monthly Sales vs. Profit Trend
+      // 6. Generate 12-Month (Full 1 Year: Jan-Dec) Monthly Sales vs. Profit Trend based on Selected Year
       final List<MonthlyProfitPoint> monthlyProfitTrend = [];
       final monthFormat = DateFormat('MMM');
+      final int targetYear =
+          startDate?.year ?? (effectiveStart?.year ?? now.year);
 
-      for (int m = 11; m >= 0; m--) {
-        final targetMonthDate = DateTime(now.year, now.month - m, 1);
-        final targetYear = targetMonthDate.year;
-        final targetMonth = targetMonthDate.month;
+      for (int m = 1; m <= 12; m++) {
+        final targetMonthDate = DateTime(targetYear, m, 1);
+        final targetMonth = m;
 
         final monthSalesList = allSales.where((s) {
           final d = s.saleDate;

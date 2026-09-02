@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GearTrack Admin - Authentication</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Default Dark Theme */
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --border: #334155;
+      --primary: #6366f1;
+      --primary-gradient: linear-gradient(135deg, #4338ca, #818cf8, #1d4ed8);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --success-border: rgba(16, 185, 129, 0.3);
+      --status-bg: rgba(99, 102, 241, 0.1);
+      --status-border: rgba(99, 102, 241, 0.25);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Automatic Light Theme based on device preferences */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --border: #e2e8f0;
+        --primary: #4f46e5;
+        --primary-gradient: linear-gradient(135deg, #3730a3, #6366f1, #1e40af);
+        --success: #059669;
+        --success-bg: #d1fae5;
+        --success-border: #a7f3d0;
+        --status-bg: #e0e7ff;
+        --status-border: #c7d2fe;
+        --text: #0f172a;
+        --text-muted: #64748b;
+        --card-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: var(--card-shadow);
+      transition: all 0.3s ease;
+    }
+
+    .logo-container {
+      width: 68px;
+      height: 68px;
+      background: var(--primary-gradient);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+    }
+
+    .logo-container svg {
+      width: 34px;
+      height: 34px;
+      fill: white;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 13.5px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .status-box {
+      padding: 16px;
+      border-radius: 14px;
+      background-color: var(--status-bg);
+      border: 1px solid var(--status-border);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(99, 102, 241, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .success-box {
+      background-color: var(--success-bg) !important;
+      border-color: var(--success-border) !important;
+      color: var(--success) !important;
+      font-weight: 600;
+    }
+
+    .success-icon {
+      width: 22px;
+      height: 22px;
+      fill: var(--success);
+    }
+  </style>
+
+  <!-- Firebase JavaScript SDK (v9 Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <div class="card">
+    <div class="logo-container">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+
+    <h1>GearTrack Admin</h1>
+    <p id="desc">Processing cross-device authorization...</p>
+
+    <div id="statusContainer" class="status-box">
+      <div id="spinner" class="spinner"></div>
+      <span id="statusText" style="font-size: 13.5px; font-weight: 600;">Verifying authorization...</span>
+    </div>
+
+    <div id="actionContainer" style="display: none;">
+      <p style="font-size: 13px; color: var(--success); font-weight: 600;">
+        🎉 Verified! Your phone app is now logged in. You can close this window.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 1. Firebase Configuration from your project
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQGFNRJNF9Y1bKvOMDY81YFd8TSL7jr3k",
+      authDomain: "geartrack-9ccdb.firebaseapp.com",
+      projectId: "geartrack-9ccdb",
+      storageBucket: "geartrack-9ccdb.firebasestorage.app",
+      messagingSenderId: "716390459830",
+      appId: "1:716390459830:web:1a41c77cafd6c15fdfb917"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const statusContainer = document.getElementById('statusContainer');
+    const statusText = document.getElementById('statusText');
+    const spinner = document.getElementById('spinner');
+    const desc = document.getElementById('desc');
+    const actionContainer = document.getElementById('actionContainer');
+
+    async function handleAuth() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionId = urlParams.get('session_id');
+
+      if (!sessionId) {
+        showError("Invalid or missing session in verification link.");
+        return;
+      }
+
+      try {
+        // 1. Fetch the session document from Firestore
+        const sessionDoc = await db.collection('auth_sessions').doc(sessionId).get();
+
+        if (!sessionDoc.exists) {
+          showError("⚠️ This verification link has already been used or has expired.");
+          return;
+        }
+
+        const data = sessionDoc.data();
+        if (data.status !== 'pending') {
+          showError("⚠️ This verification link has already been used.");
+          return;
+        }
+
+        // 2. If it's a Firebase email link, complete Firebase Auth
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+          const email = "maxjakaria824@gmail.com";
+          await auth.signInWithEmailLink(email, window.location.href);
+        }
+
+        // 3. Mark the session as approved (One-Time single use)
+        await db.collection('auth_sessions').doc(sessionId).update({
+          status: 'approved',
+          used: true,
+          approvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        showSuccess();
+      } catch (err) {
+        console.error("Auth error:", err);
+        showError("Verification error: " + (err.message || err));
+      }
+    }
+
+    function showSuccess() {
+      spinner.style.display = 'none';
+      statusContainer.className = 'status-box success-box';
+      statusText.innerHTML = `
+        <svg class="success-icon" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        Authorization Successful!
+      `;
+      desc.innerText = "Your GearTrack Admin session has been authenticated.";
+      actionContainer.style.display = 'block';
+    }
+
+    function showError(msg) {
+      spinner.style.display = 'none';
+      statusContainer.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+      statusContainer.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      statusText.style.color = '#ef4444';
+      statusText.innerText = msg;
+    }
+
+    // Run verification automatically
+    window.addEventListener('load', handleAuth);
+  </script>
+</body>
+</html>

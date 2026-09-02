@@ -37,10 +37,9 @@ final class InventoryLoaded extends InventoryState {
 
       final matchesFilter = switch (activeFilter) {
         StockFilter.all => true,
-        StockFilter.inStock => grouped.totalStockCount > 0,
-        StockFilter.lowStock =>
-            grouped.totalStockCount > 0 && grouped.totalStockCount <= 5,
-        StockFilter.outOfStock => grouped.totalStockCount <= 0,
+        StockFilter.inStock => grouped.hasInStockBatch,
+        StockFilter.lowStock => grouped.hasLowStockBatch,
+        StockFilter.outOfStock => grouped.hasOutOfStockBatch,
       };
 
       return matchesQuery && matchesFilter;
@@ -49,21 +48,24 @@ final class InventoryLoaded extends InventoryState {
 
   int get totalSkus => groupedProducts.length;
 
-  int get totalStockUnits => products.fold(0, (sum, item) => sum + item.stockCount);
+  int get totalStockUnits =>
+      products.fold(0, (sum, item) => sum + item.stockCount);
 
-  int get lowStockCount =>
-      groupedProducts.where((item) => item.totalStockCount > 0 && item.totalStockCount <= 5).length;
+  int get lowStockCount => products
+      .where((item) => item.stockCount > 0 && item.stockCount <= 5)
+      .length;
 
   int get outOfStockCount =>
-      groupedProducts.where((item) => item.totalStockCount <= 0).length;
+      products.where((item) => item.stockCount <= 0).length;
 
-  int get inStockCount =>
-      groupedProducts.where((item) => item.totalStockCount > 0).length;
+  int get inStockCount => products.where((item) => item.stockCount > 0).length;
 
   static List<GroupedProduct> _group(List<Product> list) {
     final Map<String, List<Product>> map = {};
     for (final p in list) {
-      final key = p.itemName.trim().toLowerCase();
+      final nameKey = p.itemName.trim().toLowerCase();
+      final modelKey = p.model.trim().toLowerCase();
+      final key = '$nameKey###$modelKey';
       map.putIfAbsent(key, () => []).add(p);
     }
     return map.entries

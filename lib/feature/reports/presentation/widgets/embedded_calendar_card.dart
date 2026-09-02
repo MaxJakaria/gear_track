@@ -74,14 +74,10 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryBlue = AppColors.primaryButton(context);
-
-    final cardBg = isDark
-        ? theme.colorScheme.surfaceContainerHigh
-        : Colors.white;
+    final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     final hasSelection = _startDate != null;
     final bool isResetLoading =
@@ -119,7 +115,11 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
           ),
 
           const SizedBox(height: 12),
-          const Divider(height: 1, thickness: 0.8),
+          Divider(
+            height: 1,
+            thickness: 0.8,
+            color: borderColor.withValues(alpha: 0.6),
+          ),
           const SizedBox(height: 10),
 
           // Footer Row: Selection Summary + Reset Button + Apply Button

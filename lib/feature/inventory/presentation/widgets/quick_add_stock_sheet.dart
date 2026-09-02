@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/domain/usecases/get_cost_code_mapping.dart';
+import 'package:gear_track/core/entities/cost_code_mapping.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
+import 'package:gear_track/init_dependencies.dart';
 
 class QuickAddStockSheet extends StatefulWidget {
   final GroupedProduct groupedProduct;
@@ -30,8 +33,12 @@ class QuickAddStockSheet extends StatefulWidget {
 class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _partNoController;
-  final _costCodeController = TextEditingController();
+  late final TextEditingController _costCodeController;
   final _stockCountController = TextEditingController(text: '1');
+
+  CostCodeMapping _mapping = const CostCodeMapping(charToDigit: {});
+  String _decodedCost = '';
+
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
@@ -39,10 +46,43 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   void initState() {
     super.initState();
     _partNoController = TextEditingController();
+    _costCodeController =
+        TextEditingController(text: widget.groupedProduct.latestCostCode);
+    _loadMapping();
+    _costCodeController.addListener(_updateDecodedCost);
+  }
+
+  Future<void> _loadMapping() async {
+    final result = await serviceLocator<GetCostCodeMapping>()();
+    result.fold((_) {}, (mapping) {
+      if (mounted) {
+        setState(() {
+          _mapping = mapping;
+          _updateDecodedCost();
+        });
+      }
+    });
+  }
+
+  void _updateDecodedCost() {
+    final input = _costCodeController.text.trim();
+    if (input.isEmpty) {
+      if (_decodedCost.isNotEmpty) {
+        setState(() => _decodedCost = '');
+      }
+      return;
+    }
+    final val = _mapping.decode(input);
+    final formatted =
+        val % 1 == 0 ? '৳${val.toInt()}' : '৳${val.toStringAsFixed(1)}';
+    if (_decodedCost != formatted) {
+      setState(() => _decodedCost = formatted);
+    }
   }
 
   @override
   void dispose() {
+    _costCodeController.removeListener(_updateDecodedCost);
     _partNoController.dispose();
     _costCodeController.dispose();
     _stockCountController.dispose();
@@ -102,6 +142,7 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final maxHeight = MediaQuery.of(context).size.height * 0.85;
 
@@ -124,151 +165,180 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.3,
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Quick Add Stock Batch',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.3,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Read-only Product Context Container
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.5,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        widget.groupedProduct.itemName,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        'Quick Add Stock Batch',
+                        style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (widget.groupedProduct.model.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Model: ${widget.groupedProduct.model}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                // Mandatory Part Number Input Field
-                TextFormField(
-                  controller: _partNoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Part Number',
-                    hintText: 'Enter part number for this batch',
-                    border: OutlineInputBorder(),
+                  // Read-only Product Context Container
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.groupedProduct.itemName,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (widget.groupedProduct.model.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Model: ${widget.groupedProduct.model}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                  validator: (val) => val == null || val.trim().isEmpty
-                      ? 'Part No is required'
-                      : null,
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
-                // Dynamic Input Fields (Cost Code & Stock Count)
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _costCodeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cost Code',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Cost code required'
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _stockCountController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Quantity / Count',
-                          border: OutlineInputBorder(),
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          final parsed = int.tryParse(val.trim());
-                          if (parsed == null || parsed <= 0) {
-                            return 'Enter > 0';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                InkWell(
-                  onTap: _pickDate,
-                  borderRadius: BorderRadius.circular(4),
-                  child: InputDecorator(
+                  // Mandatory Part Number Input Field
+                  TextFormField(
+                    controller: _partNoController,
                     decoration: const InputDecoration(
-                      labelText: 'Entry Date',
-                      border: OutlineInputBorder(),
+                      labelText: 'Part Number',
+                      hintText: 'Enter part number for this batch',
                     ),
-                    child: Text(_formatDate(_selectedDate)),
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Part No is required'
+                        : null,
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
-                AppGradientButton(
-                  onPressed: _isLoading ? null : _submit,
-                  isLoading: _isLoading,
-                  label: 'Add Stock Batch',
-                ),
-              ],
+                  // Dynamic Input Fields (Cost Code with Live Decoded Preview & Stock Count)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _costCodeController,
+                          decoration: InputDecoration(
+                            labelText: 'Cost Code',
+                            suffixIcon: _decodedCost.isNotEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: UnconstrainedBox(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF6366F1)
+                                              .withValues(
+                                            alpha: isDark ? 0.25 : 0.12,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: const Color(0xFF6366F1)
+                                                .withValues(alpha: 0.35),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _decodedCost,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF6366F1),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty
+                              ? 'Cost code required'
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _stockCountController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Quantity / Count',
+                          ),
+                          validator: (val) {
+                            if (val == null || val.trim().isEmpty) {
+                              return 'Required';
+                            }
+                            final parsed = int.tryParse(val.trim());
+                            if (parsed == null || parsed <= 0) {
+                              return 'Enter > 0';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(4),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Entry Date',
+                      ),
+                      child: Text(_formatDate(_selectedDate)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  AppGradientButton(
+                    onPressed: _isLoading ? null : _submit,
+                    isLoading: _isLoading,
+                    label: 'Add Stock Batch',
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }

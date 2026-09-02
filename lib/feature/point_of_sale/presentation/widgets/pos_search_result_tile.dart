@@ -42,6 +42,30 @@ class PosSearchResultTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
+                      if (grouped.partNo.isNotEmpty) ...[
+                        Flexible(
+                          child: Text(
+                            grouped.partNo,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark
+                                  ? const Color(0xFF38BDF8)
+                                  : const Color(0xFF0284C7),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          ' • ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
                       if (grouped.model.isNotEmpty) ...[
                         Flexible(
                           child: Text(

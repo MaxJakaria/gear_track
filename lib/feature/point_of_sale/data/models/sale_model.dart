@@ -5,6 +5,7 @@ class SaleModel extends SaleEntity {
   const SaleModel({
     required super.id,
     required super.productId,
+    super.partNo = '',
     required super.saleDate,
     required super.itemName,
     required super.quantity,
@@ -18,6 +19,7 @@ class SaleModel extends SaleEntity {
     return SaleModel(
       id: doc.id,
       productId: data['productId'] ?? '',
+      partNo: data['partNo'] ?? '',
       saleDate: (data['saleDate'] as Timestamp).toDate(),
       itemName: data['itemName'] ?? '',
       quantity: data['quantity'] ?? 0,
@@ -30,6 +32,7 @@ class SaleModel extends SaleEntity {
   Map<String, dynamic> toMap() {
     return {
       'productId': productId,
+      'partNo': partNo,
       'saleDate': Timestamp.fromDate(saleDate),
       'itemName': itemName,
       'quantity': quantity,
@@ -43,6 +46,7 @@ class SaleModel extends SaleEntity {
     return SaleModel(
       id: saleEntity.id,
       productId: saleEntity.productId,
+      partNo: saleEntity.partNo,
       saleDate: saleEntity.saleDate,
       itemName: saleEntity.itemName,
       quantity: saleEntity.quantity,

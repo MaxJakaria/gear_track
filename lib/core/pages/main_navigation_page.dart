@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/inventory_page.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/pages/pos_page.dart';
 import 'package:gear_track/feature/reports/presentation/pages/reports_page.dart';
@@ -13,19 +14,24 @@ class MainNavigationPage extends StatefulWidget {
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0; // Default to Inventory (Index 0)
 
-  final List<Widget> _pages = const [
-    InventoryPage(),
-    PosPage(),
-    ReportsPage(),
-  ];
+  void _onTabSelected(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      InventoryPage(onNavigateToTab: _onTabSelected),
+      const PosPage(),
+      const ReportsPage(),
+    ];
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
@@ -45,11 +51,11 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           },
           backgroundColor: theme.colorScheme.surface,
           selectedItemColor: isDark
-              ? const Color(0xFF818CF8)
-              : const Color(0xFF6366F1),
-          unselectedItemColor: theme.colorScheme.onSurfaceVariant.withValues(
-            alpha: 0.7,
-          ),
+              ? AppColors.primaryButtonDark
+              : AppColors.primaryButtonLight,
+          unselectedItemColor: isDark
+              ? const Color(0xFF94A3B8)
+              : const Color(0xFF64748B),
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 12,

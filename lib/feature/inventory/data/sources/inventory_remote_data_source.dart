@@ -16,7 +16,6 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<void> addProduct(ProductModel productModel) async {
-    // We use partNo as the unique ID for the main product document, fallback to model id
     final String docId = productModel.partNo.isNotEmpty
         ? productModel.partNo
         : productModel.id;
@@ -94,16 +93,25 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
           ? entryData['partNo'] as String
           : defaultPartNo;
 
+      final int remaining =
+          (entryData['remainingQuantity'] as num?)?.toInt() ?? 0;
+      final int rawInitial = (entryData['quantity'] as num?)?.toInt() ?? 0;
+      final int initial = rawInitial <= 0
+          ? remaining
+          : (rawInitial < remaining ? remaining : rawInitial);
+
       allBatches.add(
         ProductModel(
-          id: entryDoc.id,
+          id: parentProductId.isNotEmpty
+              ? '$parentProductId/${entryDoc.id}'
+              : entryDoc.id,
           entryDate: (entryData['date'] as Timestamp).toDate(),
           partNo: batchPartNo,
           itemName: itemName,
           model: model,
           costCode: entryData['costCode'] ?? '',
-          initialQuantity: entryData['quantity'] ?? 0,
-          stockCount: entryData['remainingQuantity'] ?? 0,
+          initialQuantity: initial,
+          stockCount: remaining,
         ),
       );
     }
@@ -113,47 +121,59 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<void> updateProduct(ProductModel productModel) async {
-    DocumentReference productRef = firestore
-        .collection('products')
-        .doc(productModel.partNo);
-    DocumentReference entryRef = productRef
-        .collection('stock_entries')
-        .doc(productModel.id);
+    DocumentReference<Map<String, dynamic>>? productRef;
+    DocumentReference<Map<String, dynamic>>? entryRef;
 
-    // Verify if entryRef exists at productModel.partNo or find its actual location
-    final directCheck = await entryRef.get();
-    if (!directCheck.exists) {
-      final allEntries = await firestore.collectionGroup('stock_entries').get();
-      final matching = allEntries.docs
-          .where((d) => d.id == productModel.id)
-          .toList();
-      if (matching.isNotEmpty) {
-        entryRef = matching.first.reference;
-        productRef = entryRef.parent.parent!;
+    final parts = productModel.id.split('/');
+    if (parts.length == 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+      productRef = firestore.collection('products').doc(parts[0]);
+      entryRef = productRef.collection('stock_entries').doc(parts[1]);
+    } else {
+      productRef = firestore.collection('products').doc(productModel.partNo);
+      entryRef = productRef.collection('stock_entries').doc(productModel.id);
+
+      final directCheck = await entryRef.get();
+      if (!directCheck.exists) {
+        final allEntries =
+            await firestore.collectionGroup('stock_entries').get();
+        final matching =
+            allEntries.docs.where((d) => d.id == productModel.id).toList();
+        if (matching.isNotEmpty) {
+          entryRef = matching.first.reference;
+          productRef = entryRef.parent.parent!;
+        }
       }
     }
 
-    await firestore.runTransaction((transaction) async {
-      // 1. ALL READS FIRST
-      final entrySnapshot = await transaction.get(entryRef);
-      final productSnapshot = await transaction.get(productRef);
+    // Fetch all sibling batches under this parent product to calculate exact totalStock
+    final siblingEntriesSnapshot =
+        await productRef.collection('stock_entries').get();
 
-      int oldRemaining = 0;
-      if (entrySnapshot.exists) {
-        final data = entrySnapshot.data() as Map<String, dynamic>?;
-        oldRemaining = (data?['remainingQuantity'] as num?)?.toInt() ?? 0;
+    final actualBatchId = parts.length == 2 ? parts[1] : productModel.id;
+
+    await firestore.runTransaction((transaction) async {
+      // 1. ALL READS FIRST (Strict Firestore transaction rule)
+      final entrySnapshot = await transaction.get(entryRef!);
+      final productSnapshot = await transaction.get(productRef!);
+
+      final List<int> siblingStocks = [];
+      for (final doc in siblingEntriesSnapshot.docs) {
+        if (doc.id == actualBatchId) continue;
+        final snap = await transaction.get(doc.reference);
+        if (snap.exists) {
+          final data = snap.data();
+          if (data is Map<String, dynamic>) {
+            siblingStocks.add(
+              (data['remainingQuantity'] as num?)?.toInt() ?? 0,
+            );
+          }
+        }
       }
 
-      int newTotalStock = productModel.stockCount;
-      if (productSnapshot.exists) {
-        final productData =
-            (productSnapshot.data() as Map<String, dynamic>?) ?? {};
-        final int currentTotalStock =
-            (productData['totalStock'] as num?)?.toInt() ?? 0;
-        final int diff = productModel.stockCount - oldRemaining;
-        newTotalStock = (currentTotalStock + diff)
-            .clamp(0, double.infinity)
-            .toInt();
+      // Calculate the true totalStock across all batches of this product
+      int trueTotalStock = productModel.stockCount;
+      for (final s in siblingStocks) {
+        trueTotalStock += s;
       }
 
       // 2. ALL WRITES AFTER
@@ -162,14 +182,26 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
           'itemName': productModel.itemName,
           'model': productModel.model,
           'partNo': productModel.partNo,
-          'totalStock': newTotalStock,
+          'totalStock': trueTotalStock,
         });
       }
 
       if (entrySnapshot.exists) {
+        final data = entrySnapshot.data();
+        int oldInitial = 0;
+        if (data is Map<String, dynamic>) {
+          oldInitial = (data['quantity'] as num?)?.toInt() ?? 0;
+        }
+        final int newInitial = productModel.stockCount > oldInitial
+            ? productModel.stockCount
+            : (productModel.initialQuantity > 0
+                ? productModel.initialQuantity
+                : oldInitial);
+
         transaction.update(entryRef, {
           'date': Timestamp.fromDate(productModel.entryDate),
           'partNo': productModel.partNo,
+          'quantity': newInitial,
           'remainingQuantity': productModel.stockCount,
           'costCode': productModel.costCode,
         });
@@ -179,36 +211,60 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    // 1. Search across stock entries for matching batch ID
-    final querySnapshot = await firestore
-        .collectionGroup('stock_entries')
-        .get();
-    final matchingDocs = querySnapshot.docs
-        .where((doc) => doc.id == productId)
-        .toList();
+    DocumentReference<Map<String, dynamic>>? productRef;
+    DocumentReference<Map<String, dynamic>>? entryRef;
+    String actualBatchId = productId;
 
-    if (matchingDocs.isNotEmpty) {
-      final entryDoc = matchingDocs.first;
-      final entryRef = entryDoc.reference;
-      final productRef = entryRef.parent.parent!;
-      final int remainingQuantity =
-          (entryDoc.data()['remainingQuantity'] as num?)?.toInt() ?? 0;
+    final parts = productId.split('/');
+    if (parts.length == 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+      productRef = firestore.collection('products').doc(parts[0]);
+      entryRef = productRef.collection('stock_entries').doc(parts[1]);
+      actualBatchId = parts[1];
+    } else {
+      final querySnapshot =
+          await firestore.collectionGroup('stock_entries').get();
+      final matchingDocs =
+          querySnapshot.docs.where((doc) => doc.id == productId).toList();
+
+      if (matchingDocs.isNotEmpty) {
+        final entryDoc = matchingDocs.first;
+        entryRef = entryDoc.reference;
+        productRef = entryRef.parent.parent!;
+      }
+    }
+
+    if (entryRef != null && productRef != null) {
+      // Fetch all remaining sibling batches under parent product
+      final siblingEntriesSnapshot =
+          await productRef.collection('stock_entries').get();
 
       await firestore.runTransaction((transaction) async {
         // ALL READS FIRST
-        final productSnapshot = await transaction.get(productRef);
-        final entrySnapshot = await transaction.get(entryRef);
+        final productSnapshot = await transaction.get(productRef!);
+        final entrySnapshot = await transaction.get(entryRef!);
+
+        final List<int> siblingStocks = [];
+        for (final doc in siblingEntriesSnapshot.docs) {
+          if (doc.id == actualBatchId) continue;
+          final snap = await transaction.get(doc.reference);
+          if (snap.exists) {
+            final data = snap.data();
+            if (data is Map<String, dynamic>) {
+              siblingStocks.add(
+                (data['remainingQuantity'] as num?)?.toInt() ?? 0,
+              );
+            }
+          }
+        }
+
+        int trueTotalStock = 0;
+        for (final s in siblingStocks) {
+          trueTotalStock += s;
+        }
 
         // ALL WRITES AFTER
         if (productSnapshot.exists) {
-          final productData = productSnapshot.data() ?? {};
-          final int currentTotalStock =
-              (productData['totalStock'] as num?)?.toInt() ?? 0;
-          final int newTotalStock = (currentTotalStock - remainingQuantity)
-              .clamp(0, double.infinity)
-              .toInt();
-
-          transaction.update(productRef, {'totalStock': newTotalStock});
+          transaction.update(productRef, {'totalStock': trueTotalStock});
         }
 
         if (entrySnapshot.exists) {
@@ -218,7 +274,7 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       return;
     }
 
-    // 2. Check if productId directly matches a main product document
+    // Direct product fallback
     final directProductRef = firestore.collection('products').doc(productId);
     final directSnapshot = await directProductRef.get();
     if (directSnapshot.exists) {
@@ -229,27 +285,23 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
       }
       batch.delete(directProductRef);
       await batch.commit();
-      return;
     }
-
-    throw FirebaseException(
-      plugin: 'cloud_firestore',
-      code: 'not-found',
-      message: 'Product or batch not found with ID: $productId',
-    );
   }
 
   @override
   Future<void> clearAllProducts() async {
-    final productsSnapshot = await firestore.collection('products').get();
-    for (final doc in productsSnapshot.docs) {
-      final entriesSnapshot = await doc.reference
-          .collection('stock_entries')
-          .get();
-      for (final entry in entriesSnapshot.docs) {
-        await entry.reference.delete();
-      }
-      await doc.reference.delete();
+    final batch = firestore.batch();
+
+    final stockEntries = await firestore.collectionGroup('stock_entries').get();
+    for (final doc in stockEntries.docs) {
+      batch.delete(doc.reference);
     }
+
+    final products = await firestore.collection('products').get();
+    for (final doc in products.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
   }
 }

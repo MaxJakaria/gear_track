@@ -41,6 +41,11 @@ class GroupedProduct extends Equatable {
     );
   }
 
+  bool get hasOutOfStockBatch => batches.any((b) => b.stockCount <= 0);
+  bool get hasLowStockBatch =>
+      batches.any((b) => b.stockCount > 0 && b.stockCount <= 5);
+  bool get hasInStockBatch => batches.any((b) => b.stockCount > 0);
+
   @override
   List<Object?> get props => [
         partNo,

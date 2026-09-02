@@ -5,6 +5,7 @@ import 'package:gear_track/core/domain/usecases/save_cost_code_mapping.dart';
 import 'package:gear_track/core/domain/usecases/save_shop_settings.dart';
 import 'package:gear_track/core/entities/cost_code_mapping.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/init_dependencies.dart';
 
@@ -121,8 +122,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _updateLivePreview();
   }
 
-
-
   CostCodeMapping _buildCurrentMapping() {
     final map = <String, int>{};
     for (final d in _digits) {
@@ -182,11 +181,15 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-            final sheetBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+            final theme = Theme.of(context);
+            final isDark = theme.brightness == Brightness.dark;
+            final sheetBg = isDark
+                ? AppColors.surfaceDark
+                : AppColors.surfaceLight;
             final inputBg = isDark
-                ? const Color(0xFF0F172A)
-                : const Color(0xFFF1F5F9);
+                ? AppColors.surfaceContainerDark
+                : AppColors.surfaceContainerLight;
+            final primaryColor = AppColors.primaryButton(context);
 
             int? findDigitForChar(String char) {
               final upper = char.toUpperCase();
@@ -265,366 +268,366 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
                   child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Handle bar
-                    Center(
-                      child: Container(
-                        width: 38,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Header
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Handle bar
+                      Center(
+                        child: Container(
+                          width: 38,
+                          height: 4,
                           decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF6366F1,
-                            ).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'Digit $digit',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: Color(0xFF6366F1),
-                            ),
+                            color: Colors.grey.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Manage Symbols for $digit',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                'All listed characters decode to numeric $digit',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Active Characters
-                    Text(
-                      'ACTIVE CHARACTERS & SYMBOLS:',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                        color: isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF64748B),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (tempChars.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: inputBg,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'No characters mapped yet. Add one below!',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontStyle: FontStyle.italic,
-                            color: isDark
-                                ? const Color(0xFF64748B)
-                                : const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: tempChars.map((ch) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: inputBg,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: const Color(
-                                  0xFF6366F1,
-                                ).withValues(alpha: 0.35),
-                              ),
-                            ),
+                      const SizedBox(height: 16),
+
+                      // Header
+                      Row(
+                        children: [
+                          Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
+                              horizontal: 12,
                               vertical: 6,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            decoration: BoxDecoration(
+                              color: primaryColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'Digit $digit',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: primaryColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  ch,
+                                  'Manage Symbols for $digit',
                                   style: TextStyle(
                                     fontSize: 15,
-                                    fontWeight: FontWeight.w900,
+                                    fontWeight: FontWeight.bold,
                                     color: isDark
                                         ? Colors.white
                                         : const Color(0xFF0F172A),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 13,
-                                  color: Color(0xFF6366F1),
-                                ),
-                                const SizedBox(width: 6),
                                 Text(
-                                  '$digit',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF6366F1),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                InkWell(
-                                  onTap: () => removeChar(ch),
-                                  child: const Icon(
-                                    Icons.close_rounded,
-                                    size: 16,
-                                    color: Color(0xFFEF4444),
+                                  'All listed characters decode to numeric $digit',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
                                   ),
                                 ),
                               ],
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Active Characters
+                      Text(
+                        'ACTIVE CHARACTERS & SYMBOLS:',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (tempChars.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: inputBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'No characters mapped yet. Add one below!',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontStyle: FontStyle.italic,
+                              color: isDark
+                                  ? const Color(0xFF64748B)
+                                  : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tempChars.map((ch) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: inputBg,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    ch,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w900,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 13,
+                                    color: primaryColor,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '$digit',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  InkWell(
+                                    onTap: () => removeChar(ch),
+                                    child: const Icon(
+                                      Icons.close_rounded,
+                                      size: 16,
+                                      color: Color(0xFFEF4444),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      const SizedBox(height: 18),
+
+                      // Quick Add Common Symbols
+                      Text(
+                        'QUICK ADD SYMBOLS (TAP TO ADD):',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: quickSymbols.map((sym) {
+                          final alreadyAdded = tempChars.contains(sym);
+                          final assignedOther = findDigitForChar(sym);
+                          final isUsedElsewhere = assignedOther != null;
+
+                          return InkWell(
+                            onTap: alreadyAdded
+                                ? null
+                                : () {
+                                    if (isUsedElsewhere) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            "Symbol '$sym' is already assigned to Digit $assignedOther!",
+                                          ),
+                                          backgroundColor: const Color(
+                                            0xFFDC2626,
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    addChar(sym);
+                                  },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: alreadyAdded
+                                    ? primaryColor.withValues(alpha: 0.15)
+                                    : isUsedElsewhere
+                                    ? (isDark
+                                          ? Colors.white.withValues(alpha: 0.04)
+                                          : Colors.black.withValues(
+                                              alpha: 0.04,
+                                            ))
+                                    : inputBg,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: alreadyAdded
+                                      ? primaryColor
+                                      : Colors.transparent,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                isUsedElsewhere ? '$sym ($assignedOther)' : sym,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: alreadyAdded
+                                      ? primaryColor
+                                      : isUsedElsewhere
+                                      ? (isDark
+                                            ? const Color(0xFF64748B)
+                                            : const Color(0xFF94A3B8))
+                                      : (isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A)),
+                                ),
+                              ),
+                            ),
                           );
                         }).toList(),
                       ),
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 18),
 
-                    // Quick Add Common Symbols
-                    Text(
-                      'QUICK ADD SYMBOLS (TAP TO ADD):',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                        color: isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: quickSymbols.map((sym) {
-                        final alreadyAdded = tempChars.contains(sym);
-                        final assignedOther = findDigitForChar(sym);
-                        final isUsedElsewhere = assignedOther != null;
-
-                        return InkWell(
-                          onTap: alreadyAdded
-                              ? null
-                              : () {
-                                  if (isUsedElsewhere) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          "Symbol '$sym' is already assigned to Digit $assignedOther!",
-                                        ),
-                                        backgroundColor: const Color(
-                                          0xFFDC2626,
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  addChar(sym);
-                                },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color: alreadyAdded
-                                  ? const Color(
-                                      0xFF6366F1,
-                                    ).withValues(alpha: 0.15)
-                                  : isUsedElsewhere
-                                  ? (isDark
-                                        ? Colors.white.withValues(alpha: 0.04)
-                                        : Colors.black.withValues(alpha: 0.04))
-                                  : inputBg,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: alreadyAdded
-                                    ? const Color(0xFF6366F1)
-                                    : Colors.transparent,
-                                width: 1,
+                      // Custom input row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: inputBg,
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                            ),
-                            child: Text(
-                              isUsedElsewhere ? '$sym ($assignedOther)' : sym,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: alreadyAdded
-                                    ? const Color(0xFF6366F1)
-                                    : isUsedElsewhere
-                                    ? (isDark
-                                          ? const Color(0xFF64748B)
-                                          : const Color(0xFF94A3B8))
-                                    : (isDark
-                                          ? Colors.white
-                                          : const Color(0xFF0F172A)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: TextField(
+                                controller: charInputController,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                decoration: const InputDecoration(
+                                  hintText:
+                                      'Type any letter or symbol (e.g. A)',
+                                  hintStyle: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                                onSubmitted: (val) => addChar(val),
                               ),
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Custom input row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: inputBg,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: TextField(
-                              controller: charInputController,
-                              textCapitalization: TextCapitalization.characters,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              decoration: const InputDecoration(
-                                hintText: 'Type any letter or symbol (e.g. A)',
-                                hintStyle: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                            ),
+                            onPressed: () => addChar(charInputController.text),
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text(
+                              'Add',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Action Buttons (Cancel / Done)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
                                   vertical: 12,
                                 ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                side: BorderSide(
+                                  color: isDark
+                                      ? AppColors.borderDark
+                                      : AppColors.borderLight,
+                                ),
                               ),
-                              onSubmitted: (val) => addChar(val),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                          ),
-                          onPressed: () => addChar(charInputController.text),
-                          icon: const Icon(Icons.add_rounded, size: 18),
-                          label: const Text(
-                            'Add',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Action Buttons (Cancel / Done)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              side: BorderSide(
-                                color: isDark
-                                    ? const Color(0xFF475569)
-                                    : const Color(0xFFCBD5E1),
-                              ),
-                            ),
-                            onPressed: () => Navigator.pop(ctx),
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
+                              onPressed: () => Navigator.pop(ctx),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: AppGradientButton(
-                            label: 'Done',
-                            onPressed: () {
-                              setState(() {
-                                _digitControllers[digit]?.text = tempChars.join(
-                                  ', ',
-                                );
-                                _updateLivePreview();
-                              });
-                              Navigator.pop(ctx);
-                            },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: AppGradientButton(
+                              label: 'Done',
+                              onPressed: () {
+                                setState(() {
+                                  _digitControllers[digit]?.text = tempChars
+                                      .join(', ');
+                                  _updateLivePreview();
+                                });
+                                Navigator.pop(ctx);
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
+            );
           },
         );
       },
@@ -668,30 +671,44 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     setState(() => _isSaving = true);
-    final mapping = _buildCurrentMapping();
-    final shopSettings = _buildCurrentShopSettings();
+    try {
+      final mapping = _buildCurrentMapping();
+      final shopSettings = _buildCurrentShopSettings();
 
-    final saveMapping = serviceLocator<SaveCostCodeMapping>();
-    final saveShop = serviceLocator<SaveShopSettings>();
+      final saveMapping = serviceLocator<SaveCostCodeMapping>();
+      final saveShop = serviceLocator<SaveShopSettings>();
 
-    final results = await Future.wait([
-      saveMapping(mapping),
-      saveShop(shopSettings),
-    ]);
+      final results = await Future.wait([
+        saveMapping(mapping),
+        saveShop(shopSettings),
+      ]).timeout(const Duration(seconds: 4));
 
-    if (mounted) {
-      setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
 
-      final hasError = results.any((r) => r.isLeft());
-      if (hasError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Failed to save settings. Please try again.'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
+        final hasError = results.any((r) => r.isLeft());
+        if (hasError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Failed to save settings. Please try again.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Settings saved successfully!'),
+              backgroundColor: Color(0xFF059669),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Settings saved successfully!'),
@@ -706,10 +723,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final inputFillColor = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF1F5F9);
+        ? AppColors.surfaceContainerDark
+        : AppColors.surfaceContainerLight;
+    final primaryColor = AppColors.primaryButton(context);
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
@@ -731,470 +750,470 @@ class _SettingsPageState extends State<SettingsPage> {
                   vertical: 12.0,
                 ),
                 child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // 1. STORE PROFILE & RECEIPT INFO SECTION
-                    _buildSectionHeader(
-                      icon: Icons.storefront_rounded,
-                      title: 'STORE PROFILE & RECEIPT INFO',
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Shop Name Input
-                    TextFormField(
-                      controller: _shopNameController,
-                      textCapitalization: TextCapitalization.words,
-                      style: const TextStyle(fontSize: 13.5),
-                      decoration: InputDecoration(
-                        labelText: 'Shop Name *',
-                        labelStyle: TextStyle(
-                          fontSize: 13,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
-                        ),
-                        hintText: 'e.g. GearTrack POS',
-                        hintStyle: TextStyle(
-                          fontSize: 12.5,
-                          color: isDark
-                              ? const Color(0xFF64748B)
-                              : const Color(0xFF94A3B8),
-                        ),
-                        filled: true,
-                        fillColor: inputFillColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.business_rounded,
-                          size: 20,
-                          color: Color(0xFF6366F1),
-                        ),
-                        errorStyle: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFFEF4444),
-                        ),
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 1. STORE PROFILE & RECEIPT INFO SECTION
+                      _buildSectionHeader(
+                        icon: Icons.storefront_rounded,
+                        title: 'STORE PROFILE & RECEIPT INFO',
+                        isDark: isDark,
+                        primaryColor: primaryColor,
                       ),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Shop name is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
-                    // Address Input
-                    TextFormField(
-                      controller: _shopAddressController,
-                      textCapitalization: TextCapitalization.sentences,
-                      style: const TextStyle(fontSize: 13.5),
-                      decoration: InputDecoration(
-                        labelText: 'Store Address *',
-                        labelStyle: TextStyle(
-                          fontSize: 13,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
-                        ),
-                        hintText: 'e.g. 12/A Motijheel, Dhaka',
-                        hintStyle: TextStyle(
-                          fontSize: 12.5,
-                          color: isDark
-                              ? const Color(0xFF64748B)
-                              : const Color(0xFF94A3B8),
-                        ),
-                        filled: true,
-                        fillColor: inputFillColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.location_on_rounded,
-                          size: 20,
-                          color: Color(0xFF6366F1),
-                        ),
-                        errorStyle: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFFEF4444),
-                        ),
-                      ),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Store address is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Phone Number Input
-                    TextFormField(
-                      controller: _shopPhoneController,
-                      keyboardType: TextInputType.phone,
-                      style: const TextStyle(fontSize: 13.5),
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number *',
-                        labelStyle: TextStyle(
-                          fontSize: 13,
-                          color: isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B),
-                        ),
-                        hintText: 'e.g. +880 1712-345678',
-                        hintStyle: TextStyle(
-                          fontSize: 12.5,
-                          color: isDark
-                              ? const Color(0xFF64748B)
-                              : const Color(0xFF94A3B8),
-                        ),
-                        filled: true,
-                        fillColor: inputFillColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.phone_rounded,
-                          size: 20,
-                          color: Color(0xFF6366F1),
-                        ),
-                        errorStyle: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFFEF4444),
-                        ),
-                      ),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Phone number is required';
-                        }
-                        if (val.trim().length < 6) {
-                          return 'Please enter a valid phone number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 28),
-
-                    // 2. COST CODE CIPHER SECTION
-                    _buildSectionHeader(
-                      icon: Icons.vpn_key_rounded,
-                      title: 'COST CODE CIPHER',
-                      isDark: isDark,
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Helper Banner Explaining Multi-Character Aliases
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(
-                            0xFF6366F1,
-                          ).withValues(alpha: 0.25),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.lightbulb_rounded,
+                      // Shop Name Input
+                      TextFormField(
+                        controller: _shopNameController,
+                        textCapitalization: TextCapitalization.words,
+                        style: const TextStyle(fontSize: 13.5),
+                        decoration: InputDecoration(
+                          labelText: 'Shop Name *',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
+                          hintText: 'e.g. GearTrack POS',
+                          hintStyle: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark
+                                ? const Color(0xFF64748B)
+                                : const Color(0xFF94A3B8),
+                          ),
+                          filled: true,
+                          fillColor: inputFillColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.business_rounded,
                             size: 20,
-                            color: Color(0xFF6366F1),
+                            color: primaryColor,
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Multiple Symbols Per Number Supported',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'e.g. Type "A, @" for 3. Both A and @ will decode to 3. Tap any number box below to easily add/remove symbols.',
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    height: 1.35,
-                                    color: isDark
-                                        ? const Color(0xFFCBD5E1)
-                                        : const Color(0xFF475569),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          errorStyle: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFEF4444),
                           ),
-                        ],
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Shop name is required';
+                          }
+                          return null;
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 12),
 
-                    // Keyword Auto-Fill Bar
-                    Container(
-                      decoration: BoxDecoration(
-                        color: inputFillColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome_rounded,
-                            size: 18,
-                            color: Color(0xFF6366F1),
+                      // Address Input
+                      TextFormField(
+                        controller: _shopAddressController,
+                        textCapitalization: TextCapitalization.sentences,
+                        style: const TextStyle(fontSize: 13.5),
+                        decoration: InputDecoration(
+                          labelText: 'Store Address *',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: _keywordController,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 10,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.5,
+                          hintText: 'e.g. 12/A Motijheel, Dhaka',
+                          hintStyle: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark
+                                ? const Color(0xFF64748B)
+                                : const Color(0xFF94A3B8),
+                          ),
+                          filled: true,
+                          fillColor: inputFillColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.location_on_rounded,
+                            size: 20,
+                            color: primaryColor,
+                          ),
+                          errorStyle: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFEF4444),
+                          ),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Store address is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Phone Number Input
+                      TextFormField(
+                        controller: _shopPhoneController,
+                        keyboardType: TextInputType.phone,
+                        style: const TextStyle(fontSize: 13.5),
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number *',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
+                          hintText: 'e.g. +880 1712-345678',
+                          hintStyle: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark
+                                ? const Color(0xFF64748B)
+                                : const Color(0xFF94A3B8),
+                          ),
+                          filled: true,
+                          fillColor: inputFillColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.phone_rounded,
+                            size: 20,
+                            color: primaryColor,
+                          ),
+                          errorStyle: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFEF4444),
+                          ),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Phone number is required';
+                          }
+                          if (val.trim().length < 6) {
+                            return 'Please enter a valid phone number';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // 2. COST CODE CIPHER SECTION
+                      _buildSectionHeader(
+                        icon: Icons.vpn_key_rounded,
+                        title: 'COST CODE CIPHER',
+                        isDark: isDark,
+                        primaryColor: primaryColor,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Helper Banner Explaining Multi-Character Aliases
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFF59E0B,
+                          ).withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFF59E0B,
+                            ).withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.lightbulb_rounded,
+                              size: 18,
+                              color: Color(0xFFF59E0B),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Multiple Symbols Per Number Supported',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'e.g. Type "A, @" for 3. Both A and @ will decode to 3. Tap any number box below to easily add/remove symbols.',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      height: 1.35,
+                                      color: isDark
+                                          ? const Color(0xFFCBD5E1)
+                                          : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              decoration: InputDecoration(
-                                counterText: '',
-                                hintText: r'Keyword (e.g. BL@CK$M!TH)',
-                                hintStyle: TextStyle(
-                                  fontSize: 12.5,
-                                  letterSpacing: 0.5,
-                                  color: isDark
-                                      ? const Color(0xFF64748B)
-                                      : const Color(0xFF94A3B8),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Keyword Auto-Fill Bar
+                      Container(
+                        decoration: BoxDecoration(
+                          color: inputFillColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 18,
+                              color: primaryColor,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _keywordController,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                maxLength: 10,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.5,
                                 ),
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 10,
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  hintText: r'Keyword (e.g. BL@CK$M!TH)',
+                                  hintStyle: TextStyle(
+                                    fontSize: 12.5,
+                                    letterSpacing: 0.5,
+                                    color: isDark
+                                        ? const Color(0xFF64748B)
+                                        : const Color(0xFF94A3B8),
+                                  ),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                  ),
                                 ),
+                                onChanged: (val) {
+                                  if (val.trim().length >= 10) {
+                                    _applyKeyword(val);
+                                  }
+                                },
                               ),
-                              onChanged: (val) {
-                                if (val.trim().length >= 10) {
-                                  _applyKeyword(val);
+                            ),
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              onPressed: () {
+                                if (_keywordController.text.trim().isNotEmpty) {
+                                  _applyKeyword(_keywordController.text);
                                 }
                               },
+                              child: Text(
+                                'Apply',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: primaryColor,
+                                ),
+                              ),
                             ),
-                          ),
-                          TextButton(
-                            style: TextButton.styleFrom(
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 10-Digit Interactive Matrix (Supports Multi-character e.g. "A, @" -> 3)
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 5,
+                              mainAxisSpacing: 10,
+                              crossAxisSpacing: 10,
+                              childAspectRatio: 0.85,
+                            ),
+                        itemCount: _digits.length,
+                        itemBuilder: (context, index) {
+                          final digit = _digits[index];
+
+                          return InkWell(
+                            onTap: () => _openDigitEditSheet(digit),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: inputFillColor,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 6,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '$digit',
+                                        style: TextStyle(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: primaryColor,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Icon(
+                                        Icons.edit_note_rounded,
+                                        size: 13,
+                                        color: primaryColor.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Expanded(
+                                    child: Center(
+                                      child: Text(
+                                        _digitControllers[digit]
+                                                    ?.text
+                                                    .isNotEmpty ==
+                                                true
+                                            ? _digitControllers[digit]!.text
+                                            : '—',
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Live Test Decoder Pill
+                      Container(
+                        decoration: BoxDecoration(
+                          color: inputFillColor,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _testCodeController,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: r'Test Code (e.g. BL@CK or B@T)',
+                                  hintStyle: TextStyle(
+                                    fontSize: 12.5,
+                                    letterSpacing: 0.5,
+                                    color: isDark
+                                        ? const Color(0xFF64748B)
+                                        : const Color(0xFF94A3B8),
+                                  ),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                onChanged: (val) => _updateLivePreview(),
+                              ),
+                            ),
+                            Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 6,
                               ),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            onPressed: () {
-                              if (_keywordController.text.trim().isNotEmpty) {
-                                _applyKeyword(_keywordController.text);
-                              }
-                            },
-                            child: const Text(
-                              'Apply',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                              decoration: BoxDecoration(
+                                gradient: AppColors.primaryGradient(context),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // 10-Digit Interactive Matrix (Supports Multi-character e.g. "A, @" -> 3)
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 5,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 0.85,
-                          ),
-                      itemCount: _digits.length,
-                      itemBuilder: (context, index) {
-                        final digit = _digits[index];
-
-                        return InkWell(
-                          onTap: () => _openDigitEditSheet(digit),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: inputFillColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.04),
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 6,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '$digit',
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: isDark
-                                            ? const Color(0xFF818CF8)
-                                            : const Color(0xFF4F46E5),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Icon(
-                                      Icons.edit_note_rounded,
-                                      size: 13,
-                                      color: isDark
-                                          ? const Color(0xFF64748B)
-                                          : const Color(0xFF94A3B8),
-                                    ),
-                                  ],
+                              child: Text(
+                                _decodedPreview,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
                                 ),
-                                const SizedBox(height: 2),
-                                Expanded(
-                                  child: Center(
-                                    child: Text(
-                                      _digitControllers[digit]
-                                                  ?.text
-                                                  .isNotEmpty ==
-                                              true
-                                          ? _digitControllers[digit]!.text
-                                          : '—',
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: isDark
-                                            ? Colors.white
-                                            : const Color(0xFF0F172A),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 14),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
 
-                    // Live Test Decoder Pill
-                    Container(
-                      decoration: BoxDecoration(
-                        color: inputFillColor,
-                        borderRadius: BorderRadius.circular(14),
+                      // Save Button
+                      AppGradientButton(
+                        label: 'Save Changes',
+                        icon: Icons.check_circle_rounded,
+                        isLoading: _isSaving,
+                        onPressed: _isSaving ? null : _save,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _testCodeController,
-                              textCapitalization: TextCapitalization.characters,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: r'Test Code (e.g. BL@CK or B@T)',
-                                hintStyle: TextStyle(
-                                  fontSize: 12.5,
-                                  letterSpacing: 0.5,
-                                  color: isDark
-                                      ? const Color(0xFF64748B)
-                                      : const Color(0xFF94A3B8),
-                                ),
-                                border: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                              onChanged: (val) => _updateLivePreview(),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF6366F1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _decodedPreview,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Save Button
-                    AppGradientButton(
-                      label: 'Save Changes',
-                      icon: Icons.check_circle_rounded,
-                      isLoading: _isSaving,
-                      onPressed: _isSaving ? null : _save,
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
-            ),
       ),
     );
   }
@@ -1203,22 +1222,26 @@ class _SettingsPageState extends State<SettingsPage> {
     required IconData icon,
     required String title,
     required bool isDark,
+    required Color primaryColor,
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 17,
-          color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: primaryColor.withValues(alpha: isDark ? 0.2 : 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: primaryColor),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 10),
         Text(
           title,
           style: TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             letterSpacing: 0.8,
-            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
           ),
         ),
       ],

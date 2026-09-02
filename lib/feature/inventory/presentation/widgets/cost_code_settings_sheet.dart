@@ -310,7 +310,7 @@ class _CostCodeSettingsSheetState extends State<CostCodeSettingsSheet> {
                                   ),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(color: borderColor),
+                                    borderSide: BorderSide.none,
                                   ),
                                 ),
                                 onChanged: (val) {

@@ -37,8 +37,14 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: onStopSearch,
             )
-          : null,
-      titleSpacing: isSearching ? 0 : null,
+          : Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu_rounded, size: 26),
+                tooltip: 'Open Menu',
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
+      titleSpacing: isSearching ? 0 : 0,
       title: isSearching
           ? ValueListenableBuilder<TextEditingValue>(
               valueListenable: searchController,
@@ -76,7 +82,13 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                               color: theme.colorScheme.onSurfaceVariant
                                   .withValues(alpha: 0.7),
                             ),
+                            filled: false,
+                            fillColor: Colors.transparent,
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
                           ),
@@ -113,62 +125,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
             tooltip: 'Search Products',
             onPressed: onStartSearch,
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            onSelected: (val) {
-              if (val == 'settings') {
-                onOpenSettings?.call();
-              } else if (val == 'clear_all') {
-                onClearAll?.call();
-              }
-            },
-            itemBuilder: (context) => [
-              if (onOpenSettings != null)
-                const PopupMenuItem(
-                  value: 'settings',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.settings_outlined,
-                        color: Color(0xFF4F46E5),
-                        size: 18,
-                      ),
-                      SizedBox(width: 10),
-                      Text(
-                        'Settings',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              if (onClearAll != null)
-                const PopupMenuItem(
-                  value: 'clear_all',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.delete_forever_rounded,
-                        color: Color(0xFFD32F2F),
-                        size: 18,
-                      ),
-                      SizedBox(width: 10),
-                      Text(
-                        'Clear All',
-                        style: TextStyle(
-                          color: Color(0xFFD32F2F),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
+          const SizedBox(width: 4),
         ],
       ],
     );
