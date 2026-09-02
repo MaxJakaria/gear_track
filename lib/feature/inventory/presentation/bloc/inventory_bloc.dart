@@ -34,6 +34,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     on<UpdateProductEvent>(_onUpdateProduct);
     on<DeleteProductEvent>(_onDeleteProduct);
     on<ClearAllProductsEvent>(_onClearAllProducts);
+    on<ClearOutOfStockBatchesEvent>(_onClearOutOfStockBatches);
   }
 
   List<Product> _filterProducts(
@@ -43,7 +44,8 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
   ) {
     final q = query.toLowerCase().trim();
     return list.where((product) {
-      final matchesQuery = q.isEmpty ||
+      final matchesQuery =
+          q.isEmpty ||
           product.itemName.toLowerCase().contains(q) ||
           product.partNo.toLowerCase().contains(q) ||
           product.model.toLowerCase().contains(q);
@@ -51,9 +53,10 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
       final matchesFilter = switch (filter) {
         StockFilter.all => true,
         StockFilter.inStock => product.stockCount > 0,
-        StockFilter.lowStock =>
-            product.stockCount > 0 && product.stockCount <= 5,
-        StockFilter.outOfStock => product.stockCount <= 0,
+        StockFilter.lowStockProduct || StockFilter.lowStockBatch =>
+          product.stockCount > 0 && product.stockCount <= 5,
+        StockFilter.outOfStockProduct || StockFilter.outOfStockBatch =>
+          product.stockCount <= 0,
       };
 
       return matchesQuery && matchesFilter;
@@ -77,8 +80,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
             ? (state as InventoryLoaded).activeFilter
             : StockFilter.all;
 
-        final filtered =
-            _filterProducts(products, currentQuery, currentFilter);
+        final filtered = _filterProducts(products, currentQuery, currentFilter);
         emit(
           InventoryLoaded(
             products: products,
@@ -190,13 +192,36 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     );
   }
 
+  Future<void> _onClearOutOfStockBatches(
+    ClearOutOfStockBatchesEvent event,
+    Emitter<InventoryState> emit,
+  ) async {
+    final outOfStockBatches =
+        _allProducts.where((p) => p.stockCount <= 0).toList();
+    if (outOfStockBatches.isEmpty) {
+      event.completer?.complete();
+      return;
+    }
+
+    emit(InventoryLoading());
+    try {
+      for (final batch in outOfStockBatches) {
+        await deleteProduct(batch.id);
+      }
+      await _fetchAndEmit(emit);
+      event.completer?.complete();
+    } catch (e) {
+      emit(InventoryError(e.toString()));
+      event.completer?.completeError(e);
+    }
+  }
+
   void _onSearchProducts(
     SearchProductsEvent event,
     Emitter<InventoryState> emit,
   ) {
     if (state is InventoryLoaded) {
-      final filtered =
-          _filterProducts(_allProducts, event.query, event.filter);
+      final filtered = _filterProducts(_allProducts, event.query, event.filter);
 
       emit(
         InventoryLoaded(

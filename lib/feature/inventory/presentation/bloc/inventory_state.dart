@@ -37,13 +37,50 @@ final class InventoryLoaded extends InventoryState {
 
       final matchesFilter = switch (activeFilter) {
         StockFilter.all => true,
-        StockFilter.inStock => grouped.hasInStockBatch,
-        StockFilter.lowStock => grouped.hasLowStockBatch,
-        StockFilter.outOfStock => grouped.hasOutOfStockBatch,
+        StockFilter.inStock => grouped.totalStockCount > 0,
+        StockFilter.lowStockProduct =>
+          grouped.totalStockCount > 0 && grouped.totalStockCount <= 5,
+        StockFilter.lowStockBatch => grouped.hasLowStockBatch,
+        StockFilter.outOfStockProduct => grouped.totalStockCount <= 0,
+        StockFilter.outOfStockBatch => grouped.hasOutOfStockBatch,
       };
 
       return matchesQuery && matchesFilter;
     }).toList();
+  }
+
+  List<Product> get filteredBatches {
+    final q = searchQuery.toLowerCase().trim();
+    return products.where((batch) {
+      final matchesQuery = q.isEmpty ||
+          batch.itemName.toLowerCase().contains(q) ||
+          batch.partNo.toLowerCase().contains(q) ||
+          batch.model.toLowerCase().contains(q);
+
+      final matchesFilter = switch (activeFilter) {
+        StockFilter.lowStockBatch =>
+          batch.stockCount > 0 && batch.stockCount <= 5,
+        StockFilter.outOfStockBatch => batch.stockCount <= 0,
+        _ => true,
+      };
+
+      return matchesQuery && matchesFilter;
+    }).toList();
+  }
+
+  List<GroupedProduct> get filteredBatchesGrouped {
+    final batches = filteredBatches;
+    final Map<String, List<Product>> map = {};
+    for (final p in batches) {
+      final nameKey = p.itemName.trim().toLowerCase();
+      final modelKey = p.model.trim().toLowerCase();
+      final key = '$nameKey###$modelKey';
+      map.putIfAbsent(key, () => []).add(p);
+    }
+    return map.entries
+        .map((entry) =>
+            GroupedProduct.fromBatches(entry.value.first.partNo, entry.value))
+        .toList();
   }
 
   int get totalSkus => groupedProducts.length;
@@ -51,14 +88,25 @@ final class InventoryLoaded extends InventoryState {
   int get totalStockUnits =>
       products.fold(0, (sum, item) => sum + item.stockCount);
 
-  int get lowStockCount => products
-      .where((item) => item.stockCount > 0 && item.stockCount <= 5)
+  int get inStockCount =>
+      groupedProducts.where((item) => item.totalStockCount > 0).length;
+
+  int get lowStockProductCount => groupedProducts
+      .where((item) => item.totalStockCount > 0 && item.totalStockCount <= 5)
       .length;
 
-  int get outOfStockCount =>
+  int get lowStockBatchCount =>
+      products.where((item) => item.stockCount > 0 && item.stockCount <= 5).length;
+
+  int get outOfStockProductCount =>
+      groupedProducts.where((item) => item.totalStockCount <= 0).length;
+
+  int get outOfStockBatchCount =>
       products.where((item) => item.stockCount <= 0).length;
 
-  int get inStockCount => products.where((item) => item.stockCount > 0).length;
+  int get lowStockCount => lowStockProductCount;
+
+  int get outOfStockCount => outOfStockProductCount;
 
   static List<GroupedProduct> _group(List<Product> list) {
     final Map<String, List<Product>> map = {};

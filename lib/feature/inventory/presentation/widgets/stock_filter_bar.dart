@@ -55,23 +55,23 @@ class StockFilterBar extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             _UnifiedGradientFilterChip(
-              label: 'Low Stock',
+              label: 'Low Stock (Product)',
               count: lowStockCount,
               statusColor: const Color(0xFFF59E0B), // Amber dot
               showIndicator: lowStockCount > 0,
-              isSelected: activeFilter == StockFilter.lowStock,
+              isSelected: activeFilter == StockFilter.lowStockProduct,
               isDark: isDark,
-              onTap: () => onFilterSelected(StockFilter.lowStock),
+              onTap: () => onFilterSelected(StockFilter.lowStockProduct),
             ),
             const SizedBox(width: 6),
             _UnifiedGradientFilterChip(
-              label: 'Out of Stock',
+              label: 'Out of Stock (Product)',
               count: outOfStockCount,
               statusColor: const Color(0xFFEF4444), // Red dot
               showIndicator: outOfStockCount > 0,
-              isSelected: activeFilter == StockFilter.outOfStock,
+              isSelected: activeFilter == StockFilter.outOfStockProduct,
               isDark: isDark,
-              onTap: () => onFilterSelected(StockFilter.outOfStock),
+              onTap: () => onFilterSelected(StockFilter.outOfStockProduct),
             ),
             const SizedBox(width: 6),
             _UnifiedGradientFilterChip(

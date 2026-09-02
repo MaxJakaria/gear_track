@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/widgets/custom_confirm_delete_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -52,54 +53,34 @@ class _ProductCardState extends State<ProductCard> {
     return '$year-$month-$day';
   }
 
-  void _confirmDelete(BuildContext context, Product batch) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Color(0xFFD32F2F)),
-            SizedBox(width: 8),
-            Text('Delete Batch Entry'),
-          ],
-        ),
-        content: Text(
+  Future<void> _confirmDelete(Product batch) async {
+    final confirmed = await CustomConfirmDeleteDialog.show(
+      context,
+      title: 'Delete Batch Entry',
+      description:
           'Are you sure you want to delete this stock batch?\n\n'
+          '• Item: ${batch.itemName}\n'
+          '• Part No: ${batch.partNo}\n'
           '• Cost Code: ${batch.costCode}\n'
           '• Quantity: ${batch.stockCount} units\n'
           '• Entry Date: ${_formatDate(batch.entryDate)}',
-          style: const TextStyle(height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFD32F2F),
-            ),
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              setState(() => _deletingBatchId = batch.id);
-              final completer = Completer<void>();
-              context.read<InventoryBloc>().add(
-                DeleteProductEvent(batch.id, completer: completer),
-              );
-              try {
-                await completer.future;
-              } finally {
-                if (mounted) {
-                  setState(() => _deletingBatchId = null);
-                }
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
     );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deletingBatchId = batch.id);
+    final completer = Completer<void>();
+    if (!mounted) return;
+    context.read<InventoryBloc>().add(
+      DeleteProductEvent(batch.id, completer: completer),
+    );
+    try {
+      await completer.future;
+    } finally {
+      if (mounted) {
+        setState(() => _deletingBatchId = null);
+      }
+    }
   }
 
   @override
@@ -366,7 +347,7 @@ class _ProductCardState extends State<ProductCard> {
                                           batch,
                                         ),
                                         onDelete: () =>
-                                            _confirmDelete(context, batch),
+                                            _confirmDelete(batch),
                                       );
                                     },
                                   ),
