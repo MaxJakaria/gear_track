@@ -5,11 +5,13 @@ import 'kpi_metric_card.dart';
 
 class KpiSummaryGrid extends StatelessWidget {
   final AnalyticsSummary summary;
+  final bool showInvestment;
   final String currencySymbol;
 
   const KpiSummaryGrid({
     super.key,
     required this.summary,
+    this.showInvestment = true,
     this.currencySymbol = '৳',
   });
 
@@ -24,24 +26,40 @@ class KpiSummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        // 1. Total Revenue Card
-        Expanded(
-          child: KpiMetricCard(
-            label: 'Total Revenue',
-            value: _formatCurrency(summary.totalSales),
+        if (showInvestment) ...[
+          // 1. Total Investment Card (on top, hidden when filter is applied)
+          SizedBox(
+            width: double.infinity,
+            child: KpiMetricCard(
+              label: 'Total Investment',
+              value: _formatCurrency(summary.totalInvestment),
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+        ],
 
-        const SizedBox(width: 12),
+        Row(
+          children: [
+            // 2. Total Revenue Card
+            Expanded(
+              child: KpiMetricCard(
+                label: 'Total Revenue',
+                value: _formatCurrency(summary.totalSales),
+              ),
+            ),
 
-        // 2. Total Profit Card
-        Expanded(
-          child: KpiMetricCard(
-            label: 'Total Profit',
-            value: _formatCurrency(summary.totalProfit),
-          ),
+            const SizedBox(width: 12),
+
+            // 3. Total Profit Card
+            Expanded(
+              child: KpiMetricCard(
+                label: 'Total Profit',
+                value: _formatCurrency(summary.totalProfit),
+              ),
+            ),
+          ],
         ),
       ],
     );

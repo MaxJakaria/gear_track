@@ -19,6 +19,10 @@ class ReportsRepositoryImpl implements ReportsRepository {
   final ReportsRemoteDataSource remoteDataSource;
   final SettingsRepository settingsRepository;
 
+  List<SaleModel>? _cachedSales;
+  List<ProductModel>? _cachedProducts;
+  CostCodeMapping? _cachedCostCodeMapping;
+
   ReportsRepositoryImpl({
     required this.remoteDataSource,
     required this.settingsRepository,
@@ -29,21 +33,39 @@ class ReportsRepositoryImpl implements ReportsRepository {
     ReportPeriod period, {
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   }) async {
     try {
-      final results = await Future.wait([
-        remoteDataSource.getAllSales(),
-        remoteDataSource.getAllProducts(),
-        settingsRepository.getCostCodeMapping(),
-      ]);
+      final List<SaleModel> allSales;
+      final List<ProductModel> allProducts;
+      final CostCodeMapping costCodeMapping;
 
-      final allSales = results[0] as List<SaleModel>;
-      final allProducts = results[1] as List<ProductModel>;
-      final costCodeMappingEither =
-          results[2] as Either<Failure, CostCodeMapping>;
-      final costCodeMapping = costCodeMappingEither.getOrElse(
-        (_) => CostCodeMapping.defaultMapping(),
-      );
+      if (!forceRefresh &&
+          _cachedSales != null &&
+          _cachedProducts != null &&
+          _cachedCostCodeMapping != null) {
+        allSales = _cachedSales!;
+        allProducts = _cachedProducts!;
+        costCodeMapping = _cachedCostCodeMapping!;
+      } else {
+        final results = await Future.wait([
+          remoteDataSource.getAllSales(),
+          remoteDataSource.getAllProducts(),
+          settingsRepository.getCostCodeMapping(),
+        ]);
+
+        allSales = results[0] as List<SaleModel>;
+        allProducts = results[1] as List<ProductModel>;
+        final costCodeMappingEither =
+            results[2] as Either<Failure, CostCodeMapping>;
+        costCodeMapping = costCodeMappingEither.getOrElse(
+          (_) => CostCodeMapping.defaultMapping(),
+        );
+
+        _cachedSales = allSales;
+        _cachedProducts = allProducts;
+        _cachedCostCodeMapping = costCodeMapping;
+      }
 
       final now = DateTime.now();
 
@@ -60,11 +82,19 @@ class ReportsRepositoryImpl implements ReportsRepository {
             (productStockCountMap[key] ?? 0) + prod.stockCount;
       }
 
-      // 2. Compute Low Stock Alerts (Products with total stock <= 5)
+      // 2. Compute Low Stock Alerts & Total Investment (in-stock items value)
       int lowStockCount = 0;
       for (final totalStock in productStockCountMap.values) {
         if (totalStock <= 5) {
           lowStockCount++;
+        }
+      }
+
+      double totalInvestment = 0.0;
+      for (final prod in allProducts) {
+        if (prod.stockCount > 0) {
+          final costPerUnit = costCodeMapping.decode(prod.costCode);
+          totalInvestment += prod.stockCount * costPerUnit;
         }
       }
 
@@ -258,6 +288,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
           totalProfit: totalProfit,
           itemsSold: itemsSold,
           lowStockAlerts: lowStockCount,
+          totalInvestment: totalInvestment,
         ),
         salesRecords: salesRecords,
         dailySalesTrend: dailySalesTrend,

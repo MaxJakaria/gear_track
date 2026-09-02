@@ -37,7 +37,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
   @override
   void didUpdateWidget(covariant EmbeddedCalendarCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isLoading && !widget.isLoading) {
+    if (!widget.isLoading && _isLocalLoading) {
       setState(() {
         _isLocalLoading = false;
         _loadingAction = null;
@@ -48,6 +48,8 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
       setState(() {
         _startDate = widget.selectedStartDate;
         _endDate = widget.selectedEndDate;
+        _isLocalLoading = false;
+        _loadingAction = null;
       });
     }
   }
@@ -185,8 +187,8 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
                   color: (hasSelection && !isBusy)
                       ? null
                       : (isDark
-                          ? const Color(0xFF334155)
-                          : const Color(0xFFE2E8F0)),
+                            ? const Color(0xFF334155)
+                            : const Color(0xFFE2E8F0)),
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: (hasSelection && !isBusy)
                       ? [
@@ -202,9 +204,7 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
                   color: Colors.transparent,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(8),
-                    onTap: (hasSelection && !isBusy)
-                        ? _applySelection
-                        : null,
+                    onTap: (hasSelection && !isBusy) ? _applySelection : null,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Center(
@@ -225,8 +225,8 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
                                   color: (hasSelection && !isBusy)
                                       ? Colors.white
                                       : (isDark
-                                          ? const Color(0xFF64748B)
-                                          : const Color(0xFF94A3B8)),
+                                            ? const Color(0xFF64748B)
+                                            : const Color(0xFF94A3B8)),
                                 ),
                               ),
                       ),

@@ -13,11 +13,13 @@ class GetAnalyticsReport {
     ReportPeriod period, {
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   }) async {
     return await repository.getAnalyticsReport(
       period,
       startDate: startDate,
       endDate: endDate,
+      forceRefresh: forceRefresh,
     );
   }
 }

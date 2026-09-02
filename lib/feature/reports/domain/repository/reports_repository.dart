@@ -8,5 +8,6 @@ abstract class ReportsRepository {
     ReportPeriod period, {
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   });
 }
