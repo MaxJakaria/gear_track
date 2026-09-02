@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/pages/about_page.dart';
-import 'package:gear_track/core/pages/developer_info_page.dart';
 import 'package:gear_track/core/pages/help_guide_page.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -157,22 +156,10 @@ class _AppDrawerState extends State<AppDrawer> {
                       },
                     ),
 
-                    // 5. Developer Info
-                    _buildMenuCard(
-                      icon: Icons.code_rounded,
-                      title: 'Developer Info',
-                      iconColor: const Color(0xFFA855F7),
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, DeveloperInfoPage.route());
-                      },
-                    ),
-
-                    // 6. About GearTrack
+                    // 5. About GearTrack
                     _buildMenuCard(
                       icon: Icons.info_rounded,
-                      title: 'About GearTrack',
+                      title: 'About',
                       iconColor: const Color(0xFF0284C7),
                       isDark: isDark,
                       onTap: () {
@@ -181,7 +168,7 @@ class _AppDrawerState extends State<AppDrawer> {
                       },
                     ),
 
-                    // 7. Log Out
+                    // 6. Log Out
                     _buildMenuCard(
                       icon: Icons.logout_rounded,
                       title: 'Log Out',
@@ -241,7 +228,7 @@ class _AppDrawerState extends State<AppDrawer> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Filter Header (Clean Text - No Hover Effect)
+              // 1. Filter Header (Clean Text)
               GestureDetector(
                 onTap: () => setState(() => _filterMenuOpen = !_filterMenuOpen),
                 behavior: HitTestBehavior.opaque,
@@ -252,30 +239,42 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.tune_rounded,
-                        size: 18,
-                        color: isDark
-                            ? Colors.white70
-                            : const Color(0xFF475569),
-                      ),
-                      const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          'Filter',
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                            color: isDark
-                                ? const Color(0xFFF8FAFC)
-                                : const Color(0xFF0F172A),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Inventory Filters',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              selected == StockFilter.all
+                                  ? 'All items shown'
+                                  : 'Filtered: ${selected.name}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: selected == StockFilter.all
+                                    ? (isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B))
+                                    : const Color(0xFF38BDF8),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       AnimatedRotation(
                         turns: _filterMenuOpen ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 180),
+                        duration: const Duration(milliseconds: 200),
                         child: Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 18,
@@ -289,19 +288,30 @@ class _AppDrawerState extends State<AppDrawer> {
                 ),
               ),
 
-              // 2. Pure Text-Based Dropdown Body
+              // 2. Expandable Filter Body
               AnimatedSize(
-                duration: const Duration(milliseconds: 180),
+                duration: const Duration(milliseconds: 220),
                 curve: Curves.easeInOutCubic,
                 alignment: Alignment.topCenter,
                 clipBehavior: Clip.hardEdge,
                 child: _filterMenuOpen
                     ? Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // In Stock Option with Count
+                            Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: isDark
+                                  ? const Color(
+                                      0xFF334155,
+                                    ).withValues(alpha: 0.3)
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                            const SizedBox(height: 6),
+
+                            // In Stock Filter
                             _buildTextRow(
                               title: 'In Stock',
                               count: inStockCount,

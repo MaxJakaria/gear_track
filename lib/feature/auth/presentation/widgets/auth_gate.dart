@@ -1,87 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/pages/main_navigation_page.dart';
-import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/auth/presentation/pages/login_page.dart';
+import 'package:gear_track/feature/splash/presentation/pages/splash_page.dart';
 
-class AuthGate extends StatelessWidget {
+/// Manages root app routing: displays animated [SplashPage] on cold start,
+/// then smoothly transitions between [MainNavigationPage] and [LoginPage].
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        if (state is Authenticated) {
-          return const MainNavigationPage();
-        }
-
-        if (state is AuthInitial) {
-          return const _AuthSplashView();
-        }
-
-        return const LoginPage();
-      },
-    );
-  }
+  State<AuthGate> createState() => _AuthGateState();
 }
 
-class _AuthSplashView extends StatelessWidget {
-  const _AuthSplashView();
+class _AuthGateState extends State<AuthGate> {
+  bool _splashComplete = false;
+
+  void _onSplashComplete() {
+    if (mounted) {
+      setState(() {
+        _splashComplete = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (!_splashComplete) {
+      return SplashPage(
+        onInitializationComplete: _onSplashComplete,
+      );
+    }
 
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient(context),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryButton(context).withValues(
-                      alpha: 0.35,
-                    ),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.precision_manufacturing_rounded,
-                  color: Colors.white,
-                  size: 38,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Initializing GearTrack...',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? const Color(0xFF94A3B8)
-                    : const Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return BlocBuilder<AuthBloc, AuthState>(
+      buildWhen: (previous, current) {
+        if (current is Authenticated) return true;
+        if (current is Unauthenticated) return true;
+        if (previous is Authenticated && current is! Authenticated) return true;
+        return false;
+      },
+      builder: (context, state) {
+        final Widget destination;
+        final Key destinationKey;
+
+        if (state is Authenticated) {
+          destination = const MainNavigationPage();
+          destinationKey = const ValueKey('MainNavigationPage');
+        } else {
+          destination = const LoginPage();
+          destinationKey = const ValueKey('LoginPage');
+        }
+
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          switchInCurve: Curves.easeInOut,
+          switchOutCurve: Curves.easeInOut,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          child: KeyedSubtree(
+            key: destinationKey,
+            child: destination,
+          ),
+        );
+      },
     );
   }
 }
