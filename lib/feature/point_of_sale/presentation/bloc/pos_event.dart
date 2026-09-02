@@ -7,6 +7,10 @@ sealed class PosEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+class LoadSalesEvent extends PosEvent {
+  const LoadSalesEvent();
+}
+
 class FetchSalesEvent extends PosEvent {
   const FetchSalesEvent();
 }
@@ -54,7 +58,8 @@ class AddToCartEvent extends PosEvent {
   });
 
   @override
-  List<Object?> get props => [productId, itemName, partNo, costCode, availableStock];
+  List<Object?> get props =>
+      [productId, itemName, partNo, costCode, availableStock];
 }
 
 class UpdateCartQuantityEvent extends PosEvent {
@@ -72,15 +77,31 @@ class UpdateCartQuantityEvent extends PosEvent {
 
 class UpdateCartPriceEvent extends PosEvent {
   final String cartItemId;
-  final double price;
+  final double sellPrice;
 
   const UpdateCartPriceEvent({
     required this.cartItemId,
-    required this.price,
+    double? sellPrice,
+    double? price,
+  }) : sellPrice = sellPrice ?? price ?? 0.0;
+
+  double get price => sellPrice;
+
+  @override
+  List<Object?> get props => [cartItemId, sellPrice];
+}
+
+class UpdateCartCostCodeEvent extends PosEvent {
+  final String cartItemId;
+  final String costCode;
+
+  const UpdateCartCostCodeEvent({
+    required this.cartItemId,
+    required this.costCode,
   });
 
   @override
-  List<Object?> get props => [cartItemId, price];
+  List<Object?> get props => [cartItemId, costCode];
 }
 
 class UpdateCartProductEvent extends PosEvent {
@@ -125,5 +146,10 @@ class ClearCartEvent extends PosEvent {
 }
 
 class CheckoutCartEvent extends PosEvent {
-  const CheckoutCartEvent();
+  final bool generatePdf;
+
+  const CheckoutCartEvent({this.generatePdf = true});
+
+  @override
+  List<Object?> get props => [generatePdf];
 }

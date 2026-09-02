@@ -2,17 +2,27 @@ import 'package:flutter/material.dart';
 
 /// Clean Stock Status Indicator for Product Cards (No Background)
 /// - Normal (> 5): Green dot + white count
-/// - Low stock (1-5): Amber dot + white count
+/// - Low stock (1-5 or batch alert): Amber dot + white count
 /// - Out of stock (<= 0): Red alert icon
 class StockStatusBadge extends StatelessWidget {
   final int totalStockCount;
+  final bool hasOutOfStockBatch;
+  final bool hasLowStockBatch;
 
-  const StockStatusBadge({super.key, required this.totalStockCount});
+  const StockStatusBadge({
+    super.key,
+    required this.totalStockCount,
+    this.hasOutOfStockBatch = false,
+    this.hasLowStockBatch = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final bool isOutOfStock = totalStockCount <= 0;
-    final bool isLowStock = totalStockCount > 0 && totalStockCount <= 5;
+    final bool isLowStock = !isOutOfStock &&
+        (hasLowStockBatch ||
+            hasOutOfStockBatch ||
+            (totalStockCount > 0 && totalStockCount <= 5));
 
     // 1. Out of Stock: Just Red Alert Icon
     if (isOutOfStock) {
@@ -23,7 +33,7 @@ class StockStatusBadge extends StatelessWidget {
       );
     }
 
-    // 2. Low Stock (1 to 5): Amber Dot + White Count
+    // 2. Low Stock (1 to 5 or alert batch): Amber Dot + White Count
     if (isLowStock) {
       return Row(
         mainAxisSize: MainAxisSize.min,

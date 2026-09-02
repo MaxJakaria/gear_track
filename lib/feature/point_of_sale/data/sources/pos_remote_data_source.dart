@@ -4,9 +4,25 @@ import 'package:gear_track/feature/receipt_verification/data/models/invoice_mode
 
 abstract class PosRemoteDataSource {
   Future<void> addSale(SaleModel saleModel);
+  Future<void> checkoutCart({
+    required List<SaleModel> sales,
+    required InvoiceModel invoice,
+  });
   Future<List<SaleModel>> getSales();
   Future<List<SaleModel>> getProductSales(String productId);
   Future<void> saveInvoice(InvoiceModel invoiceModel);
+}
+
+class _ResolvedCartItem {
+  final SaleModel sale;
+  final DocumentReference<Map<String, dynamic>> productRef;
+  final DocumentReference<Map<String, dynamic>>? batchRef;
+
+  _ResolvedCartItem({
+    required this.sale,
+    required this.productRef,
+    this.batchRef,
+  });
 }
 
 class PosRemoteDataSourceImpl implements PosRemoteDataSource {
@@ -14,118 +30,274 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
 
   PosRemoteDataSourceImpl({required this.firestore});
 
-  @override
-  Future<void> addSale(SaleModel saleModel) async {
-    final productId = saleModel.productId;
-    final int soldQuantity = saleModel.quantity;
+  /// Helper to resolve a product DocumentReference and optional batch DocumentReference in O(1)
+  Future<_ResolvedCartItem> _resolveCartItem(SaleModel sale) async {
+    final productId = sale.productId;
+    final parts = productId.split('/');
 
-    // Fetch the stock entries (sub-collection) ordered by date ascending for FIFO
-    final stockEntriesSnapshot = await firestore
-        .collection('products')
-        .doc(productId)
-        .collection('stock_entries')
-        .orderBy('date', descending: false)
+    // 1. Direct O(1) path resolution: "parentDocId/entryDocId"
+    if (parts.length == 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+      final productRef = firestore.collection('products').doc(parts[0]);
+      final batchRef = productRef.collection('stock_entries').doc(parts[1]);
+      return _ResolvedCartItem(
+        sale: sale,
+        productRef: productRef,
+        batchRef: batchRef,
+      );
+    }
+
+    // 2. Direct product document check: "products/{productId}"
+    final directDoc =
+        await firestore.collection('products').doc(productId).get();
+    if (directDoc.exists) {
+      return _ResolvedCartItem(
+        sale: sale,
+        productRef: directDoc.reference,
+      );
+    }
+
+    // 3. Fallback: Search by partNo
+    if (sale.partNo.isNotEmpty) {
+      final partDoc =
+          await firestore.collection('products').doc(sale.partNo).get();
+      if (partDoc.exists) {
+        return _ResolvedCartItem(
+          sale: sale,
+          productRef: partDoc.reference,
+        );
+      }
+
+      final q = await firestore
+          .collection('products')
+          .where('partNo', isEqualTo: sale.partNo)
+          .limit(1)
+          .get();
+      if (q.docs.isNotEmpty) {
+        return _ResolvedCartItem(
+          sale: sale,
+          productRef: q.docs.first.reference,
+        );
+      }
+    }
+
+    // 4. Fallback: Lookup specific batch in collectionGroup
+    final entryQuery = await firestore
+        .collectionGroup('stock_entries')
+        .where(FieldPath.documentId, isEqualTo: productId)
+        .limit(1)
         .get();
+    if (entryQuery.docs.isNotEmpty) {
+      final batchRef = entryQuery.docs.first.reference;
+      final productRef = batchRef.parent.parent as DocumentReference<Map<String, dynamic>>;
+      return _ResolvedCartItem(
+        sale: sale,
+        productRef: productRef,
+        batchRef: batchRef,
+      );
+    }
 
+    throw FirebaseException(
+      plugin: 'cloud_firestore',
+      code: 'not-found',
+      message: 'Product not found for "${sale.itemName}" (ID: $productId, Part No: ${sale.partNo})',
+    );
+  }
+
+  @override
+  Future<void> checkoutCart({
+    required List<SaleModel> sales,
+    required InvoiceModel invoice,
+  }) async {
+    if (sales.isEmpty) return;
+
+    // 1. Resolve all cart items concurrently in O(1) time
+    final resolvedItems = await Future.wait(
+      sales.map((s) => _resolveCartItem(s)),
+    );
+
+    // 2. Run Single Atomic Transaction for the Entire Checkout
     await firestore.runTransaction((transaction) async {
-      // 1. READ: Get main product document inside transaction
-      final productRef = firestore.collection('products').doc(productId);
-      final productSnapshot = await transaction.get(productRef);
+      // Step A: READ - Get all unique product documents
+      final Map<String, DocumentSnapshot<Map<String, dynamic>>> productSnapshots = {};
+      final Map<String, int> productTotalStocks = {};
 
-      if (!productSnapshot.exists) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'not-found',
-          message: 'Product not found with ID: $productId',
-        );
+      for (final item in resolvedItems) {
+        final pId = item.productRef.id;
+        if (!productSnapshots.containsKey(pId)) {
+          final snap = await transaction.get(item.productRef);
+          if (!snap.exists) {
+            throw FirebaseException(
+              plugin: 'cloud_firestore',
+              code: 'not-found',
+              message: 'Product document not found: $pId',
+            );
+          }
+          productSnapshots[pId] = snap;
+          final pData = snap.data() ?? {};
+          productTotalStocks[pId] =
+              (pData['totalStock'] as num?)?.toInt() ?? 0;
+        }
       }
 
-      final productData = productSnapshot.data() ?? {};
-      final int currentTotalStock = productData['totalStock'] ?? 0;
+      // Step B: READ - Get all batch documents
+      final Map<String, DocumentSnapshot<Map<String, dynamic>>> batchSnapshots = {};
+      final Map<String, int> batchRemainingStocks = {};
 
-      if (currentTotalStock < soldQuantity) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'out-of-range',
-          message: 'Insufficient product total stock. Available: $currentTotalStock, Sold: $soldQuantity',
-        );
-      }
-
-      // 2. READ: Fetch all candidate batch document snapshots FIRST before any writes.
-      // Firestore transactions strictly enforce that all reads must occur before any writes.
-      final activeDocs = stockEntriesSnapshot.docs.where((doc) {
-        final data = doc.data();
-        final remaining = data['remainingQuantity'] ?? 0;
-        return (remaining as num) > 0;
-      }).toList();
-
-      final List<MapEntry<DocumentReference, int>> batchStates = [];
-      int totalAvailableInBatches = 0;
-
-      for (final doc in activeDocs) {
-        final entrySnapshot = await transaction.get(doc.reference);
-        if (entrySnapshot.exists) {
-          final entryData = entrySnapshot.data() ?? {};
-          final int remaining = entryData['remainingQuantity'] ?? 0;
-          if (remaining > 0) {
-            batchStates.add(MapEntry(doc.reference, remaining));
-            totalAvailableInBatches += remaining;
+      for (final item in resolvedItems) {
+        if (item.batchRef != null) {
+          final bPath = item.batchRef!.path;
+          if (!batchSnapshots.containsKey(bPath)) {
+            final snap = await transaction.get(item.batchRef!);
+            if (snap.exists) {
+              batchSnapshots[bPath] = snap;
+              final bData = snap.data() ?? {};
+              batchRemainingStocks[bPath] =
+                  (bData['remainingQuantity'] as num?)?.toInt() ?? 0;
+            }
           }
         }
       }
 
-      if (totalAvailableInBatches < soldQuantity) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'out-of-range',
-          message: 'Insufficient stock in active batches. Total remaining: $totalAvailableInBatches, Sold: $soldQuantity',
-        );
-      }
+      // Step C: Validate stock & compute deductions in memory
+      final List<MapEntry<DocumentReference<Map<String, dynamic>>, int>> batchUpdates = [];
+      final Map<String, int> finalProductStocks = Map.from(productTotalStocks);
 
-      // 3. LOGIC: Calculate FIFO stock deductions in memory
-      int remainingToDeduct = soldQuantity;
-      final List<MapEntry<DocumentReference, int>> batchUpdates = [];
+      for (final item in resolvedItems) {
+        final pId = item.productRef.id;
+        final currentProdStock = finalProductStocks[pId] ?? 0;
 
-      for (final batch in batchStates) {
-        if (remainingToDeduct <= 0) break;
+        if (currentProdStock < item.sale.quantity) {
+          throw FirebaseException(
+            plugin: 'cloud_firestore',
+            code: 'out-of-range',
+            message:
+                'Insufficient total stock for "${item.sale.itemName}". Available: $currentProdStock, Requested: ${item.sale.quantity}',
+          );
+        }
 
-        final ref = batch.key;
-        final currentRem = batch.value;
+        finalProductStocks[pId] = currentProdStock - item.sale.quantity;
 
-        if (currentRem >= remainingToDeduct) {
-          batchUpdates.add(MapEntry(ref, currentRem - remainingToDeduct));
-          remainingToDeduct = 0;
-        } else {
-          remainingToDeduct -= currentRem;
-          batchUpdates.add(MapEntry(ref, 0));
+        if (item.batchRef != null) {
+          final bPath = item.batchRef!.path;
+          final currentBatchStock = batchRemainingStocks[bPath] ?? 0;
+          if (currentBatchStock < item.sale.quantity) {
+            throw FirebaseException(
+              plugin: 'cloud_firestore',
+              code: 'out-of-range',
+              message:
+                  'Insufficient batch stock for "${item.sale.itemName}". Available: $currentBatchStock, Requested: ${item.sale.quantity}',
+            );
+          }
+          final newBatchStock = currentBatchStock - item.sale.quantity;
+          batchRemainingStocks[bPath] = newBatchStock;
+          batchUpdates.add(MapEntry(item.batchRef!, newBatchStock));
         }
       }
 
-      if (remainingToDeduct > 0) {
-        throw FirebaseException(
-          plugin: 'cloud_firestore',
-          code: 'aborted',
-          message: 'FIFO stock deduction failed. Could not satisfy quantity: $soldQuantity',
-        );
-      }
+      // Step D: ALL WRITES AFTER ALL READS (Single Atomic Commit)
+      // 1. Write Invoice
+      final invoiceRef =
+          firestore.collection('invoices').doc(invoice.invoiceId);
+      transaction.set(invoiceRef, invoice.toMap(), SetOptions(merge: true));
 
-      // 4. WRITE: Perform all batch updates
+      // 2. Write Batch stock updates
       for (final update in batchUpdates) {
         transaction.update(update.key, {'remainingQuantity': update.value});
       }
 
-      // 5. WRITE: Update main product document's totalStock
-      final int newTotalStock = currentTotalStock - soldQuantity;
-      transaction.update(productRef, {
-        'totalStock': newTotalStock,
-      });
+      // 3. Write Product totalStock updates
+      for (final entry in finalProductStocks.entries) {
+        final pRef = firestore.collection('products').doc(entry.key);
+        transaction.update(pRef, {'totalStock': entry.value});
+      }
 
-      // 6. WRITE: Save sale record into 'sales -> productId -> sales_records -> saleId'
-      final salesProductRef = firestore.collection('sales').doc(productId);
+      // 4. Write Individual Sales Records
+      for (final item in resolvedItems) {
+        final pId = item.productRef.id;
+        final salesProductRef =
+            firestore.collection('sales').doc(pId);
+        transaction.set(
+          salesProductRef,
+          {
+            'productId': pId,
+            'itemName': item.sale.itemName,
+            'lastSaleDate': Timestamp.fromDate(item.sale.saleDate),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+
+        final saleRecordRef =
+            salesProductRef.collection('sales_records').doc(item.sale.id);
+        transaction.set(saleRecordRef, item.sale.toMap());
+
+        final mainSaleRef = firestore.collection('sales').doc(item.sale.id);
+        transaction.set(mainSaleRef, item.sale.toMap());
+      }
+    });
+  }
+
+  @override
+  Future<void> addSale(SaleModel saleModel) async {
+    final item = await _resolveCartItem(saleModel);
+
+    await firestore.runTransaction((transaction) async {
+      final productSnap = await transaction.get(item.productRef);
+      if (!productSnap.exists) {
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'not-found',
+          message: 'Product document not found: ${item.productRef.id}',
+        );
+      }
+
+      final productData = productSnap.data() ?? {};
+      final int currentTotalStock =
+          (productData['totalStock'] as num?)?.toInt() ?? 0;
+
+      if (currentTotalStock < saleModel.quantity) {
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'out-of-range',
+          message:
+              'Insufficient stock for "${saleModel.itemName}". Available: $currentTotalStock, Sold: ${saleModel.quantity}',
+        );
+      }
+
+      if (item.batchRef != null) {
+        final batchSnap = await transaction.get(item.batchRef!);
+        if (batchSnap.exists) {
+          final batchData = batchSnap.data() ?? {};
+          final int batchRemaining =
+              (batchData['remainingQuantity'] as num?)?.toInt() ?? 0;
+          if (batchRemaining < saleModel.quantity) {
+            throw FirebaseException(
+              plugin: 'cloud_firestore',
+              code: 'out-of-range',
+              message:
+                  'Insufficient batch stock for "${saleModel.itemName}". Available: $batchRemaining, Sold: ${saleModel.quantity}',
+            );
+          }
+          transaction.update(
+            item.batchRef!,
+            {'remainingQuantity': batchRemaining - saleModel.quantity},
+          );
+        }
+      }
+
+      // Update product total stock
+      transaction.update(
+        item.productRef,
+        {'totalStock': currentTotalStock - saleModel.quantity},
+      );
+
+      // Save sale records
+      final salesProductRef =
+          firestore.collection('sales').doc(item.productRef.id);
       transaction.set(
         salesProductRef,
         {
-          'productId': productId,
+          'productId': item.productRef.id,
           'itemName': saleModel.itemName,
           'lastSaleDate': Timestamp.fromDate(saleModel.saleDate),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -133,8 +305,12 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
         SetOptions(merge: true),
       );
 
-      final saleRecordRef = salesProductRef.collection('sales_records').doc(saleModel.id);
+      final saleRecordRef =
+          salesProductRef.collection('sales_records').doc(saleModel.id);
       transaction.set(saleRecordRef, saleModel.toMap());
+
+      final mainSaleRef = firestore.collection('sales').doc(saleModel.id);
+      transaction.set(mainSaleRef, saleModel.toMap());
     });
   }
 

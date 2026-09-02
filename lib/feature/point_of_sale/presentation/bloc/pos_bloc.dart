@@ -2,42 +2,76 @@ import 'dart:math';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
-import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/sale_entity.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/add_sale.dart';
+import 'package:gear_track/feature/point_of_sale/domain/usecases/checkout_cart.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/get_product_sales.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/get_sales.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/save_invoice.dart';
+import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
 
 part 'pos_event.dart';
 part 'pos_state.dart';
 
 class PosBloc extends Bloc<PosEvent, PosState> {
-  final AddSale addSale;
   final GetSales getSales;
+  final AddSale addSale;
+  final CheckoutCart checkoutCart;
   final GetProductSales getProductSales;
   final SaveInvoice saveInvoice;
 
-  List<SaleEntity> _allSales = [];
   List<CartItem> _cartItems = [];
+  List<SaleEntity> _allSales = [];
 
   PosBloc({
-    required this.addSale,
     required this.getSales,
+    required this.addSale,
+    required this.checkoutCart,
     required this.getProductSales,
     required this.saveInvoice,
   }) : super(PosInitial()) {
+    on<LoadSalesEvent>(_onLoadSales);
     on<FetchSalesEvent>(_onFetchSales);
-    on<FetchProductSalesEvent>(_onFetchProductSales);
-    on<AddSaleEvent>(_onAddSale);
     on<SearchSalesEvent>(_onSearchSales);
     on<AddToCartEvent>(_onAddToCart);
     on<UpdateCartQuantityEvent>(_onUpdateCartQuantity);
     on<UpdateCartPriceEvent>(_onUpdateCartPrice);
+    on<UpdateCartCostCodeEvent>(_onUpdateCartCostCode);
     on<UpdateCartProductEvent>(_onUpdateCartProduct);
     on<RemoveCartItemEvent>(_onRemoveCartItem);
     on<ClearCartEvent>(_onClearCart);
     on<CheckoutCartEvent>(_onCheckoutCart);
+  }
+
+  void _emitLoadedState(
+    Emitter<PosState> emit, {
+    String searchQuery = '',
+    List<SaleEntity>? searchResults,
+  }) {
+    emit(
+      PosLoaded(
+        sales: _allSales,
+        filteredSales: searchResults ?? _allSales,
+        cartItems: List.unmodifiable(_cartItems),
+        searchQuery: searchQuery,
+      ),
+    );
+  }
+
+  Future<void> _onLoadSales(
+    LoadSalesEvent event,
+    Emitter<PosState> emit,
+  ) async {
+    emit(PosLoading());
+    final salesResult = await getSales();
+
+    salesResult.fold(
+      (failure) => emit(PosError(failure.message)),
+      (sales) {
+        _allSales = sales;
+        _emitLoadedState(emit);
+      },
+    );
   }
 
   Future<void> _onFetchSales(
@@ -45,57 +79,13 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     Emitter<PosState> emit,
   ) async {
     emit(PosLoading());
-    final result = await getSales();
-    result.fold(
+    final salesResult = await getSales();
+
+    salesResult.fold(
       (failure) => emit(PosError(failure.message)),
       (sales) {
-        final sortedSales = List<SaleEntity>.from(sales)
-          ..sort((a, b) => b.saleDate.compareTo(a.saleDate));
-        _allSales = sortedSales;
-        emit(
-          PosLoaded(
-            sales: _allSales,
-            filteredSales: _allSales,
-            cartItems: List.from(_cartItems),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _onFetchProductSales(
-    FetchProductSalesEvent event,
-    Emitter<PosState> emit,
-  ) async {
-    emit(PosLoading());
-    final result = await getProductSales(event.productId);
-    result.fold(
-      (failure) => emit(PosError(failure.message)),
-      (sales) {
-        final sortedSales = List<SaleEntity>.from(sales)
-          ..sort((a, b) => b.saleDate.compareTo(a.saleDate));
-        emit(
-          PosLoaded(
-            sales: sortedSales,
-            filteredSales: sortedSales,
-            cartItems: List.from(_cartItems),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _onAddSale(
-    AddSaleEvent event,
-    Emitter<PosState> emit,
-  ) async {
-    emit(SaleAdding());
-    final result = await addSale(event.sale);
-    result.fold(
-      (failure) => emit(PosError(failure.message)),
-      (_) {
-        emit(const SaleAddedSuccess(message: 'Sale recorded successfully!'));
-        add(const FetchSalesEvent());
+        _allSales = sales;
+        _emitLoadedState(emit);
       },
     );
   }
@@ -104,50 +94,61 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     SearchSalesEvent event,
     Emitter<PosState> emit,
   ) {
-    if (state is PosLoaded) {
-      final query = event.query.toLowerCase().trim();
-      if (query.isEmpty) {
-        emit(
-          (state as PosLoaded).copyWith(
-            filteredSales: _allSales,
-            searchQuery: '',
-          ),
-        );
-      } else {
-        final filtered = _allSales.where((sale) {
-          final nameMatch = sale.itemName.toLowerCase().contains(query);
-          final idMatch = sale.productId.toLowerCase().contains(query);
-          final invMatch = sale.invoiceId.toLowerCase().contains(query);
-          return nameMatch || idMatch || invMatch;
-        }).toList();
-
-        emit(
-          (state as PosLoaded).copyWith(
-            filteredSales: filtered,
-            searchQuery: event.query,
-          ),
-        );
-      }
+    final query = event.query.toLowerCase().trim();
+    if (query.isEmpty) {
+      _emitLoadedState(emit, searchQuery: '', searchResults: _allSales);
+      return;
     }
+
+    final filtered = _allSales.where((sale) {
+      final nameMatch = sale.itemName.toLowerCase().contains(query);
+      final partMatch = sale.productId.toLowerCase().contains(query);
+      final codeMatch = sale.costCode.toLowerCase().contains(query);
+      final dateMatch = sale.saleDate.toString().contains(query);
+      final invoiceMatch = sale.invoiceId.toLowerCase().contains(query);
+
+      return nameMatch ||
+          partMatch ||
+          codeMatch ||
+          dateMatch ||
+          invoiceMatch;
+    }).toList();
+
+    _emitLoadedState(
+      emit,
+      searchQuery: event.query,
+      searchResults: filtered,
+    );
   }
 
   void _onAddToCart(
     AddToCartEvent event,
     Emitter<PosState> emit,
   ) {
+    // Prevent adding out-of-stock items (stock <= 0) to cart
+    if (event.availableStock <= 0) {
+      return;
+    }
+
+    // Each unique batch (identified by unique productId & partNo) is its own separate cart line item
     final existingIndex = _cartItems.indexWhere(
-      (item) => item.productId == event.productId,
+      (item) =>
+          item.productId == event.productId && item.partNo == event.partNo,
     );
 
     if (existingIndex >= 0) {
       final existing = _cartItems[existingIndex];
+      // Do not allow quantity in cart to exceed available batch stock
+      if (existing.quantity >= event.availableStock) {
+        return;
+      }
       _cartItems[existingIndex] = existing.copyWith(
         quantity: existing.quantity + 1,
       );
     } else {
       _cartItems.add(
         CartItem(
-          id: '${DateTime.now().millisecondsSinceEpoch}_${event.productId}',
+          id: '${DateTime.now().microsecondsSinceEpoch}_${event.productId}_${event.partNo}',
           productId: event.productId,
           itemName: event.itemName,
           partNo: event.partNo,
@@ -171,7 +172,11 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     } else {
       _cartItems = _cartItems.map((item) {
         if (item.id == event.cartItemId) {
-          return item.copyWith(quantity: event.quantity);
+          final maxStock =
+              item.availableStock > 0 ? item.availableStock : item.quantity;
+          final validQty =
+              event.quantity > maxStock ? maxStock : event.quantity;
+          return item.copyWith(quantity: validQty);
         }
         return item;
       }).toList();
@@ -185,7 +190,20 @@ class PosBloc extends Bloc<PosEvent, PosState> {
   ) {
     _cartItems = _cartItems.map((item) {
       if (item.id == event.cartItemId) {
-        return item.copyWith(sellPrice: event.price);
+        return item.copyWith(sellPrice: event.sellPrice);
+      }
+      return item;
+    }).toList();
+    _emitLoadedState(emit);
+  }
+
+  void _onUpdateCartCostCode(
+    UpdateCartCostCodeEvent event,
+    Emitter<PosState> emit,
+  ) {
+    _cartItems = _cartItems.map((item) {
+      if (item.id == event.cartItemId) {
+        return item.copyWith(costCode: event.costCode);
       }
       return item;
     }).toList();
@@ -198,12 +216,18 @@ class PosBloc extends Bloc<PosEvent, PosState> {
   ) {
     _cartItems = _cartItems.map((item) {
       if (item.id == event.cartItemId) {
+        final maxStock =
+            event.availableStock > 0 ? event.availableStock : 1;
+        final validQty =
+            item.quantity > maxStock ? maxStock : item.quantity;
+
         return item.copyWith(
           productId: event.productId,
           partNo: event.partNo,
           itemName: event.itemName,
           costCode: event.costCode,
           availableStock: event.availableStock,
+          quantity: validQty,
         );
       }
       return item;
@@ -266,67 +290,50 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       items: invoiceItems,
     );
 
-    // 1. Save the Invoice document in cloud Firestore
-    final invoiceResult = await saveInvoice(invoice);
-    if (invoiceResult.isLeft()) {
-      final failure = invoiceResult.getLeft().toNullable();
-      emit(PosError(failure?.message ?? 'Failed to save receipt invoice.'));
-      return;
-    }
+    final salesList = checkoutItems
+        .map(
+          (item) => SaleEntity(
+            id: '${DateTime.now().microsecondsSinceEpoch}_${item.productId.replaceAll('/', '_')}',
+            productId: item.productId,
+            partNo: item.partNo,
+            saleDate: now,
+            itemName: item.itemName,
+            quantity: item.quantity,
+            sellPrice: item.sellPrice,
+            costCode: item.costCode,
+            invoiceId: invoiceId,
+          ),
+        )
+        .toList();
 
-    // 2. Perform FIFO stock deduction and record individual sales linked to this invoiceId
-    bool hasFailure = false;
-    String failureMessage = '';
+    // High-Performance Single-Transaction Atomic Checkout
+    final result = await checkoutCart(
+      sales: salesList,
+      invoice: invoice,
+    );
 
-    for (final item in checkoutItems) {
-      final sale = SaleEntity(
-        id: '${DateTime.now().millisecondsSinceEpoch}_${item.productId}',
-        productId: item.productId,
-        saleDate: now,
-        itemName: item.itemName,
-        quantity: item.quantity,
-        sellPrice: item.sellPrice,
-        costCode: item.costCode,
-        invoiceId: invoiceId,
-      );
+    result.fold(
+      (failure) => emit(PosError(failure.message)),
+      (_) {
+        final oldCart = List<CartItem>.from(_cartItems);
+        _cartItems = [];
+        getSales().then((salesResult) {
+          salesResult.fold(
+            (_) {},
+            (sales) => _allSales = sales,
+          );
+        });
 
-      final result = await addSale(sale);
-      result.fold(
-        (failure) {
-          hasFailure = true;
-          failureMessage = failure.message;
-        },
-        (_) {},
-      );
-    }
-
-    if (hasFailure) {
-      emit(PosError(failureMessage));
-    } else {
-      _cartItems = [];
-      emit(
-        SaleAddedSuccess(
-          checkoutCartItems: checkoutItems,
+        emit(SaleAddedSuccess(
+          checkoutCartItems: oldCart,
           totalPaid: totalPaid,
           invoice: invoice,
-          message: 'Bill generated & sales saved successfully!',
-        ),
-      );
-      add(const FetchSalesEvent());
-    }
-  }
-
-  void _emitLoadedState(Emitter<PosState> emit) {
-    if (state is PosLoaded) {
-      emit((state as PosLoaded).copyWith(cartItems: List.from(_cartItems)));
-    } else {
-      emit(
-        PosLoaded(
-          sales: _allSales,
-          filteredSales: _allSales,
-          cartItems: List.from(_cartItems),
-        ),
-      );
-    }
+          generatePdf: event.generatePdf,
+          message: event.generatePdf
+              ? 'Sale completed & bill generated!'
+              : 'Sale recorded successfully without bill.',
+        ));
+      },
+    );
   }
 }

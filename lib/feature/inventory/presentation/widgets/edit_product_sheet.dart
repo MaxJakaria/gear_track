@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/domain/usecases/get_cost_code_mapping.dart';
+import 'package:gear_track/core/entities/cost_code_mapping.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/core/widgets/custom_date_picker_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
+import 'package:gear_track/init_dependencies.dart';
 
 class EditProductSheet extends StatefulWidget {
   final Product product;
@@ -28,26 +31,55 @@ class _EditProductSheetState extends State<EditProductSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _partNoController;
   late final TextEditingController _costCodeController;
-  late final TextEditingController _stockCountController;
   late DateTime _selectedDate;
   bool _isLoading = false;
+
+  CostCodeMapping _mapping = const CostCodeMapping(charToDigit: {});
+  String _decodedCost = '';
 
   @override
   void initState() {
     super.initState();
     _partNoController = TextEditingController(text: widget.product.partNo);
     _costCodeController = TextEditingController(text: widget.product.costCode);
-    _stockCountController = TextEditingController(
-      text: widget.product.stockCount.toString(),
-    );
     _selectedDate = widget.product.entryDate;
+    _loadMapping();
+    _costCodeController.addListener(_updateDecodedCost);
+  }
+
+  Future<void> _loadMapping() async {
+    final result = await serviceLocator<GetCostCodeMapping>()();
+    result.fold((_) {}, (mapping) {
+      if (mounted) {
+        setState(() {
+          _mapping = mapping;
+          _updateDecodedCost();
+        });
+      }
+    });
+  }
+
+  void _updateDecodedCost() {
+    final input = _costCodeController.text.trim();
+    if (input.isEmpty) {
+      if (_decodedCost.isNotEmpty) {
+        setState(() => _decodedCost = '');
+      }
+      return;
+    }
+    final val = _mapping.decode(input);
+    final formatted =
+        val % 1 == 0 ? '৳${val.toInt()}' : '৳${val.toStringAsFixed(1)}';
+    if (_decodedCost != formatted) {
+      setState(() => _decodedCost = formatted);
+    }
   }
 
   @override
   void dispose() {
+    _costCodeController.removeListener(_updateDecodedCost);
     _partNoController.dispose();
     _costCodeController.dispose();
-    _stockCountController.dispose();
     super.dispose();
   }
 
@@ -69,7 +101,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
     if (_isLoading) return;
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
-      final stock = int.tryParse(_stockCountController.text.trim()) ?? 0;
+
       final updatedProduct = Product(
         id: widget.product.id,
         entryDate: _selectedDate,
@@ -77,12 +109,8 @@ class _EditProductSheetState extends State<EditProductSheet> {
         itemName: widget.product.itemName,
         model: widget.product.model,
         costCode: _costCodeController.text.trim(),
-        initialQuantity: stock > widget.product.initialQuantity
-            ? stock
-            : (widget.product.initialQuantity > 0
-                ? widget.product.initialQuantity
-                : stock),
-        stockCount: stock,
+        initialQuantity: widget.product.initialQuantity,
+        stockCount: widget.product.stockCount,
       );
 
       final completer = Completer<void>();
@@ -110,6 +138,7 @@ class _EditProductSheetState extends State<EditProductSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final maxHeight = MediaQuery.of(context).size.height * 0.85;
 
@@ -132,147 +161,150 @@ class _EditProductSheetState extends State<EditProductSheet> {
           child: SingleChildScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.3,
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Edit Batch Entry',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.3,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Read-only Product Context Container
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest.withValues(
-                      alpha: 0.5,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        widget.product.itemName,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        'Edit Batch Entry',
+                        style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (widget.product.model.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Model: ${widget.product.model}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
-                // Editable Part Number Input Field (Matching Quick Add Stock Sheet)
-                TextFormField(
-                  controller: _partNoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Part Number',
-                  ),
-                  validator: (val) => val == null || val.trim().isEmpty
-                      ? 'Part No is required'
-                      : null,
-                ),
-                const SizedBox(height: 12),
-
-                // Dynamic Input Fields (Cost Code & Stock Count)
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _costCodeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cost Code',
+                  // Read-only Product Context Container
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.product.itemName,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        validator: (val) => val == null || val.trim().isEmpty
-                            ? 'Cost code required'
-                            : null,
-                      ),
+                        if (widget.product.model.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Model: ${widget.product.model}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _stockCountController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Quantity / Count',
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          final parsed = int.tryParse(val.trim());
-                          if (parsed == null || parsed < 0) {
-                            return 'Invalid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Entry Date Picker
-                InkWell(
-                  onTap: _pickDate,
-                  borderRadius: BorderRadius.circular(4),
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Entry Date',
-                    ),
-                    child: Text(_formatDate(_selectedDate)),
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                AppGradientButton(
-                  onPressed: _isLoading ? null : _submit,
-                  isLoading: _isLoading,
-                  label: 'Update Batch',
-                ),
-              ],
+                  // Editable Part Number Input Field
+                  TextFormField(
+                    controller: _partNoController,
+                    decoration: const InputDecoration(labelText: 'Part Number'),
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Part No is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Cost Code Input Field with Live Decoded Preview
+                  TextFormField(
+                    controller: _costCodeController,
+                    decoration: InputDecoration(
+                      labelText: 'Cost Code',
+                      suffixIcon: _decodedCost.isNotEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: UnconstrainedBox(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6366F1).withValues(
+                                      alpha: isDark ? 0.25 : 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(0xFF6366F1)
+                                          .withValues(alpha: 0.35),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _decodedCost,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF6366F1),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    validator: (val) => val == null || val.trim().isEmpty
+                        ? 'Cost code required'
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Entry Date Picker
+                  InkWell(
+                    onTap: _pickDate,
+                    borderRadius: BorderRadius.circular(4),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Entry Date',
+                      ),
+                      child: Text(_formatDate(_selectedDate)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  AppGradientButton(
+                    onPressed: _isLoading ? null : _submit,
+                    isLoading: _isLoading,
+                    label: 'Update Batch',
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }

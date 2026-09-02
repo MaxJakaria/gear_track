@@ -72,7 +72,7 @@ class PosCartCard extends StatelessWidget {
                         context.read<PosBloc>().add(
                           UpdateCartProductEvent(
                             cartItemId: item.id,
-                            productId: selectedBatch.partNo,
+                            productId: selectedBatch.id,
                             partNo: selectedBatch.partNo,
                             itemName: selectedBatch.itemName,
                             costCode: selectedBatch.costCode,

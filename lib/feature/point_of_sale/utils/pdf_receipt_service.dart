@@ -45,6 +45,13 @@ class PdfReceiptService {
         ? shopSettings.phone.trim()
         : (invoice?.shopPhone.trim() ?? '');
 
+    // Group cart items by product name so same product with different batches appears in 1 consolidated row
+    final Map<String, List<CartItem>> groupedItems = {};
+    for (final item in items) {
+      final key = item.itemName.trim();
+      groupedItems.putIfAbsent(key, () => []).add(item);
+    }
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.roll80, // Thermal 80mm
@@ -118,20 +125,34 @@ class PdfReceiptService {
               ),
               pw.SizedBox(height: 6),
 
-              // Items Table
+              // Items Table - Consolidated by Product (3 Columns: Item Name, Qty & Rate, Total)
               pw.TableHelper.fromTextArray(
                 context: context,
                 data: <List<String>>[
-                  <String>['Item', 'Count', 'Price', 'Total'],
-                  ...items.map((item) {
-                    final title = item.itemName.length > 16
-                        ? '${item.itemName.substring(0, 15)}.'
-                        : item.itemName;
+                  <String>['Item Name', 'Qty & Rate', 'Total'],
+                  ...groupedItems.entries.map((entry) {
+                    final productName = entry.key;
+                    final batches = entry.value;
+
+                    final title = productName.length > 22
+                        ? '${productName.substring(0, 21)}.'
+                        : productName;
+
+                    // Formats: "qty × rate\nqty × rate" -> e.g. "2×100\n1×120"
+                    final qtyRateBreakdown = batches.map((b) {
+                      final priceStr = b.sellPrice % 1 == 0
+                          ? b.sellPrice.toInt().toString()
+                          : b.sellPrice.toString();
+                      return '${b.quantity}×$priceStr';
+                    }).join('\n');
+
+                    final subtotal =
+                        batches.fold(0.0, (sum, b) => sum + b.subtotal);
+
                     return [
                       title,
-                      '${item.quantity}',
-                      item.sellPrice.toCurrency(),
-                      item.subtotal.toCurrency(),
+                      qtyRateBreakdown,
+                      subtotal.toCurrency(),
                     ];
                   }),
                 ],
@@ -142,24 +163,21 @@ class PdfReceiptService {
                   fontSize: 8,
                   fontWeight: pw.FontWeight.bold,
                 ),
-                cellStyle: const pw.TextStyle(fontSize: 8),
+                cellStyle: const pw.TextStyle(fontSize: 7.5),
                 headerAlignments: {
                   0: pw.Alignment.centerLeft,
                   1: pw.Alignment.center,
-                  2: pw.Alignment.center,
-                  3: pw.Alignment.centerRight,
+                  2: pw.Alignment.centerRight,
                 },
                 cellAlignments: {
                   0: pw.Alignment.centerLeft,
                   1: pw.Alignment.center,
-                  2: pw.Alignment.center,
-                  3: pw.Alignment.centerRight,
+                  2: pw.Alignment.centerRight,
                 },
                 columnWidths: {
-                  0: const pw.FlexColumnWidth(4),
-                  1: const pw.FlexColumnWidth(1.8),
-                  2: const pw.FlexColumnWidth(2),
-                  3: const pw.FlexColumnWidth(2.2),
+                  0: const pw.FlexColumnWidth(4.5),
+                  1: const pw.FlexColumnWidth(3.0),
+                  2: const pw.FlexColumnWidth(2.5),
                 },
               ),
               pw.SizedBox(height: 10),
@@ -168,11 +186,11 @@ class PdfReceiptService {
               pw.Row(
                 children: [
                   pw.Expanded(
-                    flex: 60,
+                    flex: 45,
                     child: pw.SizedBox(),
                   ),
                   pw.Expanded(
-                    flex: 18,
+                    flex: 30,
                     child: pw.Text(
                       'Total :',
                       textAlign: pw.TextAlign.right,
@@ -183,7 +201,7 @@ class PdfReceiptService {
                     ),
                   ),
                   pw.Expanded(
-                    flex: 22,
+                    flex: 25,
                     child: pw.Padding(
                       padding: const pw.EdgeInsets.only(right: 2),
                       child: pw.Text(

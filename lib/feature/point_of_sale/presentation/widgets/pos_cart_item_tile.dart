@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/core/domain/usecases/get_cost_code_mapping.dart';
+import 'package:gear_track/core/entities/cost_code_mapping.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
+import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_stock_pill.dart';
+import 'package:gear_track/init_dependencies.dart';
 
-class PosCartItemTile extends StatelessWidget {
+class PosCartItemTile extends StatefulWidget {
   final CartItem item;
   final ValueChanged<int> onQuantityChanged;
   final ValueChanged<double> onPriceChanged;
@@ -24,11 +28,80 @@ class PosCartItemTile extends StatelessWidget {
     required this.removeItem,
   });
 
+  @override
+  State<PosCartItemTile> createState() => _PosCartItemTileState();
+}
+
+class _PosCartItemTileState extends State<PosCartItemTile> {
+  static CostCodeMapping? _cachedMapping;
+  late CostCodeMapping _mapping;
+  late TextEditingController _priceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapping = _cachedMapping ?? CostCodeMapping.defaultMapping();
+    final initialPriceStr = widget.item.sellPrice > 0
+        ? (widget.item.sellPrice % 1 == 0
+            ? widget.item.sellPrice.toInt().toString()
+            : widget.item.sellPrice.toString())
+        : '';
+    _priceController = TextEditingController(text: initialPriceStr);
+    _priceController.addListener(_onPriceInputChanged);
+    if (_cachedMapping == null) {
+      _loadMapping();
+    }
+  }
+
+  void _onPriceInputChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PosCartItemTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.sellPrice != widget.item.sellPrice) {
+      final currentCtrlVal =
+          double.tryParse(_priceController.text.trim()) ?? 0.0;
+      if (currentCtrlVal != widget.item.sellPrice) {
+        final newText = widget.item.sellPrice > 0
+            ? (widget.item.sellPrice % 1 == 0
+                ? widget.item.sellPrice.toInt().toString()
+                : widget.item.sellPrice.toString())
+            : '';
+        _priceController.text = newText;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _priceController.removeListener(_onPriceInputChanged);
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMapping() async {
+    final result = await serviceLocator<GetCostCodeMapping>()();
+    result.fold(
+      (_) {},
+      (mapping) {
+        _cachedMapping = mapping;
+        if (mounted) {
+          setState(() {
+            _mapping = mapping;
+          });
+        }
+      },
+    );
+  }
+
   void _showPartNoSelector(BuildContext context) {
     final inventoryState = context.read<InventoryBloc>().state;
-    final List<Product> allProducts = inventoryState is InventoryLoaded
-        ? inventoryState.products
-        : [];
+    final List<Product> allProducts =
+        inventoryState is InventoryLoaded ? inventoryState.products : [];
 
     if (allProducts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -40,29 +113,54 @@ class PosCartItemTile extends StatelessWidget {
       return;
     }
 
-    // Extract ALL individual batches matching this item name
+    // Find current item's model if available
+    final currentProduct = allProducts
+        .where(
+          (p) =>
+              p.id == widget.item.productId ||
+              p.partNo.trim().toUpperCase() ==
+                  widget.item.partNo.trim().toUpperCase(),
+        )
+        .firstOrNull;
+    final curModel = currentProduct?.model.trim().toLowerCase() ?? '';
+
+    // Extract ALL individual batches matching this item and model
     final List<Product> matchingBatches = allProducts.where((p) {
       final pName = p.itemName.trim().toLowerCase();
-      final curName = item.itemName.trim().toLowerCase();
-      return pName == curName ||
-          p.partNo.trim().toUpperCase() == item.partNo.trim().toUpperCase();
+      final curName = widget.item.itemName.trim().toLowerCase();
+      final pModel = p.model.trim().toLowerCase();
+      final isSameModel = curModel.isEmpty || pModel == curModel;
+      return (pName == curName && isSameModel) ||
+          p.partNo.trim().toUpperCase() ==
+              widget.item.partNo.trim().toUpperCase();
     }).toList();
 
-    final List<Product> targetBatches = matchingBatches.isNotEmpty
-        ? matchingBatches
-        : allProducts;
+    final List<Product> targetBatches =
+        matchingBatches.isNotEmpty ? matchingBatches : allProducts;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => _PartNoSelectorSheet(
-        itemName: item.itemName,
+        itemName: widget.item.itemName,
         batches: targetBatches,
-        selectedPartNo: item.partNo,
+        selectedPartNo: widget.item.partNo,
         onSelected: (selectedBatch) {
           Navigator.pop(sheetContext);
-          onProductChanged?.call(selectedBatch);
+          widget.onProductChanged?.call(selectedBatch);
+        },
+        onAddNewCard: (batch) {
+          Navigator.pop(sheetContext);
+          context.read<PosBloc>().add(
+            AddToCartEvent(
+              productId: batch.id,
+              itemName: batch.itemName,
+              partNo: batch.partNo,
+              costCode: batch.costCode,
+              availableStock: batch.stockCount,
+            ),
+          );
         },
       ),
     );
@@ -72,6 +170,16 @@ class PosCartItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    // Decode cost code to get the buying price per unit
+    final buyPrice = _mapping.decode(widget.item.costCode);
+    final typedPrice = double.tryParse(_priceController.text.trim()) ?? 0.0;
+    final activePrice = _priceController.text.trim().isNotEmpty
+        ? typedPrice
+        : widget.item.sellPrice;
+
+    // Instant real-time loss indicator
+    final isLoss = activePrice > 0 && buyPrice > 0 && activePrice < buyPrice;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -95,7 +203,7 @@ class PosCartItemTile extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  item.itemName,
+                  widget.item.itemName,
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -106,7 +214,7 @@ class PosCartItemTile extends StatelessWidget {
                 ),
               ),
               InkWell(
-                onTap: removeItem,
+                onTap: widget.removeItem,
                 borderRadius: BorderRadius.circular(20),
                 child: Padding(
                   padding: const EdgeInsets.all(4.0),
@@ -155,7 +263,9 @@ class PosCartItemTile extends StatelessWidget {
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
-                      item.partNo.isNotEmpty ? item.partNo : 'Select Part No',
+                      widget.item.partNo.isNotEmpty
+                          ? widget.item.partNo
+                          : 'Select Part No',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -190,14 +300,14 @@ class PosCartItemTile extends StatelessWidget {
 
               const SizedBox(width: 12),
 
-              // Unit Price Input Box
-              Expanded(child: _buildPriceInput(theme)),
+              // Unit Price Input Box (turns red immediately when selling below buy price)
+              Expanded(child: _buildPriceInput(theme, isLoss)),
 
               const SizedBox(width: 12),
 
               // Subtotal Display
               Text(
-                item.subtotal.toCurrency(),
+                widget.item.subtotal.toCurrency(),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -212,7 +322,7 @@ class PosCartItemTile extends StatelessWidget {
   }
 
   void _showQuantityEditDialog(BuildContext context) {
-    final controller = TextEditingController(text: '${item.quantity}');
+    final controller = TextEditingController(text: '${widget.item.quantity}');
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -230,7 +340,7 @@ class PosCartItemTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item.itemName,
+              widget.item.itemName,
               style: TextStyle(
                 fontSize: 13,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -249,8 +359,12 @@ class PosCartItemTile extends StatelessWidget {
               ),
               onSubmitted: (val) {
                 final qty = int.tryParse(val.trim());
+                final maxAllowed = widget.item.availableStock > 0
+                    ? widget.item.availableStock
+                    : 999999;
                 if (qty != null && qty > 0) {
-                  onQuantityChanged(qty);
+                  final capped = qty > maxAllowed ? maxAllowed : qty;
+                  widget.onQuantityChanged(capped);
                   Navigator.pop(dialogContext);
                 }
               },
@@ -265,8 +379,12 @@ class PosCartItemTile extends StatelessWidget {
           FilledButton(
             onPressed: () {
               final qty = int.tryParse(controller.text.trim());
+              final maxAllowed = widget.item.availableStock > 0
+                  ? widget.item.availableStock
+                  : 999999;
               if (qty != null && qty > 0) {
-                onQuantityChanged(qty);
+                final capped = qty > maxAllowed ? maxAllowed : qty;
+                widget.onQuantityChanged(capped);
                 Navigator.pop(dialogContext);
               }
             },
@@ -278,18 +396,20 @@ class PosCartItemTile extends StatelessWidget {
   }
 
   Widget _buildQuantityStepper(ThemeData theme, BuildContext context) {
-    final canDecrement = item.quantity > 1;
+    final canDecrement = widget.item.quantity > 1;
+    final canIncrement = widget.item.availableStock <= 0 ||
+        widget.item.quantity < widget.item.availableStock;
 
     return Row(
       children: [
         _HoldableStepperButton(
-          key: ValueKey('dec_${item.id}'),
+          key: ValueKey('dec_${widget.item.id}'),
           icon: Icons.remove_rounded,
           enabled: canDecrement,
           tooltip: 'Hold to decrease rapidly',
           onStep: () {
-            if (item.quantity > 1) {
-              onQuantityChanged(item.quantity - 1);
+            if (widget.item.quantity > 1) {
+              widget.onQuantityChanged(widget.item.quantity - 1);
             }
           },
         ),
@@ -300,7 +420,7 @@ class PosCartItemTile extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 34),
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             child: Text(
-              '${item.quantity}',
+              '${widget.item.quantity}',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -311,34 +431,55 @@ class PosCartItemTile extends StatelessWidget {
           ),
         ),
         _HoldableStepperButton(
-          key: ValueKey('inc_${item.id}'),
+          key: ValueKey('inc_${widget.item.id}'),
           icon: Icons.add_rounded,
-          enabled: true,
-          tooltip: 'Hold to increase rapidly',
-          onStep: () => onQuantityChanged(item.quantity + 1),
+          enabled: canIncrement,
+          tooltip: canIncrement
+              ? 'Hold to increase rapidly'
+              : 'Max available stock reached (${widget.item.availableStock})',
+          onStep: () {
+            if (canIncrement) {
+              widget.onQuantityChanged(widget.item.quantity + 1);
+            }
+          },
         ),
       ],
     );
   }
 
-  Widget _buildPriceInput(ThemeData theme) {
+  Widget _buildPriceInput(ThemeData theme, bool isLoss) {
     final isDark = theme.brightness == Brightness.dark;
-    final initialPriceStr = item.sellPrice > 0
-        ? (item.sellPrice % 1 == 0
-              ? item.sellPrice.toInt().toString()
-              : item.sellPrice.toString())
-        : '';
 
-    final fieldBg = isDark
-        ? AppColors.surfaceContainerDark
-        : AppColors.surfaceContainerLight;
+    final fieldBg = isLoss
+        ? (isDark
+            ? const Color(0xFF450A0A)
+            : const Color(0xFFFEE2E2))
+        : (isDark
+            ? AppColors.surfaceContainerDark
+            : AppColors.surfaceContainerLight);
 
-    return Container(
+    final borderColor =
+        isLoss ? const Color(0xFFDC2626) : Colors.transparent;
+
+    final textColor = isLoss
+        ? const Color(0xFFDC2626)
+        : (isDark ? Colors.white : const Color(0xFF0F172A));
+
+    final currencyColor = isLoss
+        ? const Color(0xFFDC2626)
+        : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: fieldBg,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: borderColor,
+          width: isLoss ? 1.5 : 0,
+        ),
       ),
       child: Row(
         children: [
@@ -346,23 +487,21 @@ class PosCartItemTile extends StatelessWidget {
             '৳',
             style: TextStyle(
               fontSize: 14,
-              color: isDark
-                  ? const Color(0xFF94A3B8)
-                  : const Color(0xFF64748B),
-              fontWeight: FontWeight.w600,
+              color: currencyColor,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(width: 4),
           Expanded(
-            child: TextFormField(
-              initialValue: initialPriceStr,
+            child: TextField(
+              controller: _priceController,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                color: textColor,
               ),
               decoration: InputDecoration(
                 isDense: true,
@@ -384,7 +523,7 @@ class PosCartItemTile extends StatelessWidget {
               ),
               onChanged: (val) {
                 final parsed = double.tryParse(val.trim()) ?? 0.0;
-                onPriceChanged(parsed);
+                widget.onPriceChanged(parsed);
               },
             ),
           ),
@@ -399,12 +538,14 @@ class _PartNoSelectorSheet extends StatelessWidget {
   final List<Product> batches;
   final String selectedPartNo;
   final ValueChanged<Product> onSelected;
+  final ValueChanged<Product>? onAddNewCard;
 
   const _PartNoSelectorSheet({
     required this.itemName,
     required this.batches,
     required this.selectedPartNo,
     required this.onSelected,
+    this.onAddNewCard,
   });
 
   String _formatDate(DateTime date) {
@@ -418,7 +559,7 @@ class _PartNoSelectorSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final maxHeight = MediaQuery.of(context).size.height * 0.55;
+    final maxHeight = MediaQuery.of(context).size.height * 0.60;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
@@ -482,10 +623,11 @@ class _PartNoSelectorSheet extends StatelessWidget {
                               vertical: 1,
                             ),
                             decoration: BoxDecoration(
-                              color: (isDark
-                                      ? const Color(0xFF818CF8)
-                                      : const Color(0xFF6366F1))
-                                  .withValues(alpha: 0.15),
+                              color:
+                                  (isDark
+                                          ? const Color(0xFF818CF8)
+                                          : const Color(0xFF6366F1))
+                                      .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -553,100 +695,159 @@ class _PartNoSelectorSheet extends StatelessWidget {
                         final isSelected =
                             batch.partNo.trim().toUpperCase() ==
                             selectedPartNo.trim().toUpperCase();
+                        final isOutOfStock = batch.stockCount <= 0;
 
-                        return InkWell(
-                          onTap: () => onSelected(batch),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            color: isSelected
-                                ? (isDark
-                                      ? const Color(
-                                          0xFF6366F1,
-                                        ).withValues(alpha: 0.15)
-                                      : const Color(0xFFEEF2FF))
-                                : Colors.transparent,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 9,
-                            ),
+                        return Container(
+                          color: isSelected
+                              ? (isDark
+                                    ? const Color(
+                                        0xFF6366F1,
+                                      ).withValues(alpha: 0.15)
+                                    : const Color(0xFFEEF2FF))
+                              : Colors.transparent,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 6,
+                          ),
+                          child: Opacity(
+                            opacity: isOutOfStock ? 0.45 : 1.0,
                             child: Row(
                               children: [
                                 Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            batch.partNo,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.bold,
-                                              color: isDark
-                                                  ? const Color(0xFF818CF8)
-                                                  : const Color(0xFF6366F1),
-                                            ),
-                                          ),
-                                          if (isSelected) ...[
-                                            const SizedBox(width: 5),
-                                            Icon(
-                                              Icons.check_circle_rounded,
-                                              size: 15,
-                                              color: isDark
-                                                  ? const Color(0xFF818CF8)
-                                                  : const Color(0xFF6366F1),
-                                            ),
-                                          ],
-                                        ],
+                                  child: InkWell(
+                                    onTap: isOutOfStock
+                                        ? () {
+                                            ScaffoldMessenger.of(context)
+                                                .clearSnackBars();
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  '${batch.partNo.isNotEmpty ? batch.partNo : 'This batch'} is Out of Stock!',
+                                                ),
+                                                backgroundColor:
+                                                    const Color(0xFFDC2626),
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          }
+                                        : () => onSelected(batch),
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 4,
                                       ),
-                                      if (batch.model.isNotEmpty) ...[
-                                        const SizedBox(height: 1),
-                                        Text(
-                                          'Model: ${batch.model}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: theme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                      const SizedBox(height: 1),
-                                      Row(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          if (batch.costCode.isNotEmpty)
+                                          Row(
+                                            children: [
+                                              Text(
+                                                batch.partNo,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isOutOfStock
+                                                      ? const Color(0xFFEF4444)
+                                                      : (isDark
+                                                          ? const Color(
+                                                              0xFF818CF8,
+                                                            )
+                                                          : const Color(
+                                                              0xFF6366F1,
+                                                            )),
+                                                ),
+                                              ),
+                                              if (isSelected) ...[
+                                                const SizedBox(width: 5),
+                                                Icon(
+                                                  Icons.check_circle_rounded,
+                                                  size: 15,
+                                                  color: isDark
+                                                      ? const Color(0xFF818CF8)
+                                                      : const Color(0xFF6366F1),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                          if (batch.model.isNotEmpty) ...[
+                                            const SizedBox(height: 1),
                                             Text(
-                                              'Cost: ${batch.costCode}',
+                                              'Model: ${batch.model}',
                                               style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w600,
+                                                fontSize: 11,
                                                 color: theme
                                                     .colorScheme
-                                                    .onSurfaceVariant
-                                                    .withValues(alpha: 0.85),
+                                                    .onSurfaceVariant,
                                               ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                          Text(
-                                            ' • Date: ${_formatDate(batch.entryDate)}',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant
-                                                  .withValues(alpha: 0.7),
-                                            ),
+                                          ],
+                                          const SizedBox(height: 1),
+                                          Row(
+                                            children: [
+                                              if (batch.costCode.isNotEmpty)
+                                                Text(
+                                                  'Cost: ${batch.costCode}',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: theme
+                                                        .colorScheme
+                                                        .onSurfaceVariant
+                                                        .withValues(
+                                                          alpha: 0.85,
+                                                        ),
+                                                  ),
+                                                ),
+                                              Text(
+                                                ' • Date: ${_formatDate(batch.entryDate)}',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant
+                                                      .withValues(alpha: 0.7),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 6),
                                 PosStockPill(totalStock: batch.stockCount),
+                                if (onAddNewCard != null) ...[
+                                  const SizedBox(width: 4),
+                                  Tooltip(
+                                    message: isOutOfStock
+                                        ? 'Out of stock'
+                                        : 'Add as separate sales card',
+                                    child: IconButton(
+                                      icon: Icon(
+                                        isOutOfStock
+                                            ? Icons.block_rounded
+                                            : Icons.add_shopping_cart_rounded,
+                                        size: 18,
+                                      ),
+                                      color: isOutOfStock
+                                          ? const Color(0xFFEF4444)
+                                          : (isDark
+                                              ? const Color(0xFF818CF8)
+                                              : const Color(0xFF6366F1)),
+                                      onPressed: isOutOfStock
+                                          ? null
+                                          : () => onAddNewCard?.call(batch),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -748,9 +949,7 @@ class _HoldableStepperButtonState extends State<_HoldableStepperButton> {
         ? (_isPressed
             ? (isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5))
             : (isDark ? Colors.white : const Color(0xFF0F172A)))
-        : (isDark
-            ? const Color(0xFF64748B)
-            : const Color(0xFF94A3B8));
+        : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8));
 
     return Tooltip(
       message: widget.tooltip,

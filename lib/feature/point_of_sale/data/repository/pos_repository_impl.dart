@@ -24,6 +24,36 @@ class PosRepositoryImpl implements PosRepository {
   }
 
   @override
+  Future<Either<Failure, void>> checkoutCart({
+    required List<SaleEntity> sales,
+    required InvoiceEntity invoice,
+  }) async {
+    try {
+      final saleModels = sales.map((s) => SaleModel.fromEntity(s)).toList();
+      final invoiceModel = invoice is InvoiceModel
+          ? invoice
+          : InvoiceModel(
+              invoiceId: invoice.invoiceId,
+              saleDate: invoice.saleDate,
+              totalAmount: invoice.totalAmount,
+              totalItems: invoice.totalItems,
+              items: invoice.items,
+              shopName: invoice.shopName,
+              shopPhone: invoice.shopPhone,
+              shopAddress: invoice.shopAddress,
+            );
+
+      await remoteDataSource.checkoutCart(
+        sales: saleModels,
+        invoice: invoiceModel,
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(Failure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<SaleEntity>>> getSales() async {
     try {
       final saleModels = await remoteDataSource.getSales();
@@ -34,7 +64,9 @@ class PosRepositoryImpl implements PosRepository {
   }
 
   @override
-  Future<Either<Failure, List<SaleEntity>>> getProductSales(String productId) async {
+  Future<Either<Failure, List<SaleEntity>>> getProductSales(
+    String productId,
+  ) async {
     try {
       final saleModels = await remoteDataSource.getProductSales(productId);
       return Right(saleModels);

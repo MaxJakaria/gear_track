@@ -9,6 +9,7 @@ class AppGradientButton extends StatelessWidget {
   final bool isLoading;
   final double height;
   final double borderRadius;
+  final double fontSize;
   final EdgeInsetsGeometry? padding;
 
   const AppGradientButton({
@@ -19,6 +20,7 @@ class AppGradientButton extends StatelessWidget {
     this.isLoading = false,
     this.height = 46,
     this.borderRadius = 8,
+    this.fontSize = 14,
     this.padding,
   });
 
@@ -30,10 +32,12 @@ class AppGradientButton extends StatelessWidget {
     final primaryColor = AppColors.primaryButton(context);
     final isEnabled = onPressed != null && !isLoading;
 
-    final disabledBg =
-        isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final disabledText =
-        isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+    final disabledBg = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFE2E8F0);
+    final disabledText = isDark
+        ? const Color(0xFF64748B)
+        : const Color(0xFF94A3B8);
 
     return Container(
       width: double.infinity,
@@ -58,7 +62,7 @@ class AppGradientButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(borderRadius),
           onTap: isEnabled ? onPressed : null,
           child: Padding(
-            padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
+            padding: padding ?? const EdgeInsets.symmetric(horizontal: 10),
             child: Center(
               child: isLoading
                   ? const SizedBox(
@@ -79,14 +83,18 @@ class AppGradientButton extends StatelessWidget {
                             size: 18,
                             color: isEnabled ? Colors.white : disabledText,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                         ],
-                        Text(
-                          label,
-                          style: TextStyle(
-                            color: isEnabled ? Colors.white : disabledText,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isEnabled ? Colors.white : disabledText,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],

@@ -217,6 +217,8 @@ class _ProductCardState extends State<ProductCard> {
                             // High-Visibility Stock Status Badge
                             StockStatusBadge(
                               totalStockCount: grouped.totalStockCount,
+                              hasOutOfStockBatch: grouped.hasOutOfStockBatch,
+                              hasLowStockBatch: grouped.hasLowStockBatch,
                             ),
                           ],
                         ),

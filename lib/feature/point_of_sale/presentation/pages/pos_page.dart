@@ -37,54 +37,81 @@ class _PosPageState extends State<PosPage> {
 
     return BlocConsumer<PosBloc, PosState>(
       listener: (context, state) async {
-        if (state is SaleAddedSuccess && state.checkoutCartItems.isNotEmpty) {
-          if (mounted) {
-            setState(() {
-              _isGeneratingPdf = true;
-            });
-          }
-
-          ShopSettings shopSettings = const ShopSettings();
-          try {
-            final getShopSettings = serviceLocator<GetShopSettings>();
-            final result = await getShopSettings();
-            result.fold((_) {}, (settings) => shopSettings = settings);
-          } catch (_) {}
-
-          try {
-            final doc = await PdfReceiptService.generateReceipt(
-              state.checkoutCartItems,
-              state.totalPaid,
-              shopSettings: shopSettings,
-              invoice: state.invoice,
-            );
-            final bytes = await doc.save();
-
+        if (state is SaleAddedSuccess) {
+          if (state.generatePdf && state.checkoutCartItems.isNotEmpty) {
             if (mounted) {
               setState(() {
-                _isGeneratingPdf = false;
+                _isGeneratingPdf = true;
               });
             }
 
-            if (!context.mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PdfPreviewPage(pdfBytes: bytes),
-              ),
-            );
-          } catch (e) {
-            if (mounted) {
-              setState(() {
-                _isGeneratingPdf = false;
-              });
+            ShopSettings shopSettings = const ShopSettings();
+            try {
+              final getShopSettings = serviceLocator<GetShopSettings>();
+              final result = await getShopSettings();
+              result.fold((_) {}, (settings) => shopSettings = settings);
+            } catch (_) {}
+
+            try {
+              final doc = await PdfReceiptService.generateReceipt(
+                state.checkoutCartItems,
+                state.totalPaid,
+                shopSettings: shopSettings,
+                invoice: state.invoice,
+              );
+              final bytes = await doc.save();
+
+              if (mounted) {
+                setState(() {
+                  _isGeneratingPdf = false;
+                });
+              }
+
+              if (!context.mounted) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PdfPreviewPage(pdfBytes: bytes),
+                ),
+              );
+            } catch (e) {
+              if (mounted) {
+                setState(() {
+                  _isGeneratingPdf = false;
+                });
+              }
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to generate PDF: $e'),
+                  backgroundColor: const Color(0xFFD32F2F),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             }
+          } else {
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Failed to generate PDF: $e'),
-                backgroundColor: const Color(0xFFD32F2F),
+                content: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        state.message,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF10B981),
                 behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 3),
               ),
             );
           }
@@ -109,63 +136,56 @@ class _PosPageState extends State<PosPage> {
 
         return Stack(
           children: [
-            GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: isBusy
-                  ? null
-                  : () => FocusManager.instance.primaryFocus?.unfocus(),
-              child: Scaffold(
-                appBar: AppBar(
-                  title: const Text(
-                    'Sales & Billing',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.qr_code_scanner_rounded),
-                      tooltip: 'Verify Receipt',
-                      onPressed: isBusy
-                          ? null
-                          : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ReceiptVerificationPage(),
-                              ),
-                            ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
+            Scaffold(
+              appBar: AppBar(
+                title: const Text(
+                  'Sales & Billing',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                 ),
-                body: AbsorbPointer(
-                  absorbing: isBusy,
-                  child: SingleChildScrollView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        // 1. "Find & Add Product" Component
-                        PosProductSearchCard(
-                          onProductSelected: (latestBatch, grouped) {
-                            FocusManager.instance.primaryFocus?.unfocus();
-                            context.read<PosBloc>().add(
-                              AddToCartEvent(
-                                productId: grouped.partNo,
-                                itemName: grouped.itemName,
-                                partNo: grouped.partNo,
-                                costCode: latestBatch.costCode,
-                                availableStock: grouped.totalStockCount,
-                              ),
-                            );
-                          },
-                        ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    tooltip: 'Verify Receipt',
+                    onPressed: isBusy
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ReceiptVerificationPage(),
+                            ),
+                          ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+              ),
+              body: AbsorbPointer(
+                absorbing: isBusy,
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      // 1. "Find & Add Product" Component
+                      PosProductSearchCard(
+                        onProductSelected: (selectedBatch) {
+                          context.read<PosBloc>().add(
+                            AddToCartEvent(
+                              productId: selectedBatch.id,
+                              itemName: selectedBatch.itemName,
+                              partNo: selectedBatch.partNo,
+                              costCode: selectedBatch.costCode,
+                              availableStock: selectedBatch.stockCount,
+                            ),
+                          );
+                        },
+                      ),
 
-                        const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                        // 2. "Sales Cart" Component
-                        const PosCartCard(),
-                      ],
-                    ),
+                      // 2. "Sales Cart" Component
+                      const PosCartCard(),
+                    ],
                   ),
                 ),
               ),

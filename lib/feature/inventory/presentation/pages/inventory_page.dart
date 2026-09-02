@@ -109,8 +109,6 @@ class _InventoryPageState extends State<InventoryPage> {
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         drawer: AppDrawer(
-          currentIndex: 0,
-          onNavigateToTab: widget.onNavigateToTab,
           onClearAllProducts: _handleClearAll,
         ),
         appBar: InventoryAppBar(
