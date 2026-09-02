@@ -1,10 +1,18 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:gear_track/core/error/failure.dart';
 
 abstract interface class AuthRepository {
-  Future<Either<Failure, String>> sendSignInLink();
-  Stream<bool> watchSessionApproval(String sessionId);
-  Future<Either<Failure, void>> completeSessionLogin(String sessionId);
+  Future<Either<Failure, User>> signInWithEmailPassword({
+    required String email,
+    required String password,
+  });
+
+  Future<Either<Failure, void>> sendPasswordResetEmail({
+    required String email,
+  });
+
   Future<Either<Failure, bool>> checkAuthStatus();
+
   Future<Either<Failure, void>> signOut();
 }

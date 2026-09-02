@@ -1,44 +1,31 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:gear_track/feature/auth/data/sources/auth_remote_data_source.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:gear_track/feature/auth/domain/usecases/check_auth_status.dart';
-import 'package:gear_track/feature/auth/domain/usecases/complete_session_login.dart';
-import 'package:gear_track/feature/auth/domain/usecases/send_sign_in_link.dart';
+import 'package:gear_track/feature/auth/domain/usecases/login_with_email_password.dart';
+import 'package:gear_track/feature/auth/domain/usecases/send_password_reset.dart';
 import 'package:gear_track/feature/auth/domain/usecases/sign_out.dart';
-import 'package:gear_track/feature/auth/domain/usecases/watch_session_approval.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final SendSignInLink sendSignInLink;
-  final WatchSessionApproval watchSessionApproval;
-  final CompleteSessionLogin completeSessionLogin;
+  final LoginWithEmailPassword loginWithEmailPassword;
+  final SendPasswordReset sendPasswordReset;
   final CheckAuthStatus checkAuthStatus;
   final SignOut signOut;
 
-  static const String adminEmail = AuthRemoteDataSourceImpl.authorizedAdminEmail;
-
-  StreamSubscription<bool>? _sessionSubscription;
-
   AuthBloc({
-    required this.sendSignInLink,
-    required this.watchSessionApproval,
-    required this.completeSessionLogin,
+    required this.loginWithEmailPassword,
+    required this.sendPasswordReset,
     required this.checkAuthStatus,
     required this.signOut,
   }) : super(const AuthInitial()) {
     on<AuthCheckRequested>(_onCheck);
-    on<AuthSendLinkRequested>(_onSendLink);
-    on<AuthSessionApprovedEvent>(_onSessionApproved);
+    on<AuthLoginRequested>(_onLogin);
+    on<AuthForgotPasswordRequested>(_onForgotPassword);
     on<AuthSignOutRequested>(_onSignOut);
-  }
-
-  @override
-  Future<void> close() {
-    _sessionSubscription?.cancel();
-    return super.close();
   }
 
   Future<void> _onCheck(
@@ -50,7 +37,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       (failure) => emit(const Unauthenticated()),
       (isAuthenticated) {
         if (isAuthenticated) {
-          emit(const Authenticated());
+          emit(Authenticated(user: FirebaseAuth.instance.currentUser));
         } else {
           emit(const Unauthenticated());
         }
@@ -58,38 +45,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
-  Future<void> _onSendLink(
-    AuthSendLinkRequested event,
+  Future<void> _onLogin(
+    AuthLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthLoading());
-    final result = await sendSignInLink();
+    emit(const AuthLoading(message: 'Logging in...'));
+    final result = await loginWithEmailPassword(
+      email: event.email,
+      password: event.password,
+    );
+
     result.fold(
       (failure) => emit(AuthFailureState(failure.message)),
-      (sessionId) {
-        _sessionSubscription?.cancel();
-        _sessionSubscription =
-            watchSessionApproval(sessionId).listen((isApproved) {
-          if (isApproved) {
-            add(AuthSessionApprovedEvent(sessionId: sessionId));
-          }
-        });
-
-        emit(AuthLinkSentState(sessionId: sessionId));
-      },
+      (user) => emit(Authenticated(user: user)),
     );
   }
 
-  Future<void> _onSessionApproved(
-    AuthSessionApprovedEvent event,
+  Future<void> _onForgotPassword(
+    AuthForgotPasswordRequested event,
     Emitter<AuthState> emit,
   ) async {
-    _sessionSubscription?.cancel();
-    emit(const AuthLoading(message: 'Logging in...'));
-    final result = await completeSessionLogin(event.sessionId);
+    emit(const AuthLoading(message: 'Sending reset link...'));
+    final result = await sendPasswordReset(email: event.email);
+
     result.fold(
       (failure) => emit(AuthFailureState(failure.message)),
-      (_) => emit(const Authenticated()),
+      (_) => emit(AuthPasswordResetSentState(email: event.email)),
     );
   }
 
@@ -97,7 +78,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSignOutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    _sessionSubscription?.cancel();
+    emit(const AuthLoading(message: 'Signing out...'));
     await signOut();
     emit(const Unauthenticated());
   }

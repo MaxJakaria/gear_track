@@ -1,71 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 abstract interface class AuthRemoteDataSource {
-  Future<String> sendSignInLink();
-  Stream<bool> watchSessionApproval(String sessionId);
-  Future<void> completeSessionLogin(String sessionId);
+  Future<User> signInWithEmailPassword({
+    required String email,
+    required String password,
+  });
+  Future<void> sendPasswordResetEmail({required String email});
   Future<bool> checkAuthStatus();
   Future<void> signOut();
+  User? get currentUser;
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final FirebaseAuth _firebaseAuth;
-  final FirebaseFirestore _firestore;
-  static const String authorizedAdminEmail = 'maxjakaria824@gmail.com';
 
-  AuthRemoteDataSourceImpl({
-    FirebaseAuth? firebaseAuth,
-    FirebaseFirestore? firestore,
-  })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+  AuthRemoteDataSourceImpl({FirebaseAuth? firebaseAuth})
+      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   @override
-  Future<String> sendSignInLink() async {
-    final sessionId =
-        '${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond % 1000}';
+  User? get currentUser => _firebaseAuth.currentUser;
 
-    // 1. Create a pending cross-device session document in Firestore
-    await _firestore.collection('auth_sessions').doc(sessionId).set({
-      'sessionId': sessionId,
-      'email': authorizedAdminEmail,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    // 2. Dispatch email link via Firebase Auth
-    final actionCodeSettings = ActionCodeSettings(
-      url: 'https://geartrack-9ccdb.firebaseapp.com/?session_id=$sessionId',
-      handleCodeInApp: true,
-      androidPackageName: 'com.example.gear_track',
-      androidMinimumVersion: '1',
+  @override
+  Future<User> signInWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    final credential = await _firebaseAuth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
     );
-
-    await _firebaseAuth.sendSignInLinkToEmail(
-      email: authorizedAdminEmail,
-      actionCodeSettings: actionCodeSettings,
-    );
-
-    return sessionId;
-  }
-
-  @override
-  Stream<bool> watchSessionApproval(String sessionId) {
-    return _firestore
-        .collection('auth_sessions')
-        .doc(sessionId)
-        .snapshots()
-        .map((doc) => doc.exists && doc.data()?['status'] == 'approved');
-  }
-
-  @override
-  Future<void> completeSessionLogin(String sessionId) async {
-    await _firestore.collection('auth_sessions').doc(sessionId).delete();
-    if (_firebaseAuth.currentUser == null) {
-      try {
-        await _firebaseAuth.signInAnonymously();
-      } catch (_) {}
+    if (credential.user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No user found with the provided credentials.',
+      );
     }
+    return credential.user!;
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    await _firebaseAuth.sendPasswordResetEmail(email: email.trim());
   }
 
   @override

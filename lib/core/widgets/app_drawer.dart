@@ -1,9 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/pages/about_page.dart';
 import 'package:gear_track/core/pages/developer_info_page.dart';
 import 'package:gear_track/core/pages/help_guide_page.dart';
-import 'package:gear_track/feature/auth/presentation/pages/login_page.dart';
+import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/settings_page.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -333,10 +334,7 @@ class AppDrawer extends StatelessWidget {
             onPressed: () {
               Navigator.pop(dialogCtx);
               Navigator.pop(context); // close drawer
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-                (route) => false,
-              );
+              context.read<AuthBloc>().add(const AuthSignOutRequested());
             },
             child: const Text('Log Out'),
           ),

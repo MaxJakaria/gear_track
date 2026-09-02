@@ -2,12 +2,12 @@ import 'package:fpdart/fpdart.dart';
 import 'package:gear_track/core/error/failure.dart';
 import 'package:gear_track/feature/auth/domain/repository/auth_repository.dart';
 
-class CompleteSessionLogin {
+class SendPasswordReset {
   final AuthRepository repository;
 
-  CompleteSessionLogin(this.repository);
+  SendPasswordReset(this.repository);
 
-  Future<Either<Failure, void>> call(String sessionId) async {
-    return await repository.completeSessionLogin(sessionId);
+  Future<Either<Failure, void>> call({required String email}) async {
+    return await repository.sendPasswordResetEmail(email: email);
   }
 }
