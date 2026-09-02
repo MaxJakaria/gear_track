@@ -140,7 +140,7 @@ class _InventoryPageState extends State<InventoryPage> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         resizeToAvoidBottomInset: false,
-        drawer: AppDrawer(
+        endDrawer: AppDrawer(
           onClearAllProducts: _handleClearAll,
         ),
         appBar: InventoryAppBar(

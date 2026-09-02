@@ -736,9 +736,68 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
-            'Settings',
+            'Store Profile',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
+          actions: [
+            if (!_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(right: 10.0),
+                child: _isSaving
+                    ? const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        ),
+                      )
+                    : Container(
+                        height: 34,
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGradient(context),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryButton(
+                                context,
+                              ).withValues(alpha: 0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: _save,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Save',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+              ),
+          ],
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator())
@@ -1202,13 +1261,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       const SizedBox(height: 28),
 
-                      // Save Button
-                      AppGradientButton(
-                        label: 'Save Changes',
-                        icon: Icons.check_circle_rounded,
-                        isLoading: _isSaving,
-                        onPressed: _isSaving ? null : _save,
-                      ),
                       const SizedBox(height: 24),
                     ],
                   ),

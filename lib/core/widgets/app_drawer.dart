@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/pages/about_page.dart';
 import 'package:gear_track/core/pages/help_guide_page.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/settings_page.dart';
@@ -81,14 +82,35 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final menuIconColor = isDark
+        ? const Color(0xFF818CF8)
+        : const Color(0xFF4F46E5);
 
     return Drawer(
-      width: 310,
+      width: 290,
       elevation: 0,
+      shadowColor: Colors.transparent,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       backgroundColor: Colors.transparent,
       child: Row(
         children: [
+          // Outer Soft Shadow Strip (on the left edge for right-side slide)
+          Container(
+            width: 16,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: [
+                  Colors.white.withValues(alpha: 0.16),
+                  Colors.white.withValues(alpha: 0.05),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.45, 1.0],
+              ),
+            ),
+          ),
+
           // Main Drawer Body
           Expanded(
             child: ColoredBox(
@@ -107,7 +129,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     const SizedBox(height: 10),
 
                     // 2. Pure Text-Based Filter Menu Card
-                    _buildTextBasedFilterMenu(context, isDark),
+                    _buildTextBasedFilterMenu(context, isDark, menuIconColor),
 
                     const SizedBox(height: 14),
 
@@ -136,7 +158,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildMenuCard(
                       icon: Icons.delete_sweep_rounded,
                       title: 'Clear All Products',
-                      iconColor: const Color(0xFFEAB308),
+                      iconColor: menuIconColor,
                       isDark: isDark,
                       onTap: () {
                         Navigator.pop(context);
@@ -148,7 +170,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildMenuCard(
                       icon: Icons.help_rounded,
                       title: 'Help & User Guide',
-                      iconColor: const Color(0xFF3B82F6),
+                      iconColor: menuIconColor,
                       isDark: isDark,
                       onTap: () {
                         Navigator.pop(context);
@@ -160,7 +182,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildMenuCard(
                       icon: Icons.info_rounded,
                       title: 'About',
-                      iconColor: const Color(0xFF0284C7),
+                      iconColor: menuIconColor,
                       isDark: isDark,
                       onTap: () {
                         Navigator.pop(context);
@@ -172,7 +194,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     _buildMenuCard(
                       icon: Icons.logout_rounded,
                       title: 'Log Out',
-                      iconColor: const Color(0xFFEF4444),
+                      iconColor: menuIconColor,
                       isDark: isDark,
                       onTap: () => _confirmSignOut(context, isDark),
                     ),
@@ -181,27 +203,16 @@ class _AppDrawerState extends State<AppDrawer> {
               ),
             ),
           ),
-
-          // Outer Soft Shadow Strip
-          Container(
-            width: 12,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.black.withValues(alpha: isDark ? 0.7 : 0.3),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildTextBasedFilterMenu(BuildContext context, bool isDark) {
+  Widget _buildTextBasedFilterMenu(
+    BuildContext context,
+    bool isDark,
+    Color iconColor,
+  ) {
     return BlocBuilder<InventoryBloc, InventoryState>(
       builder: (context, state) {
         int inStockCount = 0;
@@ -228,48 +239,46 @@ class _AppDrawerState extends State<AppDrawer> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Filter Header (Clean Text)
+              // 1. Filter Header
               GestureDetector(
                 onTap: () => setState(() => _filterMenuOpen = !_filterMenuOpen),
                 behavior: HitTestBehavior.opaque,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
+                    horizontal: 10,
+                    vertical: 7,
                   ),
                   child: Row(
                     children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: iconColor.withValues(
+                            alpha: isDark ? 0.2 : 0.14,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.tune_rounded,
+                            size: 16,
+                            color: iconColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Inventory Filters',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.2,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF0F172A),
-                              ),
-                            ),
-                            const SizedBox(height: 1),
-                            Text(
-                              selected == StockFilter.all
-                                  ? 'All items shown'
-                                  : 'Filtered: ${selected.name}',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: selected == StockFilter.all
-                                    ? (isDark
-                                          ? const Color(0xFF94A3B8)
-                                          : const Color(0xFF64748B))
-                                    : const Color(0xFF38BDF8),
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          'Filters',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                            color: isDark
+                                ? const Color(0xFFF8FAFC)
+                                : const Color(0xFF0F172A),
+                          ),
                         ),
                       ),
                       AnimatedRotation(
@@ -391,31 +400,12 @@ class _AppDrawerState extends State<AppDrawer> {
                             const SizedBox(height: 8),
 
                             // "Show Result" Button
-                            SizedBox(
-                              width: double.infinity,
+                            AppGradientButton(
+                              label: 'Show Result',
                               height: 34,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isDark
-                                      ? const Color(0xFF1E293B)
-                                      : const Color(0xFF0F172A),
-                                  foregroundColor: Colors.white,
-                                  shadowColor: Colors.transparent,
-                                  elevation: 0,
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ),
-                                onPressed: () => _applyFilter(context),
-                                child: const Text(
-                                  'Show Result',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
+                              borderRadius: 6,
+                              fontSize: 12.5,
+                              onPressed: () => _applyFilter(context),
                             ),
                           ],
                         ),
@@ -643,18 +633,30 @@ class _AppDrawerState extends State<AppDrawer> {
                       width: 30,
                       height: 30,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.storefront_rounded,
-                          size: 16,
-                          color: Colors.white,
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        'assets/logos/app_logo.png',
+                        width: 30,
+                        height: 30,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.storefront_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                     ),

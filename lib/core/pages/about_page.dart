@@ -166,21 +166,7 @@ class AboutPage extends StatelessWidget {
             _SpecificationsCard(surfaceColor: surfaceColor, isDark: isDark),
             const SizedBox(height: 16),
 
-            // 5. FOOTER
-            Center(
-              child: Text(
-                '© 2026 GearTrack • Developed by SOLID Tech',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.1,
-                  color: isDark
-                      ? const Color(0xFF64748B)
-                      : const Color(0xFF94A3B8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
           ],
         ),
       ),

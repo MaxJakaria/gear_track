@@ -28,14 +28,15 @@ class ProductListView extends StatelessWidget {
         itemCount: products.length,
         itemBuilder: (context, index) {
           final item = products[index];
-          final isCardExpanded = expandedCardKey == item.itemName;
+          final itemKey = item.groupKey;
+          final isCardExpanded = expandedCardKey == itemKey;
 
           return ProductCard(
             groupedProduct: item,
             cardIndex: index,
             isExpanded: isCardExpanded,
             onToggleExpand: () {
-              onToggleExpand(isCardExpanded ? null : item.itemName);
+              onToggleExpand(isCardExpanded ? null : itemKey);
             },
             onQuickAdd: () => QuickAddStockSheet.show(context, item),
           );

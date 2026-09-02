@@ -32,19 +32,14 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
 
     return AppBar(
+      automaticallyImplyLeading: false,
       leading: isSearching
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: onStopSearch,
             )
-          : Builder(
-              builder: (context) => IconButton(
-                icon: const Icon(Icons.menu_rounded, size: 26),
-                tooltip: 'Open Menu',
-                onPressed: () => Scaffold.of(context).openDrawer(),
-              ),
-            ),
-      titleSpacing: isSearching ? 0 : 0,
+          : null,
+      titleSpacing: isSearching ? 0 : 16,
       title: isSearching
           ? ValueListenableBuilder<TextEditingValue>(
               valueListenable: searchController,
@@ -119,13 +114,20 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             icon: Image.asset(
               'assets/icons/search-engine.png',
-              width: 24,
-              height: 24,
+              width: 22,
+              height: 22,
             ),
             tooltip: 'Search Products',
             onPressed: onStartSearch,
           ),
-          const SizedBox(width: 4),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu_rounded, size: 26),
+              tooltip: 'Open Menu',
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
+          ),
+          const SizedBox(width: 6),
         ],
       ],
     );
