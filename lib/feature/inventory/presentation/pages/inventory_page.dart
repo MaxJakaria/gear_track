@@ -221,7 +221,7 @@ class _InventoryPageState extends State<InventoryPage> {
                             );
                       },
                       onOpenFilterSidebar: () =>
-                          Scaffold.of(scaffoldCtx).openDrawer(),
+                          Scaffold.of(scaffoldCtx).openEndDrawer(),
                       onClearAll: state.activeFilter ==
                                   StockFilter.outOfStockBatch &&
                               batchList.isNotEmpty
@@ -262,6 +262,11 @@ class _InventoryPageState extends State<InventoryPage> {
                                         ),
                                       );
                                 },
+                                onRefresh: () async {
+                                  context.read<InventoryBloc>().add(
+                                        const FetchProductsEvent(),
+                                      );
+                                },
                               )
                             : BatchListView(
                                 groupedBatches: groupedBatchList,
@@ -285,6 +290,11 @@ class _InventoryPageState extends State<InventoryPage> {
                                           query: _searchController.text,
                                           filter: StockFilter.all,
                                         ),
+                                      );
+                                },
+                                onRefresh: () async {
+                                  context.read<InventoryBloc>().add(
+                                        const FetchProductsEvent(),
                                       );
                                 },
                               )

@@ -9,6 +9,7 @@ import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_c
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_product_search_card.dart';
 import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
 import 'package:gear_track/feature/receipt_verification/presentation/pages/receipt_verification_page.dart';
+import 'package:gear_track/feature/returns/presentation/pages/returns_page.dart';
 import 'package:gear_track/init_dependencies.dart';
 
 /// Point of Sale (POS) Primary Screen Page
@@ -144,6 +145,18 @@ class _PosPageState extends State<PosPage> {
                 ),
                 actions: [
                   IconButton(
+                    icon: const Icon(Icons.assignment_return_rounded),
+                    tooltip: 'Returns & Refunds',
+                    onPressed: isBusy
+                        ? null
+                        : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ReturnsPage(),
+                            ),
+                          ),
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.qr_code_scanner_rounded),
                     tooltip: 'Verify Receipt',
                     onPressed: isBusy
@@ -169,9 +182,19 @@ class _PosPageState extends State<PosPage> {
                       // 1. "Find & Add Product" Component
                       PosProductSearchCard(
                         onProductSelected: (selectedBatch) {
+                          final cleanProductId = selectedBatch.partNo.isNotEmpty
+                              ? selectedBatch.partNo
+                              : (selectedBatch.id.contains('/')
+                                  ? selectedBatch.id.split('/')[0]
+                                  : selectedBatch.id);
+                          final batchId = selectedBatch.id.contains('/')
+                              ? selectedBatch.id.split('/')[1]
+                              : selectedBatch.id;
+
                           context.read<PosBloc>().add(
                             AddToCartEvent(
-                              productId: selectedBatch.id,
+                              productId: cleanProductId,
+                              batchId: batchId,
                               itemName: selectedBatch.itemName,
                               partNo: selectedBatch.partNo,
                               costCode: selectedBatch.costCode,

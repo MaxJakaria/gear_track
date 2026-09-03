@@ -17,6 +17,7 @@ class BatchListView extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
         itemCount: groupedBatches.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),

@@ -9,18 +9,27 @@ import 'package:gear_track/feature/point_of_sale/data/models/sale_model.dart';
 import 'package:gear_track/feature/reports/data/repository/reports_repository_impl.dart';
 import 'package:gear_track/feature/reports/data/sources/reports_remote_data_source.dart';
 import 'package:gear_track/feature/reports/domain/entities/report_period.dart';
+import 'package:gear_track/feature/returns/data/models/return_model.dart';
 
 class MockReportsRemoteDataSource implements ReportsRemoteDataSource {
   final List<SaleModel> sales;
   final List<ProductModel> products;
+  final List<ReturnModel> returns;
 
-  MockReportsRemoteDataSource({required this.sales, required this.products});
+  MockReportsRemoteDataSource({
+    required this.sales,
+    required this.products,
+    this.returns = const [],
+  });
 
   @override
   Future<List<SaleModel>> getAllSales() async => sales;
 
   @override
   Future<List<ProductModel>> getAllProducts() async => products;
+
+  @override
+  Future<List<ReturnModel>> getAllReturns() async => returns;
 }
 
 class MockSettingsRepository implements SettingsRepository {
@@ -230,5 +239,55 @@ void main() {
         },
       );
     });
+
+    test('should deduct return refunds and return profit from summary', () async {
+      final testReturns = [
+        ReturnModel(
+          returnId: 'ret1',
+          invoiceId: 'inv1',
+          returnDate: now,
+          totalRefundAmount: 120.0,
+          totalQuantity: 1,
+          reason: 'Defective',
+          items: const [
+            ReturnItemModel(
+              productId: 'BRK-001',
+              itemName: 'Brake Pad Set',
+              partNo: 'BRK-001',
+              quantity: 1,
+              sellPrice: 120.0,
+              costCode: '80',
+              restock: true,
+            ),
+          ],
+        ),
+      ];
+
+      final mockSource = MockReportsRemoteDataSource(
+        sales: testSales,
+        products: testProducts,
+        returns: testReturns,
+      );
+      final repo = ReportsRepositoryImpl(
+        remoteDataSource: mockSource,
+        settingsRepository: MockSettingsRepository(),
+      );
+
+      final result = await repo.getAnalyticsReport(ReportPeriod.today);
+
+      expect(result.isRight(), true);
+      result.fold(
+        (failure) => fail('Should succeed'),
+        (report) {
+          // Gross was 240, refund is 120 -> net sales = 120
+          expect(report.summary.totalSales, 120.0);
+          // Gross profit was 80, returned item profit was (120 - 80) * 1 = 40 -> net profit = 40
+          expect(report.summary.totalProfit, 40.0);
+          // 2 sold - 1 returned = 1
+          expect(report.summary.itemsSold, 1);
+        },
+      );
+    });
   });
 }
+

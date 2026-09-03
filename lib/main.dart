@@ -8,6 +8,7 @@ import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.da
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/receipt_verification/presentation/bloc/receipt_verification_bloc.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
+import 'package:gear_track/feature/returns/presentation/bloc/return_bloc.dart';
 import 'package:gear_track/firebase_options.dart';
 import 'package:gear_track/init_dependencies.dart';
 
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
           create: (context) => serviceLocator<ReceiptVerificationBloc>(),
         ),
         BlocProvider(create: (context) => serviceLocator<ReportsBloc>()),
+        BlocProvider(create: (context) => serviceLocator<ReturnBloc>()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

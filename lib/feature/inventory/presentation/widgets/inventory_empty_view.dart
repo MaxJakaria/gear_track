@@ -7,6 +7,7 @@ class InventoryEmptyView extends StatelessWidget {
   final StockFilter activeFilter;
   final VoidCallback onClearSearch;
   final VoidCallback onResetFilter;
+  final Future<void> Function()? onRefresh;
 
   const InventoryEmptyView({
     super.key,
@@ -14,6 +15,7 @@ class InventoryEmptyView extends StatelessWidget {
     required this.activeFilter,
     required this.onClearSearch,
     required this.onResetFilter,
+    this.onRefresh,
   });
 
   @override
@@ -82,7 +84,7 @@ class InventoryEmptyView extends StatelessWidget {
       );
     }
 
-    return Center(
+    final content = Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -117,5 +119,22 @@ class InventoryEmptyView extends StatelessWidget {
         ),
       ),
     );
+
+    if (onRefresh != null) {
+      return RefreshIndicator(
+        onRefresh: onRefresh!,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: content,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return content;
   }
 }

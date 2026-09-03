@@ -23,6 +23,7 @@ class ProductListView extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
         itemCount: products.length,

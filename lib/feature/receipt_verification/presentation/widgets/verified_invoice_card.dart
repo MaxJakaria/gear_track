@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
+import 'package:gear_track/feature/receipt_verification/presentation/bloc/receipt_verification_bloc.dart';
+import 'package:gear_track/feature/returns/presentation/pages/process_return_page.dart';
 
 class VerifiedInvoiceCard extends StatelessWidget {
   final InvoiceEntity invoice;
@@ -251,26 +254,65 @@ class VerifiedInvoiceCard extends StatelessWidget {
                                 : const Color(0xFF64748B),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF10B981,
-                            ).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Paid in Full',
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF10B981),
+                        if (invoice.isFullyReturned)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Fully Returned',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                          )
+                        else if (invoice.isPartiallyReturned)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Partially Returned (${invoice.returnedAmount.toCurrency()})',
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFD97706),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF10B981,
+                              ).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Paid in Full',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF10B981),
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ],
@@ -453,6 +495,40 @@ class VerifiedInvoiceCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+
+        // Process Return Action Button
+        if (!invoice.isFullyReturned) ...[
+          ElevatedButton.icon(
+            onPressed: () async {
+              final returned = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProcessReturnPage(invoice: invoice),
+                ),
+              );
+              if (returned == true && context.mounted) {
+                context
+                    .read<ReceiptVerificationBloc>()
+                    .add(VerifyReceiptCodeEvent(invoice.invoiceId));
+              }
+            },
+            icon: const Icon(Icons.assignment_return_rounded, size: 18),
+            label: const Text(
+              'Process Return / Refund Items',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE11D48),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 2,
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
 
         // Action Button
         AppGradientButton(
