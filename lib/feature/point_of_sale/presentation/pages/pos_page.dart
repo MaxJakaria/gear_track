@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
-import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
@@ -63,7 +62,7 @@ class _PosPageState extends State<PosPage> {
             ShopSettings shopSettings = const ShopSettings();
             try {
               final getShopSettings = serviceLocator<GetShopSettings>();
-              final result = await getShopSettings();
+              final result = await getShopSettings().timeout(const Duration(seconds: 2));
               result.fold((_) {}, (settings) => shopSettings = settings);
             } catch (_) {}
 
@@ -73,14 +72,8 @@ class _PosPageState extends State<PosPage> {
                 state.totalPaid,
                 shopSettings: shopSettings,
                 invoice: state.invoice,
-              );
-              final bytes = await doc.save();
-
-              if (mounted) {
-                setState(() {
-                  _isGeneratingPdf = false;
-                });
-              }
+              ).timeout(const Duration(seconds: 6));
+              final bytes = await doc.save().timeout(const Duration(seconds: 4));
 
               if (!context.mounted) return;
               Navigator.push(
@@ -90,11 +83,6 @@ class _PosPageState extends State<PosPage> {
                 ),
               );
             } catch (e) {
-              if (mounted) {
-                setState(() {
-                  _isGeneratingPdf = false;
-                });
-              }
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -103,6 +91,12 @@ class _PosPageState extends State<PosPage> {
                   behavior: SnackBarBehavior.floating,
                 ),
               );
+            } finally {
+              if (mounted) {
+                setState(() {
+                  _isGeneratingPdf = false;
+                });
+              }
             }
           } else {
             if (!context.mounted) return;
@@ -159,7 +153,10 @@ class _PosPageState extends State<PosPage> {
                 ),
                 actions: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 4,
+                    ),
                     child: SizedBox(
                       width: 84,
                       height: 36,
@@ -208,8 +205,8 @@ class _PosPageState extends State<PosPage> {
                           final cleanProductId = selectedBatch.partNo.isNotEmpty
                               ? selectedBatch.partNo
                               : (selectedBatch.id.contains('/')
-                                  ? selectedBatch.id.split('/')[0]
-                                  : selectedBatch.id);
+                                    ? selectedBatch.id.split('/')[0]
+                                    : selectedBatch.id);
                           final batchId = selectedBatch.id.contains('/')
                               ? selectedBatch.id.split('/')[1]
                               : selectedBatch.id;

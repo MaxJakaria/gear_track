@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
@@ -264,14 +264,35 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     emit(SaleAdding());
 
     final checkoutItems = List<CartItem>.from(_cartItems);
-    final totalPaid = checkoutItems.fold(0.0, (sum, i) => sum + i.subtotal);
+    final totalPaid = checkoutItems.fold(0.0, (total, i) => total + i.subtotal);
     final now = DateTime.now();
 
-    // Generate unique cryptographically collision-resistant Invoice ID: GT-YYYYMMDD-XXXXXX
-    final datePrefix =
+    // Invoice ID format: [Prefix]-[POS ID]-[Date]-[Sequential Number]
+    // e.g. INV-POS01-20260903-0001
+    final dateStr =
         '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final randomSuffix = (Random().nextInt(900000) + 100000).toString();
-    final invoiceId = 'GT-$datePrefix-$randomSuffix';
+    int seq = 1;
+    try {
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final snap = await FirebaseFirestore.instance
+          .collection('invoices')
+          .where('saleDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .count()
+          .get()
+          .timeout(const Duration(seconds: 2));
+      seq = (snap.count ?? 0) + 1;
+    } catch (_) {
+      final todayInvoices = _allSales
+          .where((s) =>
+              s.saleDate.year == now.year &&
+              s.saleDate.month == now.month &&
+              s.saleDate.day == now.day)
+          .map((s) => s.invoiceId)
+          .toSet();
+      seq = todayInvoices.length + 1;
+    }
+    final seqStr = seq.toString().padLeft(4, '0');
+    final invoiceId = 'INV-POS01-$dateStr-$seqStr';
 
     final invoiceItems = checkoutItems
         .map(
@@ -290,7 +311,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       invoiceId: invoiceId,
       saleDate: now,
       totalAmount: totalPaid,
-      totalItems: checkoutItems.fold(0, (sum, i) => sum + i.quantity),
+      totalItems: checkoutItems.fold(0, (total, i) => total + i.quantity),
       items: invoiceItems,
     );
 
@@ -298,7 +319,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     final salesList = checkoutItems
         .map(
           (item) => SaleEntity(
-            id: 'REC-$datePrefix-${randomSuffix}_${itemIndex++}',
+            id: 'REC-$dateStr-${seqStr}_${itemIndex++}',
             productId: item.productId,
             batchId: item.batchId,
             partNo: item.partNo,

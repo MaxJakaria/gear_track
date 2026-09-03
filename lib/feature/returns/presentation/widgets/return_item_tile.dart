@@ -43,14 +43,14 @@ class ReturnItemTile extends StatelessWidget {
 
     final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
 
-    final toggleSelection = () {
+    void toggleSelection() {
       if (isFullyReturned) return;
       if (isSelected) {
         onQuantityChanged(0);
       } else {
         onQuantityChanged(selectedQuantity > 0 ? selectedQuantity : 1);
       }
-    };
+    }
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),

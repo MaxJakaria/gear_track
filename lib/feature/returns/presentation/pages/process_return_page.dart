@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
-import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
-import 'package:gear_track/feature/point_of_sale/presentation/pages/pdf_preview_page.dart';
 import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
 import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
@@ -14,8 +11,6 @@ import 'package:gear_track/feature/returns/presentation/bloc/return_event.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_state.dart';
 import 'package:gear_track/feature/returns/presentation/widgets/return_item_tile.dart';
 import 'package:gear_track/feature/returns/presentation/widgets/return_summary_card.dart';
-import 'package:gear_track/feature/returns/utils/pdf_return_voucher_service.dart';
-import 'package:gear_track/init_dependencies.dart';
 
 /// Minimalist, high-end return processing page matching GearTrack's luxury UI
 class ProcessReturnPage extends StatefulWidget {
@@ -156,37 +151,6 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
     context.read<ReturnBloc>().add(ProcessReturnEvent(returnRecord));
   }
 
-  Future<void> _showVoucherPdf(ReturnEntity returnRecord) async {
-    ShopSettings shopSettings = const ShopSettings();
-    try {
-      final getShopSettings = serviceLocator<GetShopSettings>();
-      final result = await getShopSettings();
-      result.fold((_) {}, (settings) => shopSettings = settings);
-    } catch (_) {}
-
-    try {
-      final doc = await PdfReturnVoucherService.generateReturnVoucher(
-        returnRecord: returnRecord,
-        shopSettings: shopSettings,
-      );
-      final bytes = await doc.save();
-
-      if (!mounted) return;
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => PdfPreviewPage(pdfBytes: bytes)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to preview voucher: $e'),
-          backgroundColor: const Color(0xFFD32F2F),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -227,8 +191,6 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
               duration: const Duration(seconds: 3),
             ),
           );
-
-          await _showVoucherPdf(state.returnRecord);
 
           if (!context.mounted) return;
           Navigator.pop(context, true);
