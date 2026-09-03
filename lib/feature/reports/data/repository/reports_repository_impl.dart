@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:gear_track/core/domain/repository/settings_repository.dart';
 import 'package:gear_track/core/entities/cost_code_mapping.dart';
 import 'package:intl/intl.dart';
+import 'package:gear_track/feature/reports/domain/entities/financial_ledger.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
 import '../../../../feature/point_of_sale/data/models/sale_model.dart';
@@ -24,6 +25,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
   List<ProductModel>? _cachedProducts;
   List<ReturnModel>? _cachedReturns;
   CostCodeMapping? _cachedCostCodeMapping;
+  FinancialLedger? _cachedFinancialLedger;
 
   ReportsRepositoryImpl({
     required this.remoteDataSource,
@@ -42,22 +44,26 @@ class ReportsRepositoryImpl implements ReportsRepository {
       final List<ProductModel> allProducts;
       final List<ReturnModel> allReturns;
       final CostCodeMapping costCodeMapping;
+      final FinancialLedger financialLedger;
 
       if (!forceRefresh &&
           _cachedSales != null &&
           _cachedProducts != null &&
           _cachedReturns != null &&
-          _cachedCostCodeMapping != null) {
+          _cachedCostCodeMapping != null &&
+          _cachedFinancialLedger != null) {
         allSales = _cachedSales!;
         allProducts = _cachedProducts!;
         allReturns = _cachedReturns!;
         costCodeMapping = _cachedCostCodeMapping!;
+        financialLedger = _cachedFinancialLedger!;
       } else {
         final results = await Future.wait([
           remoteDataSource.getAllSales(),
           remoteDataSource.getAllProducts(),
           settingsRepository.getCostCodeMapping(),
           remoteDataSource.getAllReturns(),
+          remoteDataSource.getFinancialLedger(),
         ]);
 
         allSales = results[0] as List<SaleModel>;
@@ -68,11 +74,13 @@ class ReportsRepositoryImpl implements ReportsRepository {
           (_) => CostCodeMapping.defaultMapping(),
         );
         allReturns = results[3] as List<ReturnModel>;
+        financialLedger = results[4] as FinancialLedger;
 
         _cachedSales = allSales;
         _cachedProducts = allProducts;
         _cachedReturns = allReturns;
         _cachedCostCodeMapping = costCodeMapping;
+        _cachedFinancialLedger = financialLedger;
       }
 
       final now = DateTime.now();
@@ -98,7 +106,8 @@ class ReportsRepositoryImpl implements ReportsRepository {
         }
       }
 
-      double totalInvestment = 0.0;
+      // Baseline investment from permanently archived cleared catalog + active in-stock items
+      double totalInvestment = financialLedger.accumulatedInvestment;
       for (final prod in allProducts) {
         if (prod.stockCount > 0) {
           final costPerUnit = costCodeMapping.decode(prod.costCode);
@@ -230,6 +239,11 @@ class ReportsRepositoryImpl implements ReportsRepository {
       totalSales = (totalSales - totalReturnRefund).clamp(0.0, double.infinity);
       totalProfit = (totalProfit - totalReturnProfit).clamp(0.0, double.infinity);
       itemsSold = (itemsSold - totalReturnQuantity).clamp(0, 9999999);
+
+      // Permanently add baseline revenue & profit from financial ledger (preserved across history clears)
+      totalSales += financialLedger.accumulatedRevenue;
+      totalProfit += financialLedger.accumulatedProfit;
+      itemsSold += financialLedger.accumulatedItemsSold;
 
       // Sort sales records descending by date
       salesRecords.sort((a, b) => b.saleDate.compareTo(a.saleDate));

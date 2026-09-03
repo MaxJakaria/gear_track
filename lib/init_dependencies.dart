@@ -6,6 +6,7 @@ import 'package:gear_track/dependencies/receipt_verification.dart';
 import 'package:gear_track/dependencies/reports.dart';
 import 'package:gear_track/dependencies/returns.dart';
 import 'package:gear_track/dependencies/settings.dart';
+import 'package:gear_track/feature/database_maintenance/data/sources/database_maintenance_remote_data_source.dart';
 import 'package:get_it/get_it.dart';
 
 final serviceLocator = GetIt.instance;
@@ -31,5 +32,10 @@ Future<void> initDependencies() async {
   receiptVerificationDependencies(serviceLocator);
   reportsDependencies(serviceLocator);
   returnsDependencies(serviceLocator);
+
+  // Database Maintenance Service
+  serviceLocator.registerLazySingleton<DatabaseMaintenanceRemoteDataSource>(
+    () => DatabaseMaintenanceRemoteDataSourceImpl(serviceLocator()),
+  );
 }
 
