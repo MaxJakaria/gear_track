@@ -835,7 +835,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ? const Color(0xFF94A3B8)
                                 : const Color(0xFF64748B),
                           ),
-                          hintText: 'e.g. GearTrack POS',
+                          hintText: 'e.g. GearTrack',
                           hintStyle: TextStyle(
                             fontSize: 12.5,
                             color: isDark

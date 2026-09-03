@@ -261,7 +261,9 @@ class VerifiedInvoiceCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                              color: const Color(
+                                0xFFEF4444,
+                              ).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
@@ -280,7 +282,9 @@ class VerifiedInvoiceCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFFF59E0B,
+                              ).withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -507,24 +511,34 @@ class VerifiedInvoiceCard extends StatelessWidget {
                 ),
               );
               if (returned == true && context.mounted) {
-                context
-                    .read<ReceiptVerificationBloc>()
-                    .add(VerifyReceiptCodeEvent(invoice.invoiceId));
+                context.read<ReceiptVerificationBloc>().add(
+                  VerifyReceiptCodeEvent(invoice.invoiceId),
+                );
               }
             },
             icon: const Icon(Icons.assignment_return_rounded, size: 18),
             label: const Text(
               'Process Return / Refund Items',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+              style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE11D48),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              backgroundColor: isDark
+                  ? const Color(0xFF334155)
+                  : const Color(0xFFF1F5F9),
+              foregroundColor: isDark
+                  ? const Color(0xFFF87171)
+                  : const Color(0xFFE11D48),
+              side: BorderSide(
+                color:
+                    (isDark ? const Color(0xFFF87171) : const Color(0xFFE11D48))
+                        .withValues(alpha: 0.35),
+                width: 1,
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 2,
+              elevation: 0,
             ),
           ),
           const SizedBox(height: 10),

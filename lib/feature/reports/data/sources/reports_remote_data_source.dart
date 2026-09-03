@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:gear_track/feature/reports/domain/entities/financial_ledger.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
 import '../../../../feature/point_of_sale/data/models/sale_model.dart';
 import '../../../../feature/returns/data/models/return_model.dart';
@@ -7,12 +8,27 @@ abstract class ReportsRemoteDataSource {
   Future<List<SaleModel>> getAllSales();
   Future<List<ProductModel>> getAllProducts();
   Future<List<ReturnModel>> getAllReturns();
+  Future<FinancialLedger> getFinancialLedger();
 }
 
 class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
   final FirebaseFirestore firestore;
 
   ReportsRemoteDataSourceImpl({required this.firestore});
+
+  @override
+  Future<FinancialLedger> getFinancialLedger() async {
+    try {
+      final doc =
+          await firestore.collection('financial_ledger').doc('cumulative').get();
+      if (!doc.exists || doc.data() == null) {
+        return const FinancialLedger();
+      }
+      return FinancialLedger.fromMap(doc.data());
+    } catch (_) {
+      return const FinancialLedger();
+    }
+  }
 
   @override
   Future<List<SaleModel>> getAllSales() async {

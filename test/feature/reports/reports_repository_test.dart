@@ -8,6 +8,7 @@ import 'package:gear_track/feature/inventory/data/models/product_model.dart';
 import 'package:gear_track/feature/point_of_sale/data/models/sale_model.dart';
 import 'package:gear_track/feature/reports/data/repository/reports_repository_impl.dart';
 import 'package:gear_track/feature/reports/data/sources/reports_remote_data_source.dart';
+import 'package:gear_track/feature/reports/domain/entities/financial_ledger.dart';
 import 'package:gear_track/feature/reports/domain/entities/report_period.dart';
 import 'package:gear_track/feature/returns/data/models/return_model.dart';
 
@@ -15,11 +16,13 @@ class MockReportsRemoteDataSource implements ReportsRemoteDataSource {
   final List<SaleModel> sales;
   final List<ProductModel> products;
   final List<ReturnModel> returns;
+  final FinancialLedger financialLedger;
 
   MockReportsRemoteDataSource({
     required this.sales,
     required this.products,
     this.returns = const [],
+    this.financialLedger = const FinancialLedger(),
   });
 
   @override
@@ -30,6 +33,9 @@ class MockReportsRemoteDataSource implements ReportsRemoteDataSource {
 
   @override
   Future<List<ReturnModel>> getAllReturns() async => returns;
+
+  @override
+  Future<FinancialLedger> getFinancialLedger() async => financialLedger;
 }
 
 class MockSettingsRepository implements SettingsRepository {

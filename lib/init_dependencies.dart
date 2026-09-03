@@ -6,15 +6,21 @@ import 'package:gear_track/dependencies/receipt_verification.dart';
 import 'package:gear_track/dependencies/reports.dart';
 import 'package:gear_track/dependencies/returns.dart';
 import 'package:gear_track/dependencies/settings.dart';
+import 'package:gear_track/feature/database_maintenance/data/sources/database_maintenance_remote_data_source.dart';
 import 'package:get_it/get_it.dart';
 
 final serviceLocator = GetIt.instance;
 
 Future<void> initDependencies() async {
-  // External Core Services
-  serviceLocator.registerLazySingleton<FirebaseFirestore>(
-    () => FirebaseFirestore.instance,
-  );
+  // External Core Services with aggressive local caching
+  serviceLocator.registerLazySingleton<FirebaseFirestore>(() {
+    final firestore = FirebaseFirestore.instance;
+    firestore.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+    return firestore;
+  });
 
   // Settings & App Configuration
   settingsDependencies(serviceLocator);
@@ -26,5 +32,10 @@ Future<void> initDependencies() async {
   receiptVerificationDependencies(serviceLocator);
   reportsDependencies(serviceLocator);
   returnsDependencies(serviceLocator);
+
+  // Database Maintenance Service
+  serviceLocator.registerLazySingleton<DatabaseMaintenanceRemoteDataSource>(
+    () => DatabaseMaintenanceRemoteDataSourceImpl(serviceLocator()),
+  );
 }
 

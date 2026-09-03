@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -8,6 +7,24 @@ import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_
 import 'package:gear_track/core/utils/currency_formatter.dart';
 
 class PdfReceiptService {
+  static pw.Font? _cachedBanglaFont;
+  static pw.Font? _cachedBanglaFontBold;
+
+  static Future<void> _ensureFontsLoaded() async {
+    if (_cachedBanglaFont != null && _cachedBanglaFontBold != null) return;
+    try {
+      final fonts = await Future.wait([
+        PdfGoogleFonts.notoSansBengaliRegular(),
+        PdfGoogleFonts.notoSansBengaliBold(),
+      ]).timeout(const Duration(seconds: 3));
+      _cachedBanglaFont = fonts[0];
+      _cachedBanglaFontBold = fonts[1];
+    } catch (_) {
+      _cachedBanglaFont ??= pw.Font.helvetica();
+      _cachedBanglaFontBold ??= pw.Font.helveticaBold();
+    }
+  }
+
   static Future<pw.Document> generateReceipt(
     List<CartItem> items,
     double totalAmount, {
@@ -21,21 +38,24 @@ class PdfReceiptService {
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final timeStr =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
-    final invoiceId = invoice?.invoiceId ??
-        'GT-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${(Random().nextInt(900000) + 100000)}';
+    final invoiceId =
+        invoice?.invoiceId ??
+        'INV-POS01-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-0001';
 
     // QR Data containing unique ID, Date, Time & Total Amount
-    final qrPayload = invoice?.qrPayload ??
+    final qrPayload =
+        invoice?.qrPayload ??
         'GT-RECEIPT|ID:$invoiceId|DATE:$dateStr|TIME:$timeStr|TOTAL:${totalAmount.toStringAsFixed(2)}';
 
-    final banglaFont = await PdfGoogleFonts.notoSansBengaliRegular();
-    final banglaFontBold = await PdfGoogleFonts.notoSansBengaliBold();
+    await _ensureFontsLoaded();
+    final banglaFont = _cachedBanglaFont ?? pw.Font.helvetica();
+    final banglaFontBold = _cachedBanglaFontBold ?? pw.Font.helveticaBold();
 
     final displayedShopName = shopSettings.shopName.trim().isNotEmpty
         ? shopSettings.shopName.trim()
         : (invoice?.shopName.trim().isNotEmpty == true
-            ? invoice!.shopName.trim()
-            : 'GearTrack POS');
+              ? invoice!.shopName.trim()
+              : '');
 
     final displayedAddress = shopSettings.address.trim().isNotEmpty
         ? shopSettings.address.trim()
@@ -71,13 +91,14 @@ class PdfReceiptService {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text(
-                          displayedShopName,
-                          style: pw.TextStyle(
-                            fontSize: 16,
-                            fontWeight: pw.FontWeight.bold,
+                        if (displayedShopName.isNotEmpty)
+                          pw.Text(
+                            displayedShopName,
+                            style: pw.TextStyle(
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
                           ),
-                        ),
                         if (displayedAddress.isNotEmpty) ...[
                           pw.SizedBox(height: 3),
                           pw.Text(
@@ -106,20 +127,20 @@ class PdfReceiptService {
               ),
               pw.SizedBox(height: 12),
 
-              // Meta Info: Invoice, Date & Time
+              // Meta Info: ID, Date & Time
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'Invoice: $invoiceId',
+                    invoiceId,
                     style: pw.TextStyle(
-                      fontSize: 8.5,
+                      fontSize: 7.2,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                   pw.Text(
                     '$dateStr $timeStr',
-                    style: const pw.TextStyle(fontSize: 8),
+                    style: const pw.TextStyle(fontSize: 7),
                   ),
                 ],
               ),
@@ -139,26 +160,24 @@ class PdfReceiptService {
                         : productName;
 
                     // Formats: "qty × rate\nqty × rate" -> e.g. "2×100\n1×120"
-                    final qtyRateBreakdown = batches.map((b) {
-                      final priceStr = b.sellPrice % 1 == 0
-                          ? b.sellPrice.toInt().toString()
-                          : b.sellPrice.toString();
-                      return '${b.quantity}×$priceStr';
-                    }).join('\n');
+                    final qtyRateBreakdown = batches
+                        .map((b) {
+                          final priceStr = b.sellPrice % 1 == 0
+                              ? b.sellPrice.toInt().toString()
+                              : b.sellPrice.toString();
+                          return '${b.quantity}×$priceStr';
+                        })
+                        .join('\n');
 
-                    final subtotal =
-                        batches.fold(0.0, (sum, b) => sum + b.subtotal);
+                    final subtotal = batches.fold(
+                      0.0,
+                      (sum, b) => sum + b.subtotal,
+                    );
 
-                    return [
-                      title,
-                      qtyRateBreakdown,
-                      subtotal.toCurrency(),
-                    ];
+                    return [title, qtyRateBreakdown, subtotal.toCurrency()];
                   }),
                 ],
-                border: pw.TableBorder.all(
-                  width: 0.2,
-                ),
+                border: pw.TableBorder.all(width: 0.2),
                 headerStyle: pw.TextStyle(
                   fontSize: 8,
                   fontWeight: pw.FontWeight.bold,
@@ -185,10 +204,7 @@ class PdfReceiptService {
               // Total Row aligned with Table columns
               pw.Row(
                 children: [
-                  pw.Expanded(
-                    flex: 45,
-                    child: pw.SizedBox(),
-                  ),
+                  pw.Expanded(flex: 45, child: pw.SizedBox()),
                   pw.Expanded(
                     flex: 30,
                     child: pw.Text(

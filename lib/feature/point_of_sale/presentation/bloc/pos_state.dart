@@ -24,8 +24,8 @@ final class PosLoaded extends PosState {
     this.searchQuery = '',
   });
 
-  double get totalAmount => cartItems.fold(0.0, (sum, item) => sum + item.subtotal);
-  int get totalItemCount => cartItems.fold(0, (sum, item) => sum + item.quantity);
+  double get totalAmount => cartItems.fold(0.0, (total, item) => total + item.subtotal);
+  int get totalItemCount => cartItems.fold(0, (total, item) => total + item.quantity);
 
   PosLoaded copyWith({
     List<SaleEntity>? sales,

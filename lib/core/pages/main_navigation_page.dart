@@ -13,19 +13,24 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int _currentIndex = 0; // Default to Inventory (Index 0)
+  final Set<int> _loadedTabs = {
+    0,
+  }; // Lazily initialize tabs to prevent avalanche of Firestore reads
 
   void _onTabSelected(int index) {
     setState(() {
       _currentIndex = index;
+      _loadedTabs.add(index);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    _loadedTabs.add(_currentIndex);
     final List<Widget> pages = [
       InventoryPage(onNavigateToTab: _onTabSelected),
-      const PosPage(),
-      const ReportsPage(),
+      _loadedTabs.contains(1) ? const PosPage() : const SizedBox.shrink(),
+      _loadedTabs.contains(2) ? const ReportsPage() : const SizedBox.shrink(),
     ];
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -44,11 +49,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
+          onTap: _onTabSelected,
           backgroundColor: theme.colorScheme.surface,
           selectedItemColor: isDark
               ? AppColors.primaryButtonDark

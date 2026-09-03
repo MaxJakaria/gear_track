@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
 
+/// Minimalist, high-end item return tile matching GearTrack's luxury UI
 class ReturnItemTile extends StatelessWidget {
   final InvoiceItemEntity item;
   final int selectedQuantity;
@@ -39,340 +41,447 @@ class ReturnItemTile extends StatelessWidget {
     final isFullyReturned = maxReturnable <= 0;
     final isSelected = selectedQuantity > 0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+    final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+
+    void toggleSelection() {
+      if (isFullyReturned) return;
+      if (isSelected) {
+        onQuantityChanged(0);
+      } else {
+        onQuantityChanged(selectedQuantity > 0 ? selectedQuantity : 1);
+      }
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isSelected
-              ? const Color(0xFFE11D48).withValues(alpha: 0.8)
-              : (isDark
-                  ? const Color(0xFF334155)
-                  : const Color(0xFFE2E8F0)),
-          width: isSelected ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isSelected
-                ? const Color(0xFFE11D48).withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: isFullyReturned
+            ? (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC))
+            : cardBg,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color:
+                      (isDark
+                              ? AppColors.primaryButtonDark
+                              : AppColors.primaryButtonLight)
+                          .withValues(alpha: 0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: Item Name, Part No, Unit Price & Return Status
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isFullyReturned ? null : toggleSelection,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row: Item name, details & Unit price
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.itemName,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    // Selection Circle
+                    if (!isFullyReturned)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12, top: 2),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? (isDark
+                                      ? AppColors.primaryButtonDark
+                                      : AppColors.primaryButtonLight)
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: isSelected
+                                  ? (isDark
+                                        ? AppColors.primaryButtonDark
+                                        : AppColors.primaryButtonLight)
+                                  : (isDark
+                                        ? const Color(0xFF64748B)
+                                        : const Color(0xFFCBD5E1)),
+                              width: 1.8,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                      ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.itemName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: isFullyReturned
+                                  ? (isDark ? Colors.white38 : Colors.black38)
+                                  : (isDark
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A)),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              if (item.partNo.isNotEmpty) ...[
+                                Text(
+                                  item.partNo,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Text(
+                                'Sold: ${item.quantity}  •  Avail: $maxReturnable',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    if (item.partNo.isNotEmpty)
-                      Text(
-                        'P/N: ${item.partNo}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontFamily: 'monospace',
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          item.sellPrice.toCurrency(),
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: isFullyReturned
+                                ? (isDark ? Colors.white38 : Colors.black38)
+                                : (isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A)),
+                          ),
+                        ),
+                        Text(
+                          'each',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                // If fully returned
+                if (isFullyReturned) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline_rounded,
+                          size: 13,
                           color: isDark
                               ? const Color(0xFF94A3B8)
                               : const Color(0xFF64748B),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    item.sellPrice.toCurrency(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
-                    ),
-                  ),
-                  Text(
-                    'Unit Price',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // Row 2: Purchase & Return Stats Chips
-          Row(
-            children: [
-              _buildPill(
-                label: 'Purchased: ${item.quantity}',
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                textColor: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
-              ),
-              const SizedBox(width: 6),
-              if (item.returnedQuantity > 0) ...[
-                _buildPill(
-                  label: 'Prev. Returned: ${item.returnedQuantity}',
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                  textColor: const Color(0xFFEF4444),
-                ),
-                const SizedBox(width: 6),
-              ],
-              _buildPill(
-                label: isFullyReturned ? 'Fully Returned' : 'Returnable: $maxReturnable',
-                color: isFullyReturned
-                    ? const Color(0xFF64748B).withValues(alpha: 0.15)
-                    : const Color(0xFF10B981).withValues(alpha: 0.15),
-                textColor: isFullyReturned
-                    ? (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B))
-                    : const Color(0xFF10B981),
-              ),
-            ],
-          ),
-
-          // If fully returned, no further return action is allowed
-          if (isFullyReturned) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF0F172A).withValues(alpha: 0.5)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle_outline, size: 14, color: Color(0xFF64748B)),
-                  SizedBox(width: 6),
-                  Text(
-                    'All purchased quantities have already been refunded.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 12),
-            const Divider(height: 1, thickness: 0.8),
-            const SizedBox(height: 10),
-
-            // Stepper & Refund Subtotal
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Qty to Return: ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: isDark
-                            ? const Color(0xFFCBD5E1)
-                            : const Color(0xFF334155),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Decrement Button
-                    IconButton(
-                      onPressed: selectedQuantity > 0
-                          ? () => onQuantityChanged(selectedQuantity - 1)
-                          : null,
-                      icon: const Icon(Icons.remove_circle_outline, size: 22),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      color: const Color(0xFFE11D48),
-                    ),
-                    Container(
-                      constraints: const BoxConstraints(minWidth: 32),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFE11D48).withValues(alpha: 0.12)
-                            : (isDark
-                                ? const Color(0xFF334155)
-                                : const Color(0xFFF1F5F9)),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '$selectedQuantity',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: isSelected
-                              ? const Color(0xFFE11D48)
-                              : (isDark ? Colors.white : Colors.black87),
-                        ),
-                      ),
-                    ),
-                    // Increment Button
-                    IconButton(
-                      onPressed: selectedQuantity < maxReturnable
-                          ? () => onQuantityChanged(selectedQuantity + 1)
-                          : null,
-                      icon: const Icon(Icons.add_circle_outline, size: 22),
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      color: const Color(0xFF10B981),
-                    ),
-                  ],
-                ),
-                if (isSelected)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        (selectedQuantity * item.sellPrice).toCurrency(),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFFE11D48),
-                        ),
-                      ),
-                      const Text(
-                        'Refund',
-                        style: TextStyle(fontSize: 10, color: Color(0xFFE11D48)),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-
-            // Additional return options if this item is selected for return
-            if (isSelected) ...[
-              const SizedBox(height: 10),
-              // Restock Toggle
-              InkWell(
-                onTap: () => onRestockChanged(!restock),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: Checkbox(
-                          value: restock,
-                          onChanged: (val) => onRestockChanged(val ?? true),
-                          activeColor: const Color(0xFF10B981),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          restock
-                              ? 'Restock into inventory (+ stock count)'
-                              : 'Do NOT restock (Item damaged / scrap)',
+                        const SizedBox(width: 5),
+                        Text(
+                          'Already fully refunded',
                           style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: restock
-                                ? const Color(0xFF10B981)
-                                : const Color(0xFFEF4444),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Interactive Stepper & Options if item is selected
+                if (isSelected) ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1, thickness: 0.7),
+                  const SizedBox(height: 10),
+
+                  // Stepper + Item Refund Subtotal
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Stepper
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildStepperBtn(
+                              icon: Icons.remove,
+                              onPressed: selectedQuantity > 0
+                                  ? () =>
+                                        onQuantityChanged(selectedQuantity - 1)
+                                  : null,
+                              isDark: isDark,
+                            ),
+                            Container(
+                              constraints: const BoxConstraints(minWidth: 34),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '$selectedQuantity',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                            ),
+                            _buildStepperBtn(
+                              icon: Icons.add,
+                              onPressed: selectedQuantity < maxReturnable
+                                  ? () =>
+                                        onQuantityChanged(selectedQuantity + 1)
+                                  : null,
+                              isDark: isDark,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Quick "All" shortcut if max > 1
+                      if (maxReturnable > 1 && selectedQuantity < maxReturnable)
+                        TextButton(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: () => onQuantityChanged(maxReturnable),
+                          child: Text(
+                            'Max ($maxReturnable)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? AppColors.primaryButtonDark
+                                  : AppColors.primaryButtonLight,
+                            ),
+                          ),
+                        ),
+
+                      // Refund Subtotal
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Refund: ',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
+                            ),
+                          ),
+                          Text(
+                            (selectedQuantity * item.sellPrice).toCurrency(),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: isDark
+                                  ? const Color(0xFFF87171)
+                                  : const Color(0xFFE11D48),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              ),
 
-              const SizedBox(height: 6),
-              // Reason Dropdown
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF0F172A)
-                      : const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF334155)
-                        : const Color(0xFFCBD5E1),
-                    width: 0.8,
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: returnReasons.contains(reason) ? reason : returnReasons.first,
-                    icon: const Icon(Icons.arrow_drop_down, size: 20),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  const SizedBox(height: 8),
+
+                  // Restock Checkbox
+                  InkWell(
+                    onTap: () => onRestockChanged(!restock),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: Checkbox(
+                              value: restock,
+                              onChanged: (val) {
+                                if (val != null) onRestockChanged(val);
+                              },
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              activeColor: isDark
+                                  ? AppColors.primaryButtonDark
+                                  : AppColors.primaryButtonLight,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Restock',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF334155),
+                            ),
+                          ),
+                          if (!restock) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFEF4444,
+                                ).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Damaged / Scrap',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFEF4444),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                    dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    items: returnReasons.map((r) {
-                      return DropdownMenuItem<String>(
-                        value: r,
-                        child: Text(r),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) onReasonChanged(val);
-                    },
                   ),
-                ),
-              ),
-            ],
-          ],
-        ],
+
+                  const SizedBox(height: 8),
+
+                  // Reason Selector
+                  Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: returnReasons.contains(reason)
+                            ? reason
+                            : returnReasons.first,
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 16,
+                        ),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF334155),
+                        ),
+                        dropdownColor: isDark
+                            ? const Color(0xFF1E293B)
+                            : Colors.white,
+                        items: returnReasons.map((r) {
+                          return DropdownMenuItem<String>(
+                            value: r,
+                            child: Text(r, overflow: TextOverflow.ellipsis),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) onReasonChanged(val);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildPill({
-    required String label,
-    required Color color,
-    required Color textColor,
+  Widget _buildStepperBtn({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required bool isDark,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: textColor,
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Icon(
+          icon,
+          size: 16,
+          color: onPressed == null
+              ? (isDark ? Colors.white24 : Colors.black26)
+              : (isDark ? Colors.white70 : Colors.black87),
         ),
       ),
     );

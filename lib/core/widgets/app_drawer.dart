@@ -5,13 +5,12 @@ import 'package:gear_track/core/pages/about_page.dart';
 import 'package:gear_track/core/pages/help_guide_page.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
+import 'package:gear_track/feature/database_maintenance/presentation/pages/database_maintenance_page.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/settings_page.dart';
 
 class AppDrawer extends StatefulWidget {
-  final VoidCallback? onClearAllProducts;
-
-  const AppDrawer({super.key, this.onClearAllProducts});
+  const AppDrawer({super.key});
 
   @override
   State<AppDrawer> createState() => _AppDrawerState();
@@ -154,19 +153,23 @@ class _AppDrawerState extends State<AppDrawer> {
 
                     const SizedBox(height: 6),
 
-                    // 3. Clear All Products
+
+                    // 4. Database Maintenance
                     _buildMenuCard(
-                      icon: Icons.delete_sweep_rounded,
-                      title: 'Clear All Products',
-                      iconColor: menuIconColor,
+                      icon: Icons.storage_rounded,
+                      title: 'Database Maintenance',
+                      iconColor: const Color(0xFF6366F1),
                       isDark: isDark,
                       onTap: () {
                         Navigator.pop(context);
-                        widget.onClearAllProducts?.call();
+                        Navigator.push(
+                          context,
+                          DatabaseMaintenancePage.route(),
+                        );
                       },
                     ),
 
-                    // 4. Help & User Guide
+                    // 5. Help & User Guide
                     _buildMenuCard(
                       icon: Icons.help_rounded,
                       title: 'Help & User Guide',

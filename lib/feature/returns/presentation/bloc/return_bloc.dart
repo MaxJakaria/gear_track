@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 import 'package:gear_track/feature/returns/domain/usecases/get_invoice_for_return.dart';
 import 'package:gear_track/feature/returns/domain/usecases/get_returns.dart';
 import 'package:gear_track/feature/returns/domain/usecases/process_return.dart';
@@ -9,6 +10,8 @@ class ReturnBloc extends Bloc<ReturnEvent, ReturnState> {
   final ProcessReturn processReturn;
   final GetReturns getReturns;
   final GetInvoiceForReturn getInvoiceForReturn;
+
+  List<ReturnEntity> _allReturns = [];
 
   ReturnBloc({
     required this.processReturn,
@@ -25,11 +28,16 @@ class ReturnBloc extends Bloc<ReturnEvent, ReturnState> {
     FetchReturnsEvent event,
     Emitter<ReturnState> emit,
   ) async {
-    emit(const ReturnLoading(loadingMessage: 'Loading returns history...'));
+    if (_allReturns.isEmpty) {
+      emit(const ReturnLoading(loadingMessage: 'Loading returns history...'));
+    }
     final result = await getReturns();
     result.fold(
       (failure) => emit(ReturnFailure(failure.message)),
-      (returns) => emit(ReturnsLoadedSuccess(returns)),
+      (returns) {
+        _allReturns = returns;
+        emit(ReturnsLoadedSuccess(_allReturns));
+      },
     );
   }
 
@@ -53,7 +61,10 @@ class ReturnBloc extends Bloc<ReturnEvent, ReturnState> {
     final result = await processReturn(event.returnRecord);
     result.fold(
       (failure) => emit(ReturnFailure(failure.message)),
-      (record) => emit(ReturnProcessedSuccess(record)),
+      (record) {
+        _allReturns = [record, ..._allReturns];
+        emit(ReturnProcessedSuccess(record));
+      },
     );
   }
 
@@ -61,6 +72,10 @@ class ReturnBloc extends Bloc<ReturnEvent, ReturnState> {
     ResetReturnStateEvent event,
     Emitter<ReturnState> emit,
   ) {
-    emit(ReturnInitial());
+    if (_allReturns.isNotEmpty) {
+      emit(ReturnsLoadedSuccess(_allReturns));
+    } else {
+      emit(ReturnInitial());
+    }
   }
 }
