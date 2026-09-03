@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 
+/// Minimal & Concise User Guide for GearTrack Operations.
 class HelpGuidePage extends StatelessWidget {
   const HelpGuidePage({super.key});
 
@@ -7,180 +9,249 @@ class HelpGuidePage extends StatelessWidget {
     return MaterialPageRoute<void>(builder: (_) => const HelpGuidePage());
   }
 
+  static const List<_GuideModuleData> _modules = [
+    _GuideModuleData(
+      icon: Icons.inventory_2_rounded,
+      color: Color(0xFF3B82F6),
+      title: '১. ইনভেন্টরি ও স্টক',
+      points: [
+        '"Add Product" বাটনে ট্যাপ করে পণ্যের নাম, দাম ও স্টক সংরক্ষণ করুন।',
+        'একই পণ্যে একাধিক ব্যাচ ও আলাদা দাম ট্র্যাক করা যায়।',
+        'স্টক কমে গেলে বা শেষ হলে স্বয়ংক্রিয় কালার অ্যালার্ট দেখাবে।',
+      ],
+    ),
+    _GuideModuleData(
+      icon: Icons.point_of_sale_rounded,
+      color: Color(0xFF10B981),
+      title: '২. পয়েন্ট অব সেল (POS)',
+      points: [
+        'সার্চ বারে পণ্যের নাম লিখে ব্যাচ সিলেক্ট করলেই কার্টে যুক্ত হবে।',
+        'স্টকের অতিরিক্ত পণ্য বিক্রি করা যাবে না।',
+        '"Sale Only" দিয়ে দ্রুত বিক্রি অথবা "Generate Bill" দিয়ে PDF মেমো তৈরি করুন।',
+      ],
+    ),
+    _GuideModuleData(
+      icon: Icons.analytics_rounded,
+      color: Color(0xFFF59E0B),
+      title: '৩. সেলস ও প্রফিট রিপোর্ট',
+      points: [
+        'ক্যালেন্ডার থেকে নির্দিষ্ট দিনের বা মাসের মোট বিক্রি ও নিট লাভ দেখুন।',
+        'চার্ট ও গ্রাফের মাধ্যমে ব্যবসার প্রবৃদ্ধি পর্যবেক্ষণ করুন।',
+      ],
+    ),
+    _GuideModuleData(
+      icon: Icons.qr_code_scanner_rounded,
+      color: Color(0xFF8B5CF6),
+      title: '৪. কিউআর (QR) ভেরিফিকেশন',
+      points: [
+        'ক্যামেরা স্ক্যানার দিয়ে মেমোর QR কোড স্ক্যান করে সত্যতা যাচাই করুন।',
+        'কিউআর অস্পষ্ট হলে মেমো আইডি লিখে সার্চ করা যাবে।',
+      ],
+    ),
+    _GuideModuleData(
+      icon: Icons.vpn_key_rounded,
+      color: Color(0xFFEC4899),
+      title: '৫. সিক্রেট কস্ট কোড',
+      points: [
+        'প্রাইস ট্যাগে কেনা দাম ক্রেতাদের থেকে গোপন রাখতে ১০ অক্ষরের সাইফার ব্যবহার হয়।',
+        'Store Settings থেকে নিজস্ব সিক্রেট ওয়ার্ড সেট ও টেস্ট করা যায়।',
+      ],
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark
+        ? AppColors.backgroundDark
+        : AppColors.backgroundLight;
+    final surfaceColor = isDark
+        ? AppColors.surfaceDark
+        : AppColors.surfaceLight;
 
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text(
-          'Help & User Guide',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
+        backgroundColor: bgColor,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 18,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Help & User Guide',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+        centerTitle: true,
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          physics: const BouncingScrollPhysics(),
           children: [
-            // Page Subtitle
-            Text(
-              'GearTrack Operations Manual',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
+            // Minimal Section Header
+            Padding(
+              padding: const EdgeInsets.only(left: 2, bottom: 10),
+              child: Text(
+                'ব্যবহার নির্দেশিকা',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: isDark
+                      ? const Color(0xFF94A3B8)
+                      : const Color(0xFF64748B),
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Essential operating guidelines for inventory, checkout, and verification.',
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark
-                    ? const Color(0xFF94A3B8)
-                    : const Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
 
-            // Module 1
-            _buildGuideSection(
-              icon: Icons.inventory_2_rounded,
-              color: const Color(0xFF4F46E5),
-              title: '1. Inventory & Stock Management',
-              description:
-                  'Keep track of part numbers, stock quantities, and low stock warnings.',
-              points: [
-                'Add Products: Tap "+" to register part numbers, models, and initial stock.',
-                'Stock Count: Adjust stock units directly or through completed POS sales.',
-                'Low Stock Alerts: Items with 5 units or fewer are automatically highlighted.',
-              ],
-              isDark: isDark,
-            ),
-            const Divider(height: 28),
+            // Modules
+            ..._modules.map((module) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _GuideCard(
+                  data: module,
+                  surfaceColor: surfaceColor,
+                  isDark: isDark,
+                ),
+              );
+            }),
 
-            // Module 2
-            _buildGuideSection(
-              icon: Icons.shopping_cart_rounded,
-              color: const Color(0xFF10B981),
-              title: '2. Point of Sale (POS) Checkout',
-              description:
-                  'Fast retail billing with automatic inventory depletion.',
-              points: [
-                'Add to Cart: Quantities are strictly checked against warehouse limits.',
-                'Tax & Totals: Computes subtotals, configurable VAT, and final balance.',
-                'Invoices: Creates a transaction record with a digital receipt QR code.',
-              ],
-              isDark: isDark,
-            ),
-            const Divider(height: 28),
-
-            // Module 3
-            _buildGuideSection(
-              icon: Icons.qr_code_scanner_rounded,
-              color: const Color(0xFFF59E0B),
-              title: '3. Receipt Verification Engine',
-              description:
-                  'Verify authentic sales receipts and prevent counterfeit bills.',
-              points: [
-                'Live QR Scan: Scan printed receipt QR codes via camera.',
-                'Manual Lookup: Search by invoice number if barcode is damaged.',
-                'Audit: Shows itemized breakdown, timestamps, and payment status.',
-              ],
-              isDark: isDark,
-            ),
-            const Divider(height: 28),
-
-            // Module 4
-            _buildGuideSection(
-              icon: Icons.vpn_key_rounded,
-              color: const Color(0xFF8B5CF6),
-              title: '4. Secret Cost Code Cryptography',
-              description:
-                  'Safeguard your buying prices and profit margins on price tags.',
-              points: [
-                'Concept: A 10-letter secret word maps characters to numbers 0-9.',
-                'Tag Protection: Cost price \$250 displays as letters to hide margins.',
-                'Settings: Change your active cost code formula in Shop Settings.',
-              ],
-              isDark: isDark,
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildGuideSection({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String description,
-    required List<String> points,
-    required bool isDark,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          description,
-          style: TextStyle(
-            fontSize: 13,
-            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+// ─────────────────────────────────────────────────────────────────────────────
+// MINIMAL GUIDE CARD
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GuideCard extends StatelessWidget {
+  final _GuideModuleData data;
+  final Color surfaceColor;
+  final bool isDark;
+
+  const _GuideCard({
+    required this.data,
+    required this.surfaceColor,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
-        ),
-        const SizedBox(height: 10),
-        ...points.map((pt) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6, left: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '• ',
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: data.color.withValues(alpha: isDark ? 0.22 : 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Center(
+                  child: Icon(data.icon, size: 15, color: data.color),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  data.title,
                   style: TextStyle(
                     fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
-                Expanded(
-                  child: Text(
-                    pt,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      height: 1.35,
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Direct Minimal Points
+          ...data.points.map((pt) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: data.color,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      pt,
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: isDark
+                            ? const Color(0xFFCBD5E1)
+                            : const Color(0xFF334155),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA MODEL
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GuideModuleData {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final List<String> points;
+
+  const _GuideModuleData({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.points,
+  });
 }

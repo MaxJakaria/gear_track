@@ -130,10 +130,12 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       return;
     }
 
-    // Each unique batch (identified by unique productId & partNo) is its own separate cart line item
+    // Each unique batch (identified by unique productId, partNo & batchId) is its own separate cart line item
     final existingIndex = _cartItems.indexWhere(
       (item) =>
-          item.productId == event.productId && item.partNo == event.partNo,
+          item.productId == event.productId &&
+          item.partNo == event.partNo &&
+          item.batchId == event.batchId,
     );
 
     if (existingIndex >= 0) {
@@ -148,8 +150,9 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     } else {
       _cartItems.add(
         CartItem(
-          id: '${DateTime.now().microsecondsSinceEpoch}_${event.productId}_${event.partNo}',
+          id: '${DateTime.now().microsecondsSinceEpoch}_${event.partNo}_${event.batchId}',
           productId: event.productId,
+          batchId: event.batchId,
           itemName: event.itemName,
           partNo: event.partNo,
           costCode: event.costCode,
@@ -223,6 +226,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
 
         return item.copyWith(
           productId: event.productId,
+          batchId: event.batchId,
           partNo: event.partNo,
           itemName: event.itemName,
           costCode: event.costCode,
@@ -290,11 +294,13 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       items: invoiceItems,
     );
 
+    int itemIndex = 1;
     final salesList = checkoutItems
         .map(
           (item) => SaleEntity(
-            id: '${DateTime.now().microsecondsSinceEpoch}_${item.productId.replaceAll('/', '_')}',
+            id: 'REC-$datePrefix-${randomSuffix}_${itemIndex++}',
             productId: item.productId,
+            batchId: item.batchId,
             partNo: item.partNo,
             saleDate: now,
             itemName: item.itemName,

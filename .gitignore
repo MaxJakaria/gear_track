@@ -46,3 +46,7 @@ app.*.map.json
 
 # secret files
 android/app/google-services.json
+
+# Temporary scratch files
+temp*.dart
+

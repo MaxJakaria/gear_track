@@ -6,23 +6,15 @@ class ShopSettings extends Equatable {
   final String address;
   final String phone;
 
-  const ShopSettings({
-    this.shopName = 'GearTrack POS',
-    this.address = '',
-    this.phone = '',
-  });
+  const ShopSettings({this.shopName = '', this.address = '', this.phone = ''});
 
   Map<String, dynamic> toMap() {
-    return {
-      'shopName': shopName,
-      'address': address,
-      'phone': phone,
-    };
+    return {'shopName': shopName, 'address': address, 'phone': phone};
   }
 
   factory ShopSettings.fromMap(Map<String, dynamic> map) {
     return ShopSettings(
-      shopName: map['shopName'] as String? ?? 'GearTrack POS',
+      shopName: map['shopName'] as String? ?? '',
       address: map['address'] as String? ?? '',
       phone: map['phone'] as String? ?? '',
     );

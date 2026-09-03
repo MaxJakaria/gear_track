@@ -1,14 +1,14 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gear_track/core/pages/main_navigation_page.dart';
 import 'package:gear_track/core/theme/app_theme.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
-import 'package:gear_track/feature/auth/presentation/pages/login_page.dart';
+import 'package:gear_track/feature/auth/presentation/widgets/auth_gate.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/receipt_verification/presentation/bloc/receipt_verification_bloc.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
+import 'package:gear_track/feature/returns/presentation/bloc/return_bloc.dart';
 import 'package:gear_track/firebase_options.dart';
 import 'package:gear_track/init_dependencies.dart';
 
@@ -40,6 +40,7 @@ class MyApp extends StatelessWidget {
           create: (context) => serviceLocator<ReceiptVerificationBloc>(),
         ),
         BlocProvider(create: (context) => serviceLocator<ReportsBloc>()),
+        BlocProvider(create: (context) => serviceLocator<ReturnBloc>()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -47,23 +48,7 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
-        home: BlocBuilder<AuthBloc, AuthState>(
-          buildWhen: (previous, current) {
-            // Only rebuild root router when transitioning authenticated vs unauthenticated
-            if (current is Authenticated) return true;
-            if (current is Unauthenticated) return true;
-            if (previous is Authenticated && current is! Authenticated) {
-              return true;
-            }
-            return false;
-          },
-          builder: (context, state) {
-            if (state is Authenticated) {
-              return const MainNavigationPage();
-            }
-            return const LoginPage();
-          },
-        ),
+        home: const AuthGate(),
       ),
     );
   }

@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
 import '../../../../feature/point_of_sale/data/models/sale_model.dart';
+import '../../../../feature/returns/data/models/return_model.dart';
 
 abstract class ReportsRemoteDataSource {
   Future<List<SaleModel>> getAllSales();
   Future<List<ProductModel>> getAllProducts();
+  Future<List<ReturnModel>> getAllReturns();
 }
 
 class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
@@ -18,6 +20,19 @@ class ReportsRemoteDataSourceImpl implements ReportsRemoteDataSource {
     final list = snapshot.docs.map((doc) => SaleModel.fromFirestore(doc)).toList();
     list.sort((a, b) => b.saleDate.compareTo(a.saleDate));
     return list;
+  }
+
+  @override
+  Future<List<ReturnModel>> getAllReturns() async {
+    try {
+      final snapshot = await firestore
+          .collection('returns')
+          .orderBy('returnDate', descending: true)
+          .get();
+      return snapshot.docs.map((doc) => ReturnModel.fromFirestore(doc)).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   @override

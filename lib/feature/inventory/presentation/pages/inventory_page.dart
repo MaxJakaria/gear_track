@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/widgets/app_drawer.dart';
+import 'package:gear_track/core/widgets/custom_confirm_delete_dialog.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_fab.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_sheet.dart';
@@ -11,7 +12,8 @@ import 'package:gear_track/feature/inventory/presentation/widgets/inventory_app_
 import 'package:gear_track/feature/inventory/presentation/widgets/inventory_empty_view.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/inventory_error_view.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/product_list_view.dart';
-import 'package:gear_track/feature/inventory/presentation/widgets/stock_filter_bar.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/batch_list_view.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/active_filter_banner.dart';
 
 /// Clean Architecture Inventory Presentation Page
 class InventoryPage extends StatefulWidget {
@@ -102,13 +104,43 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  Future<void> _handleClearOutOfStockBatches() async {
+    final completer = Completer<void>();
+    context.read<InventoryBloc>().add(
+          ClearOutOfStockBatchesEvent(completer: completer),
+        );
+
+    try {
+      await completer.future;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All out of stock batches deleted successfully!'),
+            backgroundColor: Color(0xFFD32F2F),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete out of stock batches: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         resizeToAvoidBottomInset: false,
-        drawer: AppDrawer(
+        endDrawer: AppDrawer(
           onClearAllProducts: _handleClearAll,
         ),
         appBar: InventoryAppBar(
@@ -161,59 +193,123 @@ class _InventoryPageState extends State<InventoryPage> {
             }
 
             if (state is InventoryLoaded) {
-              final groupedList = state.filteredGroupedProducts;
+              final isBatchFilter =
+                  state.activeFilter == StockFilter.lowStockBatch ||
+                  state.activeFilter == StockFilter.outOfStockBatch;
+
+              final batchList = state.filteredBatches;
+              final groupedBatchList = state.filteredBatchesGrouped;
+              final groupedProductList = state.filteredGroupedProducts;
+              final displayCount = isBatchFilter
+                  ? batchList.length
+                  : groupedProductList.length;
 
               return Column(
                 children: [
-                  // Stock Filter Bar
-                  StockFilterBar(
-                    activeFilter: state.activeFilter,
-                    totalCount: state.totalSkus,
-                    lowStockCount: state.lowStockCount,
-                    outOfStockCount: state.outOfStockCount,
-                    inStockCount: state.inStockCount,
-                    onFilterSelected: (filter) {
-                      setState(() => _expandedCardKey = null);
-                      context.read<InventoryBloc>().add(
-                            SearchProductsEvent(
-                              query: _searchController.text,
-                              filter: filter,
-                            ),
-                          );
-                    },
+                  // Active Filter Banner (shown only when a filter is applied)
+                  Builder(
+                    builder: (scaffoldCtx) => ActiveFilterBanner(
+                      activeFilter: state.activeFilter,
+                      count: displayCount,
+                      onClearFilter: () {
+                        setState(() => _expandedCardKey = null);
+                        context.read<InventoryBloc>().add(
+                              SearchProductsEvent(
+                                query: _searchController.text,
+                                filter: StockFilter.all,
+                              ),
+                            );
+                      },
+                      onOpenFilterSidebar: () =>
+                          Scaffold.of(scaffoldCtx).openEndDrawer(),
+                      onClearAll: state.activeFilter ==
+                                  StockFilter.outOfStockBatch &&
+                              batchList.isNotEmpty
+                          ? () async {
+                              final confirmed =
+                                  await CustomConfirmDeleteDialog.show(
+                                context,
+                                title: 'Clear Out of Stock Batches',
+                                description:
+                                    'Are you sure you want to delete all ${batchList.length} out-of-stock batch entries across ${groupedBatchList.length} product(s)?\n\n'
+                                    'This action cannot be undone.',
+                                confirmLabel: 'Clear All',
+                              );
+                              if (confirmed == true) {
+                                _handleClearOutOfStockBatches();
+                              }
+                            }
+                          : null,
+                    ),
                   ),
 
-                  // Products List or Empty View
+                  // Products / Batches List or Empty View
                   Expanded(
-                    child: groupedList.isEmpty
-                        ? InventoryEmptyView(
-                            hasSearch: _searchController.text.isNotEmpty,
-                            activeFilter: state.activeFilter,
-                            onClearSearch: () {
-                              _searchController.clear();
-                              _onSearch('');
-                            },
-                            onResetFilter: () {
-                              context.read<InventoryBloc>().add(
-                                    SearchProductsEvent(
-                                      query: _searchController.text,
-                                      filter: StockFilter.all,
-                                    ),
-                                  );
-                            },
-                          )
-                        : ProductListView(
-                            products: groupedList,
-                            expandedCardKey: _expandedCardKey,
-                            onToggleExpand: (key) {
-                              setState(() => _expandedCardKey = key);
-                            },
-                            onRefresh: () async {
-                              context.read<InventoryBloc>().add(
-                                    const FetchProductsEvent(),
-                                  );
-                            },
-                          ),
+                    child: isBatchFilter
+                        ? (groupedBatchList.isEmpty
+                            ? InventoryEmptyView(
+                                hasSearch: _searchController.text.isNotEmpty,
+                                activeFilter: state.activeFilter,
+                                onClearSearch: () {
+                                  _searchController.clear();
+                                  _onSearch('');
+                                },
+                                onResetFilter: () {
+                                  context.read<InventoryBloc>().add(
+                                        SearchProductsEvent(
+                                          query: _searchController.text,
+                                          filter: StockFilter.all,
+                                        ),
+                                      );
+                                },
+                                onRefresh: () async {
+                                  context.read<InventoryBloc>().add(
+                                        const FetchProductsEvent(),
+                                      );
+                                },
+                              )
+                            : BatchListView(
+                                groupedBatches: groupedBatchList,
+                                onRefresh: () async {
+                                  context.read<InventoryBloc>().add(
+                                        const FetchProductsEvent(),
+                                      );
+                                },
+                              ))
+                        : (groupedProductList.isEmpty
+                            ? InventoryEmptyView(
+                                hasSearch: _searchController.text.isNotEmpty,
+                                activeFilter: state.activeFilter,
+                                onClearSearch: () {
+                                  _searchController.clear();
+                                  _onSearch('');
+                                },
+                                onResetFilter: () {
+                                  context.read<InventoryBloc>().add(
+                                        SearchProductsEvent(
+                                          query: _searchController.text,
+                                          filter: StockFilter.all,
+                                        ),
+                                      );
+                                },
+                                onRefresh: () async {
+                                  context.read<InventoryBloc>().add(
+                                        const FetchProductsEvent(),
+                                      );
+                                },
+                              )
+                            : ProductListView(
+                                products: groupedProductList,
+                                expandedCardKey: _expandedCardKey,
+                                onToggleExpand: (key) {
+                                  setState(() => _expandedCardKey = key);
+                                },
+                                onRefresh: () async {
+                                  context.read<InventoryBloc>().add(
+                                        const FetchProductsEvent(),
+                                      );
+                                },
+                              )),
                   ),
                 ],
               );

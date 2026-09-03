@@ -136,6 +136,7 @@ class ReportsBloc extends Bloc<ReportsEvent, ReportsState> {
       _currentPeriod,
       startDate: _customStartDate,
       endDate: _customEndDate,
+      forceRefresh: true,
     );
     result.fold(
       (failure) => emit(ReportsError(failure.message)),

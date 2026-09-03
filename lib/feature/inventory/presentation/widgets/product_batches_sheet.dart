@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
+import 'package:gear_track/core/widgets/custom_confirm_delete_dialog.dart';
 import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
@@ -33,43 +34,34 @@ class ProductBatchesSheet extends StatefulWidget {
 class _ProductBatchesSheetState extends State<ProductBatchesSheet> {
   String? _deletingBatchId;
 
-  void _confirmDelete(BuildContext context, Product batch) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Batch'),
-        content: Text(
-          'Are you sure you want to delete this batch entry?\n\nDate: ${_formatDate(batch.entryDate)}\nCost Code: ${batch.costCode}\nStock: ${batch.stockCount}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              setState(() => _deletingBatchId = batch.id);
-              final completer = Completer<void>();
-              context.read<InventoryBloc>().add(
-                    DeleteProductEvent(batch.id, completer: completer),
-                  );
-              try {
-                await completer.future;
-              } finally {
-                if (mounted) {
-                  setState(() => _deletingBatchId = null);
-                }
-              }
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  Future<void> _confirmDelete(Product batch) async {
+    final confirmed = await CustomConfirmDeleteDialog.show(
+      context,
+      title: 'Delete Batch Entry',
+      description:
+          'Are you sure you want to delete this batch entry?\n\n'
+          '• Item: ${batch.itemName}\n'
+          '• Part No: ${batch.partNo}\n'
+          '• Cost Code: ${batch.costCode}\n'
+          '• Quantity: ${batch.stockCount} units\n'
+          '• Entry Date: ${_formatDate(batch.entryDate)}',
+      confirmLabel: 'Delete',
     );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deletingBatchId = batch.id);
+    final completer = Completer<void>();
+    if (!mounted) return;
+    context.read<InventoryBloc>().add(
+          DeleteProductEvent(batch.id, completer: completer),
+        );
+    try {
+      await completer.future;
+    } finally {
+      if (mounted) {
+        setState(() => _deletingBatchId = null);
+      }
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -213,7 +205,7 @@ class _ProductBatchesSheetState extends State<ProductBatchesSheet> {
                         EditProductSheet.show(context, batch);
                       },
                       onDelete: () {
-                        _confirmDelete(context, batch);
+                        _confirmDelete(batch);
                       },
                     );
                   },

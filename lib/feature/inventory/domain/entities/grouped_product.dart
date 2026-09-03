@@ -46,6 +46,9 @@ class GroupedProduct extends Equatable {
       batches.any((b) => b.stockCount > 0 && b.stockCount <= 5);
   bool get hasInStockBatch => batches.any((b) => b.stockCount > 0);
 
+  /// Unique key to identify this card independently even if itemName is the same
+  String get groupKey => '$itemName###$model###$partNo';
+
   @override
   List<Object?> get props => [
         partNo,

@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 class CartItem extends Equatable {
   final String id;
   final String productId;
+  final String batchId;
   final String itemName;
   final String partNo;
   final String costCode;
@@ -13,6 +14,7 @@ class CartItem extends Equatable {
   const CartItem({
     required this.id,
     required this.productId,
+    this.batchId = '',
     required this.itemName,
     required this.partNo,
     required this.costCode,
@@ -25,6 +27,7 @@ class CartItem extends Equatable {
 
   CartItem copyWith({
     String? productId,
+    String? batchId,
     String? itemName,
     String? partNo,
     String? costCode,
@@ -35,6 +38,7 @@ class CartItem extends Equatable {
     return CartItem(
       id: id,
       productId: productId ?? this.productId,
+      batchId: batchId ?? this.batchId,
       itemName: itemName ?? this.itemName,
       partNo: partNo ?? this.partNo,
       costCode: costCode ?? this.costCode,
@@ -48,6 +52,7 @@ class CartItem extends Equatable {
   List<Object?> get props => [
         id,
         productId,
+        batchId,
         itemName,
         partNo,
         costCode,

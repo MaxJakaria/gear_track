@@ -6,6 +6,7 @@ class AnalyticsSummaryModel extends AnalyticsSummary {
     required super.totalProfit,
     required super.itemsSold,
     required super.lowStockAlerts,
+    super.totalInvestment = 0.0,
   });
 
   factory AnalyticsSummaryModel.fromMap(Map<String, dynamic> map) {
@@ -14,6 +15,7 @@ class AnalyticsSummaryModel extends AnalyticsSummary {
       totalProfit: (map['totalProfit'] as num?)?.toDouble() ?? 0.0,
       itemsSold: (map['itemsSold'] as num?)?.toInt() ?? 0,
       lowStockAlerts: (map['lowStockAlerts'] as num?)?.toInt() ?? 0,
+      totalInvestment: (map['totalInvestment'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -23,6 +25,7 @@ class AnalyticsSummaryModel extends AnalyticsSummary {
       'totalProfit': totalProfit,
       'itemsSold': itemsSold,
       'lowStockAlerts': lowStockAlerts,
+      'totalInvestment': totalInvestment,
     };
   }
 
@@ -32,6 +35,7 @@ class AnalyticsSummaryModel extends AnalyticsSummary {
       totalProfit: entity.totalProfit,
       itemsSold: entity.itemsSold,
       lowStockAlerts: entity.lowStockAlerts,
+      totalInvestment: entity.totalInvestment,
     );
   }
 }

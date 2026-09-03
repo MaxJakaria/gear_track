@@ -23,19 +23,21 @@ class ProductListView extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
         itemCount: products.length,
         itemBuilder: (context, index) {
           final item = products[index];
-          final isCardExpanded = expandedCardKey == item.itemName;
+          final itemKey = item.groupKey;
+          final isCardExpanded = expandedCardKey == itemKey;
 
           return ProductCard(
             groupedProduct: item,
             cardIndex: index,
             isExpanded: isCardExpanded,
             onToggleExpand: () {
-              onToggleExpand(isCardExpanded ? null : item.itemName);
+              onToggleExpand(isCardExpanded ? null : itemKey);
             },
             onQuickAdd: () => QuickAddStockSheet.show(context, item),
           );

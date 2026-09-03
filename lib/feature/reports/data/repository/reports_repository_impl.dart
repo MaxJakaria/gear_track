@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/error/failure.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
 import '../../../../feature/point_of_sale/data/models/sale_model.dart';
+import '../../../../feature/returns/data/models/return_model.dart';
 import '../../domain/entities/analytics_report.dart';
 import '../../domain/entities/daily_sales_point.dart';
 import '../../domain/entities/monthly_profit_point.dart';
@@ -19,6 +20,11 @@ class ReportsRepositoryImpl implements ReportsRepository {
   final ReportsRemoteDataSource remoteDataSource;
   final SettingsRepository settingsRepository;
 
+  List<SaleModel>? _cachedSales;
+  List<ProductModel>? _cachedProducts;
+  List<ReturnModel>? _cachedReturns;
+  CostCodeMapping? _cachedCostCodeMapping;
+
   ReportsRepositoryImpl({
     required this.remoteDataSource,
     required this.settingsRepository,
@@ -29,21 +35,45 @@ class ReportsRepositoryImpl implements ReportsRepository {
     ReportPeriod period, {
     DateTime? startDate,
     DateTime? endDate,
+    bool forceRefresh = false,
   }) async {
     try {
-      final results = await Future.wait([
-        remoteDataSource.getAllSales(),
-        remoteDataSource.getAllProducts(),
-        settingsRepository.getCostCodeMapping(),
-      ]);
+      final List<SaleModel> allSales;
+      final List<ProductModel> allProducts;
+      final List<ReturnModel> allReturns;
+      final CostCodeMapping costCodeMapping;
 
-      final allSales = results[0] as List<SaleModel>;
-      final allProducts = results[1] as List<ProductModel>;
-      final costCodeMappingEither =
-          results[2] as Either<Failure, CostCodeMapping>;
-      final costCodeMapping = costCodeMappingEither.getOrElse(
-        (_) => CostCodeMapping.defaultMapping(),
-      );
+      if (!forceRefresh &&
+          _cachedSales != null &&
+          _cachedProducts != null &&
+          _cachedReturns != null &&
+          _cachedCostCodeMapping != null) {
+        allSales = _cachedSales!;
+        allProducts = _cachedProducts!;
+        allReturns = _cachedReturns!;
+        costCodeMapping = _cachedCostCodeMapping!;
+      } else {
+        final results = await Future.wait([
+          remoteDataSource.getAllSales(),
+          remoteDataSource.getAllProducts(),
+          settingsRepository.getCostCodeMapping(),
+          remoteDataSource.getAllReturns(),
+        ]);
+
+        allSales = results[0] as List<SaleModel>;
+        allProducts = results[1] as List<ProductModel>;
+        final costCodeMappingEither =
+            results[2] as Either<Failure, CostCodeMapping>;
+        costCodeMapping = costCodeMappingEither.getOrElse(
+          (_) => CostCodeMapping.defaultMapping(),
+        );
+        allReturns = results[3] as List<ReturnModel>;
+
+        _cachedSales = allSales;
+        _cachedProducts = allProducts;
+        _cachedReturns = allReturns;
+        _cachedCostCodeMapping = costCodeMapping;
+      }
 
       final now = DateTime.now();
 
@@ -60,11 +90,19 @@ class ReportsRepositoryImpl implements ReportsRepository {
             (productStockCountMap[key] ?? 0) + prod.stockCount;
       }
 
-      // 2. Compute Low Stock Alerts (Products with total stock <= 5)
+      // 2. Compute Low Stock Alerts & Total Investment (in-stock items value)
       int lowStockCount = 0;
       for (final totalStock in productStockCountMap.values) {
         if (totalStock <= 5) {
           lowStockCount++;
+        }
+      }
+
+      double totalInvestment = 0.0;
+      for (final prod in allProducts) {
+        if (prod.stockCount > 0) {
+          final costPerUnit = costCodeMapping.decode(prod.costCode);
+          totalInvestment += prod.stockCount * costPerUnit;
         }
       }
 
@@ -98,6 +136,29 @@ class ReportsRepositoryImpl implements ReportsRepository {
       } else {
         // Overall period: all sales
         periodSales = allSales;
+      }
+
+      // Filter returns for active period
+      final List<ReturnModel> periodReturns;
+      if (period == ReportPeriod.today) {
+        periodReturns = allReturns.where((r) {
+          final d = r.returnDate;
+          return d.year == now.year && d.month == now.month && d.day == now.day;
+        }).toList();
+      } else if (period == ReportPeriod.thisMonth) {
+        periodReturns = allReturns.where((r) {
+          final d = r.returnDate;
+          return d.year == now.year && d.month == now.month;
+        }).toList();
+      } else if (period == ReportPeriod.custom &&
+          effectiveStart != null &&
+          effectiveEnd != null) {
+        periodReturns = allReturns.where((r) {
+          return !r.returnDate.isBefore(effectiveStart!) &&
+              !r.returnDate.isAfter(effectiveEnd!);
+        }).toList();
+      } else {
+        periodReturns = allReturns;
       }
 
       // 4. Calculate KPI metrics for the current active period
@@ -143,6 +204,33 @@ class ReportsRepositoryImpl implements ReportsRepository {
         );
       }
 
+      // Deduct returns (Selling Price / Revenue, Profit, and Quantity)
+      double totalReturnRefund = 0.0;
+      double totalReturnProfit = 0.0;
+      int totalReturnQuantity = 0;
+
+      for (final ret in periodReturns) {
+        totalReturnRefund += ret.totalRefundAmount;
+        totalReturnQuantity += ret.totalQuantity;
+
+        for (final item in ret.items) {
+          final costPerUnit = costCodeMapping.decode(item.costCode);
+          final double profitPerUnit;
+          if (costPerUnit > 0 && costPerUnit < item.sellPrice) {
+            profitPerUnit = item.sellPrice - costPerUnit;
+          } else if (costPerUnit > 0 && costPerUnit >= item.sellPrice) {
+            profitPerUnit = item.sellPrice * 0.28;
+          } else {
+            profitPerUnit = item.sellPrice * 0.30;
+          }
+          totalReturnProfit += profitPerUnit * item.quantity;
+        }
+      }
+
+      totalSales = (totalSales - totalReturnRefund).clamp(0.0, double.infinity);
+      totalProfit = (totalProfit - totalReturnProfit).clamp(0.0, double.infinity);
+      itemsSold = (itemsSold - totalReturnQuantity).clamp(0, 9999999);
+
       // Sort sales records descending by date
       salesRecords.sort((a, b) => b.saleDate.compareTo(a.saleDate));
 
@@ -165,16 +253,27 @@ class ReportsRepositoryImpl implements ReportsRepository {
                 d.day == targetDay.day;
           });
 
-          final dayRevenue = daySales.fold<double>(
+          final dayGross = daySales.fold<double>(
             0.0,
             (acc, s) => acc + (s.sellPrice * s.quantity),
+          );
+
+          final dayReturns = allReturns.where((r) {
+            final d = r.returnDate;
+            return d.year == targetDay.year &&
+                d.month == targetDay.month &&
+                d.day == targetDay.day;
+          });
+          final dayRefund = dayReturns.fold<double>(
+            0.0,
+            (acc, r) => acc + r.totalRefundAmount,
           );
 
           dailySalesTrend.add(
             DailySalesPoint(
               date: targetDay,
               label: targetDay.day.toString().padLeft(2, '0'),
-              revenue: dayRevenue,
+              revenue: (dayGross - dayRefund).clamp(0.0, double.infinity),
             ),
           );
         }
@@ -191,16 +290,27 @@ class ReportsRepositoryImpl implements ReportsRepository {
                 d.day == targetDay.day;
           });
 
-          final dayRevenue = daySales.fold<double>(
+          final dayGross = daySales.fold<double>(
             0.0,
             (acc, s) => acc + (s.sellPrice * s.quantity),
+          );
+
+          final dayReturns = allReturns.where((r) {
+            final d = r.returnDate;
+            return d.year == targetDay.year &&
+                d.month == targetDay.month &&
+                d.day == targetDay.day;
+          });
+          final dayRefund = dayReturns.fold<double>(
+            0.0,
+            (acc, r) => acc + r.totalRefundAmount,
           );
 
           dailySalesTrend.add(
             DailySalesPoint(
               date: targetDay,
               label: day.toString().padLeft(2, '0'),
-              revenue: dayRevenue,
+              revenue: (dayGross - dayRefund).clamp(0.0, double.infinity),
             ),
           );
         }
@@ -239,12 +349,34 @@ class ReportsRepositoryImpl implements ReportsRepository {
           mProfit += profitUnit * s.quantity;
         }
 
+        // Deduct monthly returns
+        final monthReturnsList = allReturns.where((r) {
+          final d = r.returnDate;
+          return d.year == targetYear && d.month == targetMonth;
+        });
+
+        for (final ret in monthReturnsList) {
+          mSales -= ret.totalRefundAmount;
+          for (final item in ret.items) {
+            final cost = costCodeMapping.decode(item.costCode);
+            final double profitUnit;
+            if (cost > 0 && cost < item.sellPrice) {
+              profitUnit = item.sellPrice - cost;
+            } else if (cost > 0 && cost >= item.sellPrice) {
+              profitUnit = item.sellPrice * 0.28;
+            } else {
+              profitUnit = item.sellPrice * 0.30;
+            }
+            mProfit -= profitUnit * item.quantity;
+          }
+        }
+
         monthlyProfitTrend.add(
           MonthlyProfitPoint(
             monthLabel: monthFormat.format(targetMonthDate),
             monthDate: targetMonthDate,
-            sales: mSales,
-            profit: mProfit,
+            sales: mSales.clamp(0.0, double.infinity),
+            profit: mProfit.clamp(0.0, double.infinity),
           ),
         );
       }
@@ -258,6 +390,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
           totalProfit: totalProfit,
           itemsSold: itemsSold,
           lowStockAlerts: lowStockCount,
+          totalInvestment: totalInvestment,
         ),
         salesRecords: salesRecords,
         dailySalesTrend: dailySalesTrend,

@@ -6,44 +6,53 @@ import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_
 class InvoiceItemModel extends InvoiceItemEntity {
   const InvoiceItemModel({
     required super.productId,
+    super.batchId = '',
     required super.itemName,
     required super.partNo,
     required super.quantity,
     required super.sellPrice,
     super.costCode = '',
+    super.returnedQuantity = 0,
   });
 
   factory InvoiceItemModel.fromCartItem(CartItem item) {
     return InvoiceItemModel(
       productId: item.productId,
+      batchId: item.batchId,
       itemName: item.itemName,
       partNo: item.partNo,
       quantity: item.quantity,
       sellPrice: item.sellPrice,
       costCode: item.costCode,
+      returnedQuantity: 0,
     );
   }
 
   factory InvoiceItemModel.fromMap(Map<String, dynamic> map) {
     return InvoiceItemModel(
       productId: map['productId'] ?? '',
+      batchId: map['batchId'] ?? '',
       itemName: map['itemName'] ?? '',
       partNo: map['partNo'] ?? '',
       quantity: (map['quantity'] as num?)?.toInt() ?? 0,
       sellPrice: (map['sellPrice'] as num?)?.toDouble() ?? 0.0,
       costCode: map['costCode'] ?? '',
+      returnedQuantity: (map['returnedQuantity'] as num?)?.toInt() ?? 0,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'productId': productId,
+      'batchId': batchId,
       'itemName': itemName,
       'partNo': partNo,
       'quantity': quantity,
       'sellPrice': sellPrice,
       'costCode': costCode,
       'subtotal': subtotal,
+      'returnedQuantity': returnedQuantity,
+      'returnableQuantity': returnableQuantity,
     };
   }
 }
@@ -58,6 +67,8 @@ class InvoiceModel extends InvoiceEntity {
     super.shopName = '',
     super.shopPhone = '',
     super.shopAddress = '',
+    super.returnedAmount = 0.0,
+    super.returnStatus = 'NONE',
   });
 
   factory InvoiceModel.fromCartItems({
@@ -87,6 +98,8 @@ class InvoiceModel extends InvoiceEntity {
       shopName: shopSettings.shopName,
       shopPhone: shopSettings.phone,
       shopAddress: shopSettings.address,
+      returnedAmount: 0.0,
+      returnStatus: 'NONE',
     );
   }
 
@@ -117,6 +130,8 @@ class InvoiceModel extends InvoiceEntity {
       shopName: data['shopName'] ?? '',
       shopPhone: data['shopPhone'] ?? '',
       shopAddress: data['shopAddress'] ?? '',
+      returnedAmount: (data['returnedAmount'] as num?)?.toDouble() ?? 0.0,
+      returnStatus: data['returnStatus'] ?? 'NONE',
     );
   }
 
@@ -132,6 +147,8 @@ class InvoiceModel extends InvoiceEntity {
       'shopPhone': shopPhone,
       'shopAddress': shopAddress,
       'qrPayload': qrPayload,
+      'returnedAmount': returnedAmount,
+      'returnStatus': returnStatus,
       'items': items.map((i) {
         if (i is InvoiceItemModel) {
           return i.toMap();
@@ -143,6 +160,7 @@ class InvoiceModel extends InvoiceEntity {
           quantity: i.quantity,
           sellPrice: i.sellPrice,
           costCode: i.costCode,
+          returnedQuantity: i.returnedQuantity,
         ).toMap();
       }).toList(),
       'createdAt': FieldValue.serverTimestamp(),

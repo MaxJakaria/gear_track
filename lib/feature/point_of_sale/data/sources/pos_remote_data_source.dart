@@ -30,76 +30,18 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
 
   PosRemoteDataSourceImpl({required this.firestore});
 
-  /// Helper to resolve a product DocumentReference and optional batch DocumentReference in O(1)
-  Future<_ResolvedCartItem> _resolveCartItem(SaleModel sale) async {
-    final productId = sale.productId;
-    final parts = productId.split('/');
+  /// Direct O(1) in-memory resolution for product and batch references
+  _ResolvedCartItem _resolveCartItem(SaleModel sale) {
+    final docId = sale.partNo.isNotEmpty ? sale.partNo : sale.productId;
+    final productRef = firestore.collection('products').doc(docId);
+    final batchRef = sale.batchId.isNotEmpty
+        ? productRef.collection('stock_entries').doc(sale.batchId)
+        : null;
 
-    // 1. Direct O(1) path resolution: "parentDocId/entryDocId"
-    if (parts.length == 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
-      final productRef = firestore.collection('products').doc(parts[0]);
-      final batchRef = productRef.collection('stock_entries').doc(parts[1]);
-      return _ResolvedCartItem(
-        sale: sale,
-        productRef: productRef,
-        batchRef: batchRef,
-      );
-    }
-
-    // 2. Direct product document check: "products/{productId}"
-    final directDoc =
-        await firestore.collection('products').doc(productId).get();
-    if (directDoc.exists) {
-      return _ResolvedCartItem(
-        sale: sale,
-        productRef: directDoc.reference,
-      );
-    }
-
-    // 3. Fallback: Search by partNo
-    if (sale.partNo.isNotEmpty) {
-      final partDoc =
-          await firestore.collection('products').doc(sale.partNo).get();
-      if (partDoc.exists) {
-        return _ResolvedCartItem(
-          sale: sale,
-          productRef: partDoc.reference,
-        );
-      }
-
-      final q = await firestore
-          .collection('products')
-          .where('partNo', isEqualTo: sale.partNo)
-          .limit(1)
-          .get();
-      if (q.docs.isNotEmpty) {
-        return _ResolvedCartItem(
-          sale: sale,
-          productRef: q.docs.first.reference,
-        );
-      }
-    }
-
-    // 4. Fallback: Lookup specific batch in collectionGroup
-    final entryQuery = await firestore
-        .collectionGroup('stock_entries')
-        .where(FieldPath.documentId, isEqualTo: productId)
-        .limit(1)
-        .get();
-    if (entryQuery.docs.isNotEmpty) {
-      final batchRef = entryQuery.docs.first.reference;
-      final productRef = batchRef.parent.parent as DocumentReference<Map<String, dynamic>>;
-      return _ResolvedCartItem(
-        sale: sale,
-        productRef: productRef,
-        batchRef: batchRef,
-      );
-    }
-
-    throw FirebaseException(
-      plugin: 'cloud_firestore',
-      code: 'not-found',
-      message: 'Product not found for "${sale.itemName}" (ID: $productId, Part No: ${sale.partNo})',
+    return _ResolvedCartItem(
+      sale: sale,
+      productRef: productRef,
+      batchRef: batchRef,
     );
   }
 
@@ -110,10 +52,8 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
   }) async {
     if (sales.isEmpty) return;
 
-    // 1. Resolve all cart items concurrently in O(1) time
-    final resolvedItems = await Future.wait(
-      sales.map((s) => _resolveCartItem(s)),
-    );
+    // 1. Direct O(1) in-memory resolution of all items
+    final resolvedItems = sales.map(_resolveCartItem).toList();
 
     // 2. Run Single Atomic Transaction for the Entire Checkout
     await firestore.runTransaction((transaction) async {
@@ -230,16 +170,13 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
         final saleRecordRef =
             salesProductRef.collection('sales_records').doc(item.sale.id);
         transaction.set(saleRecordRef, item.sale.toMap());
-
-        final mainSaleRef = firestore.collection('sales').doc(item.sale.id);
-        transaction.set(mainSaleRef, item.sale.toMap());
       }
     });
   }
 
   @override
   Future<void> addSale(SaleModel saleModel) async {
-    final item = await _resolveCartItem(saleModel);
+    final item = _resolveCartItem(saleModel);
 
     await firestore.runTransaction((transaction) async {
       final productSnap = await transaction.get(item.productRef);
@@ -308,9 +245,6 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
       final saleRecordRef =
           salesProductRef.collection('sales_records').doc(saleModel.id);
       transaction.set(saleRecordRef, saleModel.toMap());
-
-      final mainSaleRef = firestore.collection('sales').doc(saleModel.id);
-      transaction.set(mainSaleRef, saleModel.toMap());
     });
   }
 

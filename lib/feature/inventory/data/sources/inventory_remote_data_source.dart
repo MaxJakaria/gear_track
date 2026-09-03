@@ -121,40 +121,23 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<void> updateProduct(ProductModel productModel) async {
-    DocumentReference<Map<String, dynamic>>? productRef;
-    DocumentReference<Map<String, dynamic>>? entryRef;
-
     final parts = productModel.id.split('/');
-    if (parts.length == 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
-      productRef = firestore.collection('products').doc(parts[0]);
-      entryRef = productRef.collection('stock_entries').doc(parts[1]);
-    } else {
-      productRef = firestore.collection('products').doc(productModel.partNo);
-      entryRef = productRef.collection('stock_entries').doc(productModel.id);
+    final productDocId = parts.length == 2 ? parts[0] : productModel.partNo;
+    final batchDocId = parts.length == 2 ? parts[1] : productModel.id;
 
-      final directCheck = await entryRef.get();
-      if (!directCheck.exists) {
-        final allEntries =
-            await firestore.collectionGroup('stock_entries').get();
-        final matching =
-            allEntries.docs.where((d) => d.id == productModel.id).toList();
-        if (matching.isNotEmpty) {
-          entryRef = matching.first.reference;
-          productRef = entryRef.parent.parent!;
-        }
-      }
-    }
+    final productRef = firestore.collection('products').doc(productDocId);
+    final entryRef = productRef.collection('stock_entries').doc(batchDocId);
 
     // Fetch all sibling batches under this parent product to calculate exact totalStock
     final siblingEntriesSnapshot =
         await productRef.collection('stock_entries').get();
 
-    final actualBatchId = parts.length == 2 ? parts[1] : productModel.id;
+    final actualBatchId = batchDocId;
 
     await firestore.runTransaction((transaction) async {
       // 1. ALL READS FIRST (Strict Firestore transaction rule)
-      final entrySnapshot = await transaction.get(entryRef!);
-      final productSnapshot = await transaction.get(productRef!);
+      final entrySnapshot = await transaction.get(entryRef);
+      final productSnapshot = await transaction.get(productRef);
 
       final List<int> siblingStocks = [];
       for (final doc in siblingEntriesSnapshot.docs) {
@@ -211,37 +194,20 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
 
   @override
   Future<void> deleteProduct(String productId) async {
-    DocumentReference<Map<String, dynamic>>? productRef;
-    DocumentReference<Map<String, dynamic>>? entryRef;
-    String actualBatchId = productId;
-
     final parts = productId.split('/');
+
     if (parts.length == 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
-      productRef = firestore.collection('products').doc(parts[0]);
-      entryRef = productRef.collection('stock_entries').doc(parts[1]);
-      actualBatchId = parts[1];
-    } else {
-      final querySnapshot =
-          await firestore.collectionGroup('stock_entries').get();
-      final matchingDocs =
-          querySnapshot.docs.where((doc) => doc.id == productId).toList();
+      // Deleting a specific batch under a product
+      final productRef = firestore.collection('products').doc(parts[0]);
+      final entryRef = productRef.collection('stock_entries').doc(parts[1]);
+      final actualBatchId = parts[1];
 
-      if (matchingDocs.isNotEmpty) {
-        final entryDoc = matchingDocs.first;
-        entryRef = entryDoc.reference;
-        productRef = entryRef.parent.parent!;
-      }
-    }
-
-    if (entryRef != null && productRef != null) {
-      // Fetch all remaining sibling batches under parent product
       final siblingEntriesSnapshot =
           await productRef.collection('stock_entries').get();
 
       await firestore.runTransaction((transaction) async {
-        // ALL READS FIRST
-        final productSnapshot = await transaction.get(productRef!);
-        final entrySnapshot = await transaction.get(entryRef!);
+        final productSnapshot = await transaction.get(productRef);
+        final entrySnapshot = await transaction.get(entryRef);
 
         final List<int> siblingStocks = [];
         for (final doc in siblingEntriesSnapshot.docs) {
@@ -262,7 +228,6 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
           trueTotalStock += s;
         }
 
-        // ALL WRITES AFTER
         if (productSnapshot.exists) {
           transaction.update(productRef, {'totalStock': trueTotalStock});
         }
@@ -271,19 +236,15 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
           transaction.delete(entryRef);
         }
       });
-      return;
-    }
-
-    // Direct product fallback
-    final directProductRef = firestore.collection('products').doc(productId);
-    final directSnapshot = await directProductRef.get();
-    if (directSnapshot.exists) {
-      final entries = await directProductRef.collection('stock_entries').get();
+    } else {
+      // Deleting entire product and its stock entries
+      final productRef = firestore.collection('products').doc(productId);
+      final entries = await productRef.collection('stock_entries').get();
       final batch = firestore.batch();
       for (final entry in entries.docs) {
         batch.delete(entry.reference);
       }
-      batch.delete(directProductRef);
+      batch.delete(productRef);
       await batch.commit();
     }
   }

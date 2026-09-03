@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 class SaleEntity extends Equatable {
   final String id;
   final String productId;
+  final String batchId;
   final String partNo;
   final DateTime saleDate;
   final String itemName;
@@ -14,6 +15,7 @@ class SaleEntity extends Equatable {
   const SaleEntity({
     required this.id,
     required this.productId,
+    this.batchId = '',
     this.partNo = '',
     required this.saleDate,
     required this.itemName,
@@ -27,6 +29,7 @@ class SaleEntity extends Equatable {
   List<Object?> get props => [
     id,
     productId,
+    batchId,
     partNo,
     saleDate,
     itemName,

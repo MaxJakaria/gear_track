@@ -5,6 +5,7 @@ class SaleModel extends SaleEntity {
   const SaleModel({
     required super.id,
     required super.productId,
+    super.batchId = '',
     super.partNo = '',
     required super.saleDate,
     required super.itemName,
@@ -19,11 +20,12 @@ class SaleModel extends SaleEntity {
     return SaleModel(
       id: doc.id,
       productId: data['productId'] ?? '',
+      batchId: data['batchId'] ?? '',
       partNo: data['partNo'] ?? '',
       saleDate: (data['saleDate'] as Timestamp).toDate(),
       itemName: data['itemName'] ?? '',
-      quantity: data['quantity'] ?? 0,
-      sellPrice: (data['sellPrice'] ?? 0.0).toDouble(),
+      quantity: (data['quantity'] as num?)?.toInt() ?? 0,
+      sellPrice: (data['sellPrice'] as num?)?.toDouble() ?? 0.0,
       costCode: data['costCode'] ?? '',
       invoiceId: data['invoiceId'] ?? '',
     );
@@ -32,6 +34,7 @@ class SaleModel extends SaleEntity {
   Map<String, dynamic> toMap() {
     return {
       'productId': productId,
+      'batchId': batchId,
       'partNo': partNo,
       'saleDate': Timestamp.fromDate(saleDate),
       'itemName': itemName,
@@ -46,6 +49,7 @@ class SaleModel extends SaleEntity {
     return SaleModel(
       id: saleEntity.id,
       productId: saleEntity.productId,
+      batchId: saleEntity.batchId,
       partNo: saleEntity.partNo,
       saleDate: saleEntity.saleDate,
       itemName: saleEntity.itemName,

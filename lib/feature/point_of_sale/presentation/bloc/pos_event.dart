@@ -44,6 +44,7 @@ class SearchSalesEvent extends PosEvent {
 
 class AddToCartEvent extends PosEvent {
   final String productId;
+  final String batchId;
   final String itemName;
   final String partNo;
   final String costCode;
@@ -51,6 +52,7 @@ class AddToCartEvent extends PosEvent {
 
   const AddToCartEvent({
     required this.productId,
+    this.batchId = '',
     required this.itemName,
     required this.partNo,
     required this.costCode,
@@ -59,7 +61,7 @@ class AddToCartEvent extends PosEvent {
 
   @override
   List<Object?> get props =>
-      [productId, itemName, partNo, costCode, availableStock];
+      [productId, batchId, itemName, partNo, costCode, availableStock];
 }
 
 class UpdateCartQuantityEvent extends PosEvent {
@@ -107,6 +109,7 @@ class UpdateCartCostCodeEvent extends PosEvent {
 class UpdateCartProductEvent extends PosEvent {
   final String cartItemId;
   final String productId;
+  final String batchId;
   final String partNo;
   final String itemName;
   final String costCode;
@@ -115,6 +118,7 @@ class UpdateCartProductEvent extends PosEvent {
   const UpdateCartProductEvent({
     required this.cartItemId,
     required this.productId,
+    this.batchId = '',
     required this.partNo,
     required this.itemName,
     required this.costCode,
@@ -125,6 +129,7 @@ class UpdateCartProductEvent extends PosEvent {
   List<Object?> get props => [
         cartItemId,
         productId,
+        batchId,
         partNo,
         itemName,
         costCode,
