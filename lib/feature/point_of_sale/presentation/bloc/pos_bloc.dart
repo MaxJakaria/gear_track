@@ -323,12 +323,8 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       (_) {
         final oldCart = List<CartItem>.from(_cartItems);
         _cartItems = [];
-        getSales().then((salesResult) {
-          salesResult.fold(
-            (_) {},
-            (sales) => _allSales = sales,
-          );
-        });
+        // Optimistically prepend newly completed sales locally to save hundreds of Firestore reads
+        _allSales = [...salesList, ..._allSales];
 
         emit(SaleAddedSuccess(
           checkoutCartItems: oldCart,

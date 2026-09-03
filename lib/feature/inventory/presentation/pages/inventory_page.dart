@@ -33,7 +33,10 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   void initState() {
     super.initState();
-    context.read<InventoryBloc>().add(const FetchProductsEvent());
+    final inventoryState = context.read<InventoryBloc>().state;
+    if (inventoryState is! InventoryLoaded) {
+      context.read<InventoryBloc>().add(const FetchProductsEvent());
+    }
   }
 
   @override

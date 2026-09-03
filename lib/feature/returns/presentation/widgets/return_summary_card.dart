@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 
+/// Minimalist, high-end return summary bar matching GearTrack's luxury UI
 class ReturnSummaryCard extends StatelessWidget {
   final int totalReturnQuantity;
   final double totalRefundAmount;
@@ -26,154 +29,123 @@ class ReturnSummaryCard extends StatelessWidget {
     final canSubmit = totalReturnQuantity > 0 && !isProcessing;
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-          width: 1.2,
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        border: Border(
+          top: BorderSide(
+            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+            width: 1,
+          ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'REFUND SUMMARY',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: isDark
-                      ? const Color(0xFF94A3B8)
-                      : const Color(0xFF64748B),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE11D48).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  '$totalReturnQuantity Items Selected',
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFE11D48),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Total Refund Big Banner
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                'Total Refund Amount',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white70 : const Color(0xFF334155),
-                ),
-              ),
-              Text(
-                totalRefundAmount.toCurrency(),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFFE11D48),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // Restock stats
-          Row(
-            children: [
-              Icon(
-                Icons.restore_from_trash_rounded,
-                size: 14,
-                color: isDark
-                    ? const Color(0xFF94A3B8)
-                    : const Color(0xFF64748B),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '$restockedCount to inventory  •  $nonRestockedCount damaged/discarded',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: isDark
-                      ? const Color(0xFF94A3B8)
-                      : const Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          // Confirm Button
-          ElevatedButton(
-            onPressed: canSubmit ? onConfirmReturn : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE11D48),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: isDark
-                  ? const Color(0xFF334155)
-                  : const Color(0xFFE2E8F0),
-              disabledForegroundColor: isDark
-                  ? const Color(0xFF64748B)
-                  : const Color(0xFF94A3B8),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              elevation: canSubmit ? 3 : 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: isProcessing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // Left: Total Refund & Items Count
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Icon(Icons.assignment_return_rounded, size: 18),
-                      SizedBox(width: 8),
                       Text(
-                        'Confirm Return & Issue Refund',
+                        'Total Refund',
                         style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B),
                         ),
                       ),
+                      if (totalReturnQuantity > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: (isDark ? AppColors.primaryButtonDark : AppColors.primaryButtonLight).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '$totalReturnQuantity ${totalReturnQuantity == 1 ? 'item' : 'items'}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? AppColors.primaryButtonDark : AppColors.primaryButtonLight,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-          ),
-        ],
+                  const SizedBox(height: 2),
+                  Text(
+                    totalRefundAmount.toCurrency(),
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                      color: isDark ? const Color(0xFFF87171) : const Color(0xFFE11D48),
+                    ),
+                  ),
+                  if (totalReturnQuantity > 0) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        if (restockedCount > 0)
+                          Text(
+                            '$restockedCount Restock',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF10B981),
+                            ),
+                          ),
+                        if (restockedCount > 0 && nonRestockedCount > 0)
+                          const Text(' • ', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                        if (nonRestockedCount > 0)
+                          Text(
+                            '$nonRestockedCount Damaged',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Right: Primary Action Button using project's AppGradientButton
+            SizedBox(
+              width: 115,
+              height: 44,
+              child: AppGradientButton(
+                onPressed: canSubmit ? onConfirmReturn : null,
+                label: 'Confirm',
+                isLoading: isProcessing,
+                height: 44,
+                borderRadius: 8,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

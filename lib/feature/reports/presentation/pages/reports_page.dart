@@ -27,7 +27,10 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   void initState() {
     super.initState();
-    context.read<ReportsBloc>().add(const FetchReportsEvent());
+    final reportsState = context.read<ReportsBloc>().state;
+    if (reportsState is! ReportsLoaded) {
+      context.read<ReportsBloc>().add(const FetchReportsEvent());
+    }
   }
 
   void _handleDateRangeChanged(DateTime? start, DateTime? end) {

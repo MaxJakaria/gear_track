@@ -11,10 +11,15 @@ import 'package:get_it/get_it.dart';
 final serviceLocator = GetIt.instance;
 
 Future<void> initDependencies() async {
-  // External Core Services
-  serviceLocator.registerLazySingleton<FirebaseFirestore>(
-    () => FirebaseFirestore.instance,
-  );
+  // External Core Services with aggressive local caching
+  serviceLocator.registerLazySingleton<FirebaseFirestore>(() {
+    final firestore = FirebaseFirestore.instance;
+    firestore.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+    return firestore;
+  });
 
   // Settings & App Configuration
   settingsDependencies(serviceLocator);

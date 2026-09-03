@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
+import 'package:gear_track/core/theme/app_colors.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/pages/pdf_preview_page.dart';
@@ -9,6 +11,7 @@ import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_c
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_product_search_card.dart';
 import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
 import 'package:gear_track/feature/receipt_verification/presentation/pages/receipt_verification_page.dart';
+import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/pages/returns_page.dart';
 import 'package:gear_track/init_dependencies.dart';
 
@@ -26,9 +29,15 @@ class _PosPageState extends State<PosPage> {
   @override
   void initState() {
     super.initState();
-    // Initial fetch for inventory products and sales data
-    context.read<InventoryBloc>().add(const FetchProductsEvent());
-    context.read<PosBloc>().add(const FetchSalesEvent());
+    // Only fetch if data is not already loaded into BLoC
+    final inventoryState = context.read<InventoryBloc>().state;
+    if (inventoryState is! InventoryLoaded) {
+      context.read<InventoryBloc>().add(const FetchProductsEvent());
+    }
+    final posState = context.read<PosBloc>().state;
+    if (posState is! PosLoaded) {
+      context.read<PosBloc>().add(const FetchSalesEvent());
+    }
   }
 
   @override
@@ -39,6 +48,11 @@ class _PosPageState extends State<PosPage> {
     return BlocConsumer<PosBloc, PosState>(
       listener: (context, state) async {
         if (state is SaleAddedSuccess) {
+          // Immediately update Inventory stock count across the app
+          context.read<InventoryBloc>().add(const FetchProductsEvent());
+          // Immediately refresh Reports so analytics and revenue reflect this sale
+          context.read<ReportsBloc>().add(const RefreshReportsEvent());
+
           if (state.generatePdf && state.checkoutCartItems.isNotEmpty) {
             if (mounted) {
               setState(() {
@@ -144,17 +158,26 @@ class _PosPageState extends State<PosPage> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                 ),
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.assignment_return_rounded),
-                    tooltip: 'Returns & Refunds',
-                    onPressed: isBusy
-                        ? null
-                        : () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ReturnsPage(),
-                            ),
-                          ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                    child: SizedBox(
+                      width: 84,
+                      height: 36,
+                      child: AppGradientButton(
+                        onPressed: isBusy
+                            ? null
+                            : () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ReturnsPage(),
+                                ),
+                              ),
+                        label: 'Return',
+                        height: 36,
+                        borderRadius: 8,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.qr_code_scanner_rounded),
