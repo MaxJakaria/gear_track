@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -7,23 +8,32 @@ import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/reports/domain/entities/analytics_report.dart';
 
 class PdfReportService {
-  // Static font cache to prevent redownloading Google Fonts on every PDF generation
+  // Static font cache to prevent reloading font assets on every PDF generation
   static pw.Font? _cachedRegularFont;
   static pw.Font? _cachedBoldFont;
 
   static Future<void> _ensureFontsLoaded() async {
     if (_cachedRegularFont != null && _cachedBoldFont != null) return;
     try {
-      final fonts = await Future.wait([
-        PdfGoogleFonts.notoSansBengaliRegular(),
-        PdfGoogleFonts.notoSansBengaliBold(),
-      ]).timeout(const Duration(seconds: 4));
-      _cachedRegularFont = fonts[0];
-      _cachedBoldFont = fonts[1];
+      // 1. First priority: Load bundled local font assets (100% offline, zero delay)
+      final regularData = await rootBundle.load('assets/fonts/NotoSansBengali-Regular.ttf');
+      final boldData = await rootBundle.load('assets/fonts/NotoSansBengali-Bold.ttf');
+      _cachedRegularFont = pw.Font.ttf(regularData);
+      _cachedBoldFont = pw.Font.ttf(boldData);
     } catch (_) {
-      // Fallback in case of slow or offline network
-      _cachedRegularFont ??= pw.Font.helvetica();
-      _cachedBoldFont ??= pw.Font.helveticaBold();
+      try {
+        // 2. Secondary fallback: Google Fonts CDN
+        final fonts = await Future.wait([
+          PdfGoogleFonts.notoSansBengaliRegular(),
+          PdfGoogleFonts.notoSansBengaliBold(),
+        ]).timeout(const Duration(seconds: 4));
+        _cachedRegularFont = fonts[0];
+        _cachedBoldFont = fonts[1];
+      } catch (_) {
+        // 3. Fallback: Standard Helvetica
+        _cachedRegularFont ??= pw.Font.helvetica();
+        _cachedBoldFont ??= pw.Font.helveticaBold();
+      }
     }
   }
 
@@ -74,7 +84,7 @@ class PdfReportService {
     final sales = report.salesRecords;
 
     // Precompute formatted strings matching app sales table layout:
-    // [DATE, PART NO, ITEM / MODEL, SOLD, PRICE]
+    // [SL., DATE, PRODUCT NAME, PART NO, QTY, UNIT PRICE, TOTAL PRICE]
     final dateFmt = DateFormat('yyyy-MM-dd');
     final List<List<String>> preformattedRows = [];
     for (int i = 0; i < sales.length; i++) {
@@ -88,9 +98,10 @@ class PdfReportService {
       preformattedRows.add([
         '${i + 1}',
         dateFormatted,
-        s.partNo.isNotEmpty ? s.partNo : '-',
         itemAndModel,
-        '${s.itemsSold}',
+        s.partNo.isNotEmpty ? s.partNo : '-',
+        '${s.itemsSold} PCS',
+        formatCurrency(s.sellPrice),
         formatCurrency(totalPrice),
       ]);
     }
@@ -187,23 +198,12 @@ class PdfReportService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColors.indigo50,
-                          borderRadius: pw.BorderRadius.circular(4),
-                          border: pw.Border.all(color: PdfColors.indigo200),
-                        ),
-                        child: pw.Text(
-                          'SALES & ANALYTICS REPORT',
-                          style: pw.TextStyle(
-                            fontSize: 8,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.indigo900,
-                          ),
+                      pw.Text(
+                        'Sales & Analytics Report',
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.indigo900,
                         ),
                       ),
                       pw.SizedBox(height: 3),
@@ -233,29 +233,20 @@ class PdfReportService {
           // 1. Executive Summary Title
           widgets.add(
             pw.Text(
-              'EXECUTIVE SUMMARY',
+              'Executive Summary',
               style: pw.TextStyle(
                 fontSize: 9.5,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.grey800,
-                letterSpacing: 0.5,
               ),
             ),
           );
           widgets.add(pw.SizedBox(height: 4));
 
-          // 2. Metrics Box Container
+          // 2. Metrics Row (No background container)
           widgets.add(
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 8,
-              ),
-              decoration: pw.BoxDecoration(
-                color: PdfColors.grey100,
-                borderRadius: pw.BorderRadius.circular(6),
-                border: pw.Border.all(color: PdfColors.grey300),
-              ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(vertical: 4),
               child: pw.Row(
                 children: [
                   if (!isFilterApplied) ...[
@@ -268,9 +259,9 @@ class PdfReportService {
                     ),
                     pw.Container(
                       width: 1,
-                      height: 30,
+                      height: 26,
                       color: PdfColors.grey300,
-                      margin: const pw.EdgeInsets.symmetric(horizontal: 6),
+                      margin: const pw.EdgeInsets.symmetric(horizontal: 8),
                     ),
                   ],
                   pw.Expanded(
@@ -282,9 +273,9 @@ class PdfReportService {
                   ),
                   pw.Container(
                     width: 1,
-                    height: 30,
+                    height: 26,
                     color: PdfColors.grey300,
-                    margin: const pw.EdgeInsets.symmetric(horizontal: 6),
+                    margin: const pw.EdgeInsets.symmetric(horizontal: 8),
                   ),
                   pw.Expanded(
                     child: _buildMetricBox(
@@ -303,12 +294,11 @@ class PdfReportService {
           // 3. Transactions Header
           widgets.add(
             pw.Text(
-              'SALES TRANSACTIONS (${sales.length} RECORDS)',
+              'Sales Transactions (${sales.length} records)',
               style: pw.TextStyle(
                 fontSize: 9,
                 fontWeight: pw.FontWeight.bold,
                 color: PdfColors.grey800,
-                letterSpacing: 0.5,
               ),
             ),
           );
@@ -336,22 +326,12 @@ class PdfReportService {
           } else {
             widgets.add(
               pw.TableHelper.fromTextArray(
-                border: const pw.TableBorder(
-                  top: pw.BorderSide(color: PdfColors.grey400, width: 0.8),
-                  bottom: pw.BorderSide(color: PdfColors.grey400, width: 0.8),
-                  left: pw.BorderSide(color: PdfColors.grey400, width: 0.8),
-                  right: pw.BorderSide(color: PdfColors.grey400, width: 0.8),
-                  horizontalInside: pw.BorderSide(
-                    color: PdfColors.grey300,
-                    width: 0.5,
-                  ),
-                  verticalInside: pw.BorderSide(
-                    color: PdfColors.grey300,
-                    width: 0.6,
-                  ),
+                border: pw.TableBorder.all(
+                  color: PdfColors.black,
+                  width: 0.5,
                 ),
                 headerDecoration: const pw.BoxDecoration(
-                  color: PdfColors.indigo50,
+                  color: PdfColors.grey100,
                 ),
                 headerHeight: 22,
                 cellHeight: 22,
@@ -362,35 +342,38 @@ class PdfReportService {
                 headerStyle: pw.TextStyle(
                   fontSize: 8.5,
                   fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.indigo900,
+                  color: PdfColors.grey900,
                 ),
                 cellStyle: const pw.TextStyle(
                   fontSize: 8,
                   color: PdfColors.grey900,
                 ),
                 columnWidths: const {
-                  0: pw.FixedColumnWidth(38), // # (fits up to 5 digits)
-                  1: pw.FixedColumnWidth(66), // DATE
-                  2: pw.FixedColumnWidth(78), // PART NO
-                  3: pw.FlexColumnWidth(3.0), // ITEM / MODEL
-                  4: pw.FixedColumnWidth(42), // SOLD
-                  5: pw.FixedColumnWidth(92), // PRICE
+                  0: pw.FixedColumnWidth(36), // Sl. (supports up to 5 digits e.g. 99999)
+                  1: pw.FixedColumnWidth(56), // Date
+                  2: pw.FlexColumnWidth(2.0), // Product Name
+                  3: pw.FixedColumnWidth(88), // Part No
+                  4: pw.FixedColumnWidth(44), // Qty
+                  5: pw.FixedColumnWidth(65), // Unit Price
+                  6: pw.FixedColumnWidth(70), // Total Price
                 },
                 cellAlignments: {
-                  0: pw.Alignment.centerLeft,
+                  0: pw.Alignment.center,
                   1: pw.Alignment.centerLeft,
                   2: pw.Alignment.centerLeft,
                   3: pw.Alignment.centerLeft,
                   4: pw.Alignment.center,
-                  5: pw.Alignment.centerRight,
+                  5: pw.Alignment.center,
+                  6: pw.Alignment.centerRight,
                 },
                 headers: [
-                  '#',
-                  'DATE',
-                  'PART NO',
-                  'ITEM / MODEL',
-                  'SOLD',
-                  'PRICE',
+                  'Sl.',
+                  'Date',
+                  'Product Name',
+                  'Part No',
+                  'Qty',
+                  'Unit Price',
+                  'Total Price',
                 ],
                 data: preformattedRows,
               ),
