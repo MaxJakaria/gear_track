@@ -1,104 +1,121 @@
-# 🛠️ GearTrack — Smart Inventory, POS & Analytics Management System
+# 🛠️ GearTrack — Smart Inventory, POS, Return & Analytics Management System
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
-[![Firebase](https://img.shields.io/badge/Backend-Cloud_Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Firebase](https://img.shields.io/badge/Backend-Cloud_Firestore_%26_Auth-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![State Management](https://img.shields.io/badge/State_Management-BLoC_Pattern-8A2BE2)](https://bloclibrary.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-Clean_Architecture-brightgreen)](#-system-architecture)
 [![License](https://img.shields.io/badge/License-Academic_FYP-blue)](#)
 
-> **GearTrack** is a cross-platform inventory management, Point of Sale (POS), and business analytics application built with **Flutter**, **Firebase Cloud Firestore**, and **BLoC (Clean Architecture)**. Developed as a **Final Year Project (FYP)** to streamline retail operations, track inventory real-time, generate PDF invoices, and provide visual business intelligence.
+> **GearTrack** is an enterprise-grade, cross-platform retail management solution built with **Flutter**, **Firebase Cloud Firestore**, and **BLoC (Clean Architecture)**. Designed as a comprehensive **Final Year Project (FYP)**, it integrates real-time inventory tracking, high-speed Point of Sale (POS), sales returns & refund processing, QR receipt verification, offline-capable PDF document generation, and visual business intelligence into a seamless, modern application.
 
 ---
 
 ## 📌 Table of Contents
 
 - [Project Overview](#-project-overview)
-- [Key Features & Modules](#-key-features--modules)
-  - [1. Inventory Management](#1-inventory-management)
-  - [2. Point of Sale (POS) & Billing](#2-point-of-sale-pos--billing)
-  - [3. Receipt & PDF Invoicing](#3-receipt--pdf-invoicing)
-  - [4. Reports & Business Analytics](#4-reports--business-analytics)
 - [System Architecture](#-system-architecture)
+- [Key Features & Modules](#-key-features--modules)
+  - [1. User Authentication & Security](#1-user-authentication--security)
+  - [2. Inventory & Stock Management](#2-inventory--stock-management)
+  - [3. Point of Sale (POS) & Billing](#3-point-of-sale-pos--billing)
+  - [4. Sales Returns & Refund Management](#4-sales-returns--refund-management)
+  - [5. Receipt Verification & Scanner](#5-receipt-verification--scanner)
+  - [6. Business Intelligence & Reports](#6-business-intelligence--reports)
+  - [7. Offline PDF Engine](#7-offline-pdf-engine)
 - [Project Directory Structure](#-project-directory-structure)
 - [Tech Stack & Dependencies](#-tech-stack--dependencies)
-- [Installation & Setup](#-installation--setup)
-- [Testing](#-testing)
-- [Future Enhancements](#-future-enhancements)
+- [Database Schema (Firestore)](#-database-schema-firestore)
+- [Getting Started](#-getting-started)
+- [Building for Production](#-building-for-production)
+- [Author & Acknowledgments](#-author--acknowledgments)
 
 ---
 
 ## 📖 Project Overview
 
-Small to medium-sized retail businesses often face challenges with fragmented tools for inventory management, checkout billing, and financial reporting. **GearTrack** solves this by offering an all-in-one solution:
+Traditional retail workflows often suffer from fragmented tools—disconnected spreadsheets for stock, manual POS calculation, clumsy return tracking, and complex accounting. **GearTrack** consolidates retail operations into a unified, responsive ecosystem:
 
-- **Real-time Synchronization:** Instant updates to stock levels upon sales transactions via Cloud Firestore.
-- **Fast Point of Sale:** Smooth checkout experience with cart management and automated calculations.
-- **Automated Invoicing:** On-the-fly PDF invoice generation ready for physical printing or digital sharing.
-- **Actionable Analytics:** Visual dashboards showing revenue trends, profit margins, and performance KPIs.
-
----
-
-## 🚀 Key Features & Modules
-
-### 1. Inventory Management
-
-- **Product Catalog:** Full CRUD capabilities (Create, Read, Update, Delete) for inventory products.
-- **Stock Tracking:** Real-time stock counts with purchase cost, retail selling price, and profit estimation.
-- **Search & Filtering:** Instant search by product name and categories.
-- **Quick Stock Adjustment:** Bottom sheets for rapid stock increments/decrements.
-- **Low Stock Alerts:** Visual warning indicators for items running low on stock.
-
-### 2. Point of Sale (POS) & Billing
-
-- **Fast Product Search:** Real-time lookup with instant stock validation.
-- **Smart Cart Management:** Add items, adjust quantities, calculate real-time item totals, and prevent selling out-of-stock items.
-- **Automated Calculations:** Computes subtotal, customizable tax/VAT, and discount deductions.
-- **Inventory Sync:** Automatically deducts sold quantities from the Firestore inventory collection upon successful checkout.
-
-### 3. Receipt & PDF Invoicing
-
-- **Instant Receipt Generation:** Generates styled PDF invoices using the `pdf` and `printing` packages.
-- **Thermal & Standard Print Support:** Interactive print preview and direct printing support.
-- **Digital Sharing:** Export and share receipts directly to customers.
-
-### 4. Reports & Business Analytics
-
-- **Executive KPI Cards:** Quick overview of Total Revenue, Net Profit, Total Orders, and Units Sold.
-- **Visual Charts (`fl_chart`):**
-  - **Daily Sales Trends:** Interactive line/bar charts showing daily sales fluctuations.
-  - **Monthly Profit Overview:** Comparison between cost and gross profits.
-- **Date Range Filters:** Filter data by today, this week, this month, or custom date ranges via an embedded calendar.
-- **Transaction Logs:** Detailed sales transaction history with full itemized breakdown.
+- **Real-time Synchronization:** Stock levels and financial metrics update immediately upon sales or returns via Cloud Firestore transactions.
+- **Fast Point of Sale:** Streamlined cart management, automated discount and tax calculations, and instant receipt generation.
+- **Return & Refund Integrity:** Strict item validation, automatic stock replenishment, and dedicated PDF refund vouchers.
+- **Offline Document Engine:** Standalone, bundled-font PDF engine capable of generating reports and receipts anywhere without internet dependencies.
+- **Executive Analytics:** Interactive charts and date-filtered KPIs offering deep visibility into revenue, profit margins, and sales velocity.
 
 ---
 
 ## 🏗️ System Architecture
 
-**GearTrack** adheres to **Clean Architecture** principles and **Feature-First** modular organization, ensuring scalability, maintainability, and testability.
+GearTrack is built strictly on **Clean Architecture** and **Feature-First** modular design principles.
 
 ```
-       ┌───────────────────────────────────────┐
-       │           Presentation Layer          │
-       │   (UI Pages, Widgets, BLoC / States)  │
-       └───────────────────┬───────────────────┘
-                           │
-       ┌───────────────────▼───────────────────┐
-       │              Domain Layer             │
-       │     (Entities, UseCases, Contracts)   │
-       └───────────────────▲───────────────────┘
-                           │
-       ┌───────────────────┴───────────────────┐
-       │               Data Layer              │
-       │   (Models, Remote Data Sources, Repos)│
-       └───────────────────────────────────────┘
+       ┌──────────────────────────────────────────────────┐
+       │                Presentation Layer                │
+       │   (Screens, Widgets, BLoC State Management)      │
+       └────────────────────────┬─────────────────────────┘
+                                │
+       ┌────────────────────────▼─────────────────────────┐
+       │                   Domain Layer                   │
+       │   (Entities, Use Cases, Repository Contracts)    │
+       └────────────────────────▲─────────────────────────┘
+                                │
+       ┌────────────────────────┴─────────────────────────┐
+       │                    Data Layer                    │
+       │   (Models / DTOs, Remote Data Sources, Firebase) │
+       └──────────────────────────────────────────────────┘
 ```
 
-- **Domain Layer:** Pure Dart code containing business entities, use case classes, and abstract repository contracts.
-- **Data Layer:** Handles API/Firestore communication, data mapping (DTO/Models), and repository implementations.
-- **Presentation Layer:** Flutter UI components, state management with `flutter_bloc`, and reactive rendering.
-- **Dependency Injection:** Handled cleanly with `get_it` service locator (`lib/init_dependencies.dart`).
-- **Functional Error Handling:** Uses `fpdart`'s `Either<Failure, Success>` pattern to handle errors without throwing unhandled exceptions.
+### Architecture Highlights:
+- **Separation of Concerns:** Business rules in the Domain layer have zero dependencies on Flutter UI or Firebase SDKs.
+- **Dependency Injection:** Centralized service locator with `get_it` (`lib/init_dependencies.dart`).
+- **Functional Error Handling:** Errors are modeled with `fpdart`'s `Either<Failure, Success>` pattern to eliminate unhandled runtime exceptions.
+- **Theme Engine:** Built-in dynamic Light and Dark mode with custom color tokens (`AppTheme`).
+
+---
+
+## 🚀 Key Features & Modules
+
+### 1. User Authentication & Security
+- **Firebase Authentication:** Secure email and password authentication (`AuthBloc`).
+- **Session Persistence:** Automatic session recovery on app launch with auth state listeners.
+- **Shop Profile Configuration:** Editable shop name, address, phone number, and currency settings.
+
+### 2. Inventory & Stock Management
+- **Full Catalog Management:** Add, edit, delete, and view items with part numbers, models, and categories.
+- **Stock Tracking & Pricing:** Tracks purchase costs, selling prices, available quantities, and estimated gross margin.
+- **Instant Search & Category Filters:** Fast client-side and remote search capabilities.
+- **Visual Stock Status:** Low-stock and out-of-stock badges and alerts.
+
+### 3. Point of Sale (POS) & Billing
+- **Fast Product Lookup:** Quick search and instant addition to the active cart.
+- **Stock Guard:** Real-time stock validation preventing checkout of out-of-stock items.
+- **Dynamic Cart Calculations:** Subtotal, custom discounts, VAT/tax deductions, and total amount.
+- **Atomic Checkout Transactions:** Firestore batch writes ensure inventory deduction and sales logging succeed atomically.
+- **Digital & Printable Receipts:** Immediate PDF receipt generation with thermal print support.
+
+### 4. Sales Returns & Refund Management
+- **Invoice-Based Returns:** Lookup past invoices to process partial or full item returns.
+- **Validation Guard:** Prevents returning more units than originally purchased.
+- **Automatic Stock Replenishment:** Restores returned item quantities back to active inventory.
+- **Refund Voucher Generation:** Dedicated PDF Return & Refund Voucher (`PdfReturnVoucherService`).
+
+### 5. Receipt Verification & Scanner
+- **QR / Barcode Scanning:** Built-in camera scanner via `mobile_scanner` for rapid receipt lookup.
+- **Manual Verification:** Invoice ID search to verify customer receipts, purchase dates, and itemized lists.
+
+### 6. Business Intelligence & Reports
+- **Executive KPI Metrics:** Real-time calculation of Total Investment, Total Sales, Gross Profit, and Profit Margin.
+- **Performance Trend Visualizations (`fl_chart`):**
+  - **Daily Sales Trends:** Daily revenue graph with date-based plotting.
+  - **Monthly Profit Overview:** Side-by-side comparison of monthly sales and net profits.
+- **Flexible Date Range Filtering:** Switch between Today, This Month, All Time, or Custom Date Ranges via an embedded calendar.
+- **Detailed Sales History Table:** Horizontal scrollable, center-aligned data grid displaying Serial No., Date, Product Name, Part No., Quantity, Unit Price, and Total Price.
+
+### 7. Offline PDF Engine
+- **100% Offline Capability:** Bundles `NotoSansBengali-Regular.ttf` and `NotoSansBengali-Bold.ttf` inside local app assets (`assets/fonts/`).
+- **Zero Network Latency:** Eliminates Google Fonts CDN delays and generates reports instantaneously (0 ms delay).
+- **Unicode & Bengali Support:** Flawless rendering of Unicode Bengali text and currency symbols (`৳`).
+- **Standardized Styling:** Clean table borders, repeat headers across pages, shop metadata headers, and itemized breakdowns.
 
 ---
 
@@ -107,36 +124,55 @@ Small to medium-sized retail businesses often face challenges with fragmented to
 ```plaintext
 lib/
 ├── core/
-│   ├── error/              # Failure classes & Exception handlers
-│   ├── utils/              # Helper functions & formatters
-│   └── widgets/            # Reusable UI widgets (Buttons, TextFields, etc.)
+│   ├── common/             # Global entities, cubits, and widgets
+│   ├── entities/           # Core entities (e.g. ShopSettings)
+│   ├── error/              # Failure models & Exception classes
+│   ├── theme/              # AppTheme, light/dark color palettes
+│   └── utils/              # Formatters, currency helpers, and validators
 │
-├── dependencies/           # Feature dependency injection modules
+├── dependencies/           # Feature-specific Dependency Injection modules
+│   ├── auth.dart
 │   ├── inventory.dart
 │   ├── pos.dart
-│   └── reports.dart
+│   ├── receipt_verification.dart
+│   ├── reports.dart
+│   └── return.dart
 │
 ├── feature/
-│   ├── inventory/          # Inventory Feature Module
-│   │   ├── data/           # Models, Data Sources, Repository Implementations
-│   │   ├── domain/         # Entities, Repository Interfaces, UseCases
-│   │   └── presentation/   # Inventory BLoC, Pages, and Custom Widgets
+│   ├── auth/               # User Authentication Module
+│   │   ├── data/           # Auth remote data sources & repository impl
+│   │   ├── domain/         # User entities, Auth repository contracts, UseCases
+│   │   └── presentation/   # AuthBloc, Login & Registration screens
 │   │
-│   ├── point_of_sale/      # POS & Checkout Feature Module
-│   │   ├── data/           # Sale models, Remote Data Sources
-│   │   ├── domain/         # Cart & Sale entities, Repositories, UseCases
-│   │   ├── presentation/   # POS BLoC, Cart Widgets, POS Main Screen
-│   │   └── utils/          # PDF Receipt Generation & Print Service
+│   ├── inventory/          # Inventory Management Module
+│   │   ├── data/           # Product models & Firestore data sources
+│   │   ├── domain/         # Product entities & Inventory use cases
+│   │   └── presentation/   # InventoryBloc, Product list, Add/Edit sheets
 │   │
-│   └── reports/            # Analytics & Reporting Module
-│       ├── data/           # Reports data source & repository impl
-│       ├── domain/         # Analytics models, UseCases
-│       └── presentation/   # Reports BLoC, KPI Cards, Charts & Calendar
+│   ├── point_of_sale/      # POS & Checkout Module
+│   │   ├── data/           # Sale models, invoice records & data sources
+│   │   ├── domain/         # Cart item entities & Checkout use cases
+│   │   ├── presentation/   # PosBloc, Cart widgets, Checkout page
+│   │   └── utils/          # PDF Receipt service
+│   │
+│   ├── receipt_verification/ # Scanner & Invoice Lookup Module
+│   │   ├── domain/         # Verification use cases
+│   │   └── presentation/   # Camera QR scanner & verification screen
+│   │
+│   ├── returns/            # Sales Return & Refund Module
+│   │   ├── data/           # Return record models & Firestore sources
+│   │   ├── domain/         # Return entities & ProcessReturn use case
+│   │   ├── presentation/   # ReturnBloc & Process return screens
+│   │   └── utils/          # PDF Return voucher service
+│   │
+│   └── reports/            # Analytics & Business Intelligence Module
+│       ├── data/           # Analytics calculation sources & repositories
+│       ├── domain/         # Analytics summaries & report entities
+│       ├── presentation/   # ReportsBloc, KPI cards, Trend charts, Sales table
+│       └── utils/          # Standalone offline PDF Report generator
 │
-├── presentation/
-│   └── pages/              # Main App Shell & Bottom Navigation Bar
-│
-├── firebase_options.dart   # Firebase configuration
+├── presentation/           # Main App Shell & Bottom Navigation Bar
+├── firebase_options.dart   # Generated Firebase configuration
 ├── init_dependencies.dart  # Global Service Locator setup (GetIt)
 └── main.dart               # Application entry point
 ```
@@ -145,86 +181,110 @@ lib/
 
 ## 💻 Tech Stack & Dependencies
 
-| Category                   | Technology / Package                                                                                    | Description                                         |
-| -------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| **Framework**              | [Flutter](https://flutter.dev) (v3.x)                                                                   | UI Framework for cross-platform apps                |
-| **Language**               | [Dart](https://dart.dev) (v3.x)                                                                         | Object-oriented client-optimized language           |
-| **Backend & Database**     | [Firebase Cloud Firestore](https://firebase.google.com)                                                 | Real-time NoSQL cloud database                      |
-| **State Management**       | [flutter_bloc](https://pub.dev/packages/flutter_bloc) + [equatable](https://pub.dev/packages/equatable) | Predictable event-driven state management           |
-| **Dependency Injection**   | [get_it](https://pub.dev/packages/get_it)                                                               | Service locator for clean decoupling                |
-| **Functional Programming** | [fpdart](https://pub.dev/packages/fpdart)                                                               | Functional programming & `Either` error handling    |
-| **Charts & Visualization** | [fl_chart](https://pub.dev/packages/fl_chart)                                                           | Highly customizable interactive charts              |
-| **Invoicing & PDF**        | [pdf](https://pub.dev/packages/pdf) & [printing](https://pub.dev/packages/printing)                     | Document generation and thermal/printer integration |
-| **Date & Localization**    | [intl](https://pub.dev/packages/intl)                                                                   | Currency formatting and date manipulation           |
+| Layer / Category            | Technology / Package                                                                                    | Purpose                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **Framework**               | [Flutter](https://flutter.dev) (v3.x)                                                                   | Cross-platform UI toolkit                           |
+| **Language**                | [Dart](https://dart.dev) (v3.x)                                                                         | Client-optimized, strongly typed language           |
+| **Backend & Database**      | [Firebase Cloud Firestore](https://firebase.google.com)                                                 | Real-time NoSQL cloud database                      |
+| **Authentication**          | [Firebase Auth](https://firebase.google.com/products/auth)                                               | Secure user authentication & sessions               |
+| **State Management**        | [flutter_bloc](https://pub.dev/packages/flutter_bloc) + [equatable](https://pub.dev/packages/equatable) | Predictable, reactive event-driven state management |
+| **Dependency Injection**    | [get_it](https://pub.dev/packages/get_it)                                                               | Decoupled service locator architecture              |
+| **Functional Error Handle** | [fpdart](https://pub.dev/packages/fpdart)                                                               | `Either<Failure, Success>` functional programming   |
+| **Visual Charts**           | [fl_chart](https://pub.dev/packages/fl_chart)                                                           | Interactive sales & profit charts                   |
+| **Invoicing & PDF**         | [pdf](https://pub.dev/packages/pdf) & [printing](https://pub.dev/packages/printing)                     | Native PDF creation and thermal print integration   |
+| **Barcode / QR Scanning**   | [mobile_scanner](https://pub.dev/packages/mobile_scanner)                                               | High-speed camera barcode/QR scanner                |
+| **Date & Localization**     | [intl](https://pub.dev/packages/intl)                                                                   | Number and date formatting                          |
 
 ---
 
-## ⚙️ Installation & Setup
+## 🗄️ Database Schema (Firestore)
+
+```
+firestore_root/
+├── users/ {userId}
+│   ├── shopName: String
+│   ├── address: String
+│   ├── phone: String
+│   └── currency: String
+│
+├── products/ {productId}
+│   ├── itemName: String
+│   ├── model: String
+│   ├── partNo: String
+│   ├── category: String
+│   ├── costPrice: Double
+│   ├── sellPrice: Double
+│   ├── stock: Integer
+│   └── updatedAt: Timestamp
+│
+├── sales/ {saleId}
+│   ├── invoiceNo: String
+│   ├── items: Array<CartItemModel>
+│   ├── subtotal: Double
+│   ├── discount: Double
+│   ├── tax: Double
+│   ├── totalAmount: Double
+│   └── saleDate: Timestamp
+│
+└── returns/ {returnId}
+    ├── originalInvoiceId: String
+    ├── returnedItems: Array<ReturnItemModel>
+    ├── totalRefundAmount: Double
+    └── returnDate: Timestamp
+```
+
+---
+
+## ⚙️ Getting Started
 
 ### Prerequisites
+1. **Flutter SDK:** 3.12+ ([Install Flutter](https://docs.flutter.dev/get-started/install)).
+2. **Firebase Project:** Configured with Cloud Firestore & Firebase Auth.
+3. **IDE:** VS Code or Android Studio with Flutter/Dart extensions.
 
-1. **Flutter SDK:** Install Flutter 3.12+ ([Guide](https://docs.flutter.dev/get-started/install)).
-2. **Dart SDK:** Included with Flutter.
-3. **Firebase Account:** A Firebase project configured with Cloud Firestore.
-4. **Android Studio / VS Code:** Configured with Flutter and Dart plugins.
+### Installation
 
-### Steps
-
-1. **Clone the repository:**
-
+1. **Clone the Repository:**
    ```bash
    git clone https://github.com/MaxJakaria/gear_track.git
    cd gear_track
    ```
 
-2. **Install project dependencies:**
-
+2. **Install Dependencies:**
    ```bash
    flutter pub get
    ```
 
 3. **Configure Firebase:**
-   - Make sure you have the [Firebase CLI](https://firebase.google.com/docs/cli) and [FlutterFire CLI](https://firebase.flutter.dev/docs/cli) installed.
-   - Run the configuration command if setting up with a new Firebase project:
-     ```bash
-     flutterfire configure
-     ```
-   - Ensure `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) are properly placed if configuring manually.
+   ```bash
+   flutterfire configure
+   ```
 
-4. **Run the Application:**
+4. **Run the App:**
    ```bash
    flutter run
    ```
 
 ---
 
-## 🧪 Testing
+## 📦 Building for Production
 
-Run all unit and repository tests using Flutter's test runner:
-
-```bash
-flutter test
-```
-
-Specific feature tests:
+To generate optimized, architecture-specific Android release APKs:
 
 ```bash
-flutter test test/feature/reports/reports_repository_test.dart
+flutter build apk --split-per-abi
 ```
+
+**Output Artifacts:**
+- `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`
+- `build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk`
+- `build/app/outputs/flutter-apk/app-x86_64-release.apk`
 
 ---
 
-## 🔮 Future Enhancements
-
-- [ ] Multi-store & branch management support
-- [ ] Barcode / QR Code scanning for instant checkout
-- [ ] User authentication with role-based access control (Admin vs Cashier)
-- [ ] Offline caching and background synchronization
-
----
-
-## 👨‍💻 Author & Attribution
+## 👨‍💻 Author & Acknowledgments
 
 - **Project:** Final Year Project (FYP)
-- **Repository:** [MaxJakaria/gear_track](https://github.com/MaxJakaria/gear_track)
 - **Developer:** Max Jakaria
+- **Repository:** [MaxJakaria/gear_track](https://github.com/MaxJakaria/gear_track)
+- **Built with:** ❤️, Flutter, Firebase, and Clean Architecture
