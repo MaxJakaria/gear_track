@@ -235,13 +235,14 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
       // Step D: Calculate Invoice status
       final newReturnedAmount =
           currentReturnedAmount + returnModel.totalRefundAmount;
-      final int totalOriginalCount = updatedInvoiceItems.fold(
+      final int totalOriginalCount = updatedInvoiceItems.fold<int>(
         0,
-        (sum, item) => sum + ((item['quantity'] as num?)?.toInt() ?? 0),
+        (acc, item) => acc + ((item['quantity'] as num?)?.toInt() ?? 0),
       );
-      final int totalReturnedCount = updatedInvoiceItems.fold(
+      final int totalReturnedCount = updatedInvoiceItems.fold<int>(
         0,
-        (sum, item) => sum + ((item['returnedQuantity'] as num?)?.toInt() ?? 0),
+        (acc, item) =>
+            acc + ((item['returnedQuantity'] as num?)?.toInt() ?? 0),
       );
       final bool allFullyReturned = totalOriginalCount > 0 &&
           totalReturnedCount >= totalOriginalCount;

@@ -6,6 +6,7 @@ class DailySalesPointModel extends DailySalesPoint {
     required super.date,
     required super.label,
     required super.revenue,
+    super.profit = 0.0,
   });
 
   factory DailySalesPointModel.fromMap(Map<String, dynamic> map) {
@@ -17,6 +18,7 @@ class DailySalesPointModel extends DailySalesPoint {
               : DateTime.now()),
       label: map['label'] ?? '',
       revenue: (map['revenue'] as num?)?.toDouble() ?? 0.0,
+      profit: (map['profit'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -25,6 +27,7 @@ class DailySalesPointModel extends DailySalesPoint {
       'date': Timestamp.fromDate(date),
       'label': label,
       'revenue': revenue,
+      'profit': profit,
     };
   }
 
@@ -33,6 +36,7 @@ class DailySalesPointModel extends DailySalesPoint {
       date: entity.date,
       label: entity.label,
       revenue: entity.revenue,
+      profit: entity.profit,
     );
   }
 }

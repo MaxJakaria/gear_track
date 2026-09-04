@@ -31,7 +31,12 @@ class SalesTableCard extends StatelessWidget {
       case ReportPeriod.custom:
         if (startDate != null && endDate != null) {
           final fmt = DateFormat('MMM d');
-          return "Sales (${fmt.format(startDate!)} - ${fmt.format(endDate!)})";
+          final sStr = fmt.format(startDate!);
+          final eStr = fmt.format(endDate!);
+          if (sStr == eStr && startDate!.year == endDate!.year) {
+            return "Sales ($sStr)";
+          }
+          return "Sales ($sStr - $eStr)";
         }
         return "Custom Range Sales";
     }
@@ -132,7 +137,7 @@ class SalesTableCard extends StatelessWidget {
         // Horizontally scrollable table container allowing full text display on all screen sizes
         LayoutBuilder(
           builder: (context, constraints) {
-            const double minTableWidth = 560.0;
+            const double minTableWidth = 580.0;
             final double tableWidth = constraints.maxWidth > minTableWidth
                 ? constraints.maxWidth
                 : minTableWidth;
@@ -191,7 +196,7 @@ class SalesTableCard extends StatelessWidget {
                               ),
                             ),
                             SizedBox(
-                              width: 68,
+                              width: 82,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 4.0,
@@ -207,7 +212,7 @@ class SalesTableCard extends StatelessWidget {
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  'Date',
+                                  'Date &\nTime',
                                   textAlign: TextAlign.center,
                                   style: headerTextStyle,
                                 ),
@@ -366,9 +371,6 @@ class SalesTableCard extends StatelessWidget {
                         ),
                         itemBuilder: (context, index) {
                           final record = displayedRecords[index];
-                          final dateStr = DateFormat(
-                            'yyyy-MM-dd',
-                          ).format(record.saleDate);
                           final double totalPrice =
                               record.sellPrice * record.itemsSold;
 
@@ -406,13 +408,13 @@ class SalesTableCard extends StatelessWidget {
                                   ),
                                 ),
 
-                                // Date
+                                // Date & Time
                                 SizedBox(
-                                  width: 68,
+                                  width: 82,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 4.0,
-                                      vertical: 9.0,
+                                      vertical: 6.0,
                                     ),
                                     decoration: BoxDecoration(
                                       border: Border(
@@ -423,16 +425,40 @@ class SalesTableCard extends StatelessWidget {
                                       ),
                                     ),
                                     alignment: Alignment.center,
-                                    child: Text(
-                                      dateStr,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w500,
-                                        color: isDark
-                                            ? const Color(0xFF94A3B8)
-                                            : const Color(0xFF64748B),
-                                      ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          DateFormat(
+                                            'dd/MM/yyyy',
+                                          ).format(record.saleDate),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark
+                                                ? const Color(0xFFE2E8F0)
+                                                : const Color(0xFF1E293B),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          DateFormat('hh:mm a')
+                                              .format(record.saleDate)
+                                              .toLowerCase(),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w500,
+                                            color: isDark
+                                                ? const Color(0xFF94A3B8)
+                                                : const Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),

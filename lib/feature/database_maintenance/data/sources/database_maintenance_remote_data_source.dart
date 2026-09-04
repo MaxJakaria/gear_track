@@ -119,10 +119,8 @@ class DatabaseMaintenanceRemoteDataSourceImpl
       final costPerUnit = mapping.decode(costCode);
 
       final double profitPerUnit;
-      if (costPerUnit > 0 && costPerUnit < sellPrice) {
+      if (costPerUnit > 0) {
         profitPerUnit = sellPrice - costPerUnit;
-      } else if (costPerUnit > 0 && costPerUnit >= sellPrice) {
-        profitPerUnit = sellPrice * 0.28;
       } else {
         profitPerUnit = sellPrice * 0.30;
       }
@@ -133,7 +131,7 @@ class DatabaseMaintenanceRemoteDataSourceImpl
     }
 
     // C. Increment permanent financial ledger so revenue and profit are NEVER lost
-    if (salesRevenue > 0 || salesProfit > 0) {
+    if (salesRevenue > 0 || salesProfit != 0) {
       await firestore.collection('financial_ledger').doc('cumulative').set({
         'accumulatedRevenue': FieldValue.increment(salesRevenue),
         'accumulatedProfit': FieldValue.increment(salesProfit),
@@ -195,10 +193,8 @@ class DatabaseMaintenanceRemoteDataSourceImpl
           final costPerUnit = mapping.decode(costCode);
 
           final double profitPerUnit;
-          if (costPerUnit > 0 && costPerUnit < sellPrice) {
+          if (costPerUnit > 0) {
             profitPerUnit = sellPrice - costPerUnit;
-          } else if (costPerUnit > 0 && costPerUnit >= sellPrice) {
-            profitPerUnit = sellPrice * 0.28;
           } else {
             profitPerUnit = sellPrice * 0.30;
           }

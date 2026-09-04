@@ -75,7 +75,7 @@ class InvoiceEntity extends Equatable {
     final year = saleDate.year;
     final month = saleDate.month.toString().padLeft(2, '0');
     final day = saleDate.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
+    return '$day/$month/$year';
   }
 
   String get formattedTime {

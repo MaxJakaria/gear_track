@@ -181,10 +181,8 @@ class ReportsRepositoryImpl implements ReportsRepository {
         final revenue = sale.sellPrice * sale.quantity;
         final costPerUnit = costCodeMapping.decode(sale.costCode);
         final double profitPerUnit;
-        if (costPerUnit > 0 && costPerUnit < sale.sellPrice) {
+        if (costPerUnit > 0) {
           profitPerUnit = sale.sellPrice - costPerUnit;
-        } else if (costPerUnit > 0 && costPerUnit >= sale.sellPrice) {
-          profitPerUnit = sale.sellPrice * 0.28;
         } else {
           profitPerUnit = sale.sellPrice * 0.30;
         }
@@ -225,10 +223,8 @@ class ReportsRepositoryImpl implements ReportsRepository {
         for (final item in ret.items) {
           final costPerUnit = costCodeMapping.decode(item.costCode);
           final double profitPerUnit;
-          if (costPerUnit > 0 && costPerUnit < item.sellPrice) {
+          if (costPerUnit > 0) {
             profitPerUnit = item.sellPrice - costPerUnit;
-          } else if (costPerUnit > 0 && costPerUnit >= item.sellPrice) {
-            profitPerUnit = item.sellPrice * 0.28;
           } else {
             profitPerUnit = item.sellPrice * 0.30;
           }
@@ -237,7 +233,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
       }
 
       totalSales = (totalSales - totalReturnRefund).clamp(0.0, double.infinity);
-      totalProfit = (totalProfit - totalReturnProfit).clamp(0.0, double.infinity);
+      totalProfit = totalProfit - totalReturnProfit;
       itemsSold = (itemsSold - totalReturnQuantity).clamp(0, 9999999);
 
       // Permanently add baseline revenue & profit from financial ledger (preserved across history clears)
@@ -283,11 +279,38 @@ class ReportsRepositoryImpl implements ReportsRepository {
             (acc, r) => acc + r.totalRefundAmount,
           );
 
+          double dayGrossProfit = 0.0;
+          for (final s in daySales) {
+            final costPerUnit = costCodeMapping.decode(s.costCode);
+            final double profitPerUnit;
+            if (costPerUnit > 0) {
+              profitPerUnit = s.sellPrice - costPerUnit;
+            } else {
+              profitPerUnit = s.sellPrice * 0.30;
+            }
+            dayGrossProfit += profitPerUnit * s.quantity;
+          }
+
+          double dayReturnProfit = 0.0;
+          for (final r in dayReturns) {
+            for (final item in r.items) {
+              final costPerUnit = costCodeMapping.decode(item.costCode);
+              final double profitPerUnit;
+              if (costPerUnit > 0) {
+                profitPerUnit = item.sellPrice - costPerUnit;
+              } else {
+                profitPerUnit = item.sellPrice * 0.30;
+              }
+              dayReturnProfit += profitPerUnit * item.quantity;
+            }
+          }
+
           dailySalesTrend.add(
             DailySalesPoint(
               date: targetDay,
               label: targetDay.day.toString().padLeft(2, '0'),
               revenue: (dayGross - dayRefund).clamp(0.0, double.infinity),
+              profit: dayGrossProfit - dayReturnProfit,
             ),
           );
         }
@@ -320,11 +343,38 @@ class ReportsRepositoryImpl implements ReportsRepository {
             (acc, r) => acc + r.totalRefundAmount,
           );
 
+          double dayGrossProfit = 0.0;
+          for (final s in daySales) {
+            final costPerUnit = costCodeMapping.decode(s.costCode);
+            final double profitPerUnit;
+            if (costPerUnit > 0) {
+              profitPerUnit = s.sellPrice - costPerUnit;
+            } else {
+              profitPerUnit = s.sellPrice * 0.30;
+            }
+            dayGrossProfit += profitPerUnit * s.quantity;
+          }
+
+          double dayReturnProfit = 0.0;
+          for (final r in dayReturns) {
+            for (final item in r.items) {
+              final costPerUnit = costCodeMapping.decode(item.costCode);
+              final double profitPerUnit;
+              if (costPerUnit > 0) {
+                profitPerUnit = item.sellPrice - costPerUnit;
+              } else {
+                profitPerUnit = item.sellPrice * 0.30;
+              }
+              dayReturnProfit += profitPerUnit * item.quantity;
+            }
+          }
+
           dailySalesTrend.add(
             DailySalesPoint(
               date: targetDay,
               label: day.toString().padLeft(2, '0'),
               revenue: (dayGross - dayRefund).clamp(0.0, double.infinity),
+              profit: dayGrossProfit - dayReturnProfit,
             ),
           );
         }
@@ -352,10 +402,8 @@ class ReportsRepositoryImpl implements ReportsRepository {
           final rev = s.sellPrice * s.quantity;
           final cost = costCodeMapping.decode(s.costCode);
           final double profitUnit;
-          if (cost > 0 && cost < s.sellPrice) {
+          if (cost > 0) {
             profitUnit = s.sellPrice - cost;
-          } else if (cost > 0 && cost >= s.sellPrice) {
-            profitUnit = s.sellPrice * 0.28;
           } else {
             profitUnit = s.sellPrice * 0.30;
           }
@@ -374,10 +422,8 @@ class ReportsRepositoryImpl implements ReportsRepository {
           for (final item in ret.items) {
             final cost = costCodeMapping.decode(item.costCode);
             final double profitUnit;
-            if (cost > 0 && cost < item.sellPrice) {
+            if (cost > 0) {
               profitUnit = item.sellPrice - cost;
-            } else if (cost > 0 && cost >= item.sellPrice) {
-              profitUnit = item.sellPrice * 0.28;
             } else {
               profitUnit = item.sellPrice * 0.30;
             }
@@ -390,7 +436,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
             monthLabel: monthFormat.format(targetMonthDate),
             monthDate: targetMonthDate,
             sales: mSales.clamp(0.0, double.infinity),
-            profit: mProfit.clamp(0.0, double.infinity),
+            profit: mProfit,
           ),
         );
       }

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
+import 'package:gear_track/core/utils/currency_formatter.dart';
 import '../../domain/entities/monthly_profit_point.dart';
 
 class MonthlyProfitChartCard extends StatefulWidget {
@@ -41,7 +42,17 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
   }
 
   String _formatYAxisValue(double value) {
-    if (value <= 0) return '0';
+    if (value == 0) return '${widget.currencySymbol}0';
+    if (value < 0) {
+      final absVal = value.abs();
+      if (absVal >= 1000000) {
+        return '-${widget.currencySymbol}${(absVal / 1000000).toStringAsFixed(1)}M';
+      }
+      if (absVal >= 1000) {
+        return '-${widget.currencySymbol}${(absVal / 1000).toStringAsFixed(0)}k';
+      }
+      return '-${widget.currencySymbol}${absVal.toInt()}';
+    }
     if (value >= 1000000) {
       return '${widget.currencySymbol}${(value / 1000000).toStringAsFixed(1)}M';
     }
@@ -63,10 +74,13 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
     final int count = widget.monthlyData.length;
 
     double maxVal = 1000.0;
+    double minVal = 0.0;
     for (final pt in widget.monthlyData) {
       maxVal = math.max(maxVal, math.max(pt.sales, pt.profit));
+      minVal = math.min(minVal, math.min(pt.sales, pt.profit));
     }
     final double maxY = (maxVal <= 0 ? 1000.0 : maxVal * 1.25);
+    final double minY = (minVal < 0 ? minVal * 1.25 : 0.0);
 
     // 2D Dimensions inside fixed 310px viewport (Reduced row gap for more visible rows & denser grid)
     final double columnSpacing =
@@ -75,7 +89,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
     final double innerSpace = (2.5 * math.min(1.4, _zoomScale)).clamp(1.5, 5.0);
     final double chartContentWidth = math.max(320.0, count * columnSpacing);
     final double innerChartHeight = 310.0 * _zoomScale;
-    final double yInterval = (maxY / 6).clamp(1.0, double.infinity);
+    final double yInterval = ((maxY - minY) / 6).clamp(1.0, double.infinity);
     final int zoomPercent = (_zoomScale * 100).toInt();
 
     final List<BarChartGroupData> barGroups = [];
@@ -102,21 +116,34 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                 top: Radius.circular(4),
               ),
             ),
-            // 2. Profit Bar (Deep Emerald at Top -> Light Mint at Bottom)
+            // 2. Profit Bar (Deep Emerald at Top -> Light Mint at Bottom, or Rose/Red for losses)
             BarChartRodData(
-              toY: math.max(0.0, point.profit),
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF047857), // Deep Emerald (Top)
-                  Color(0xFF10B981), // Emerald (Middle)
-                ],
-              ),
+              toY: point.profit,
+              gradient: point.profit >= 0
+                  ? const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFF047857), // Deep Emerald (Top)
+                        Color(0xFF10B981), // Emerald (Middle)
+                      ],
+                    )
+                  : const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFFEF4444), // Red (Top)
+                        Color(0xFFB91C1C), // Dark Red (Bottom)
+                      ],
+                    ),
               width: rodWidth,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
-              ),
+              borderRadius: point.profit >= 0
+                  ? const BorderRadius.vertical(
+                      top: Radius.circular(4),
+                    )
+                  : const BorderRadius.vertical(
+                      bottom: Radius.circular(4),
+                    ),
             ),
           ],
         ),
@@ -298,7 +325,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                             width: 40,
                             child: BarChart(
                               BarChartData(
-                                minY: 0,
+                                minY: minY,
                                 maxY: maxY,
                                 barGroups: const [],
                                 gridData: const FlGridData(show: false),
@@ -357,7 +384,7 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                   child: BarChart(
                                     BarChartData(
                                       alignment: BarChartAlignment.spaceAround,
-                                      minY: 0,
+                                      minY: minY,
                                       maxY: maxY,
                                       barGroups: barGroups,
                                       gridData: FlGridData(
@@ -468,15 +495,19 @@ class _MonthlyProfitChartCardState extends State<MonthlyProfitChartCard> {
                                                   children: [
                                                     TextSpan(
                                                       text:
-                                                          '$label: ${widget.currencySymbol}${amount.toInt()}',
+                                                          '$label: ${amount.toCurrency(widget.currencySymbol)}',
                                                       style: TextStyle(
                                                         color: isSales
                                                             ? const Color(
                                                                 0xFF818CF8,
                                                               )
-                                                            : const Color(
-                                                                0xFF34D399,
-                                                              ),
+                                                            : (amount >= 0
+                                                                ? const Color(
+                                                                    0xFF34D399,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFFF87171,
+                                                                  )),
                                                         fontWeight:
                                                             FontWeight.w700,
                                                         fontSize: 11.5,
