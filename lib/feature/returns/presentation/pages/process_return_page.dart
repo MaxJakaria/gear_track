@@ -109,8 +109,6 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
     });
   }
 
-
-
   void _submitReturn() {
     final List<ReturnItemEntity> returnItems = [];
 
@@ -227,6 +225,8 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           ),
           body: SafeArea(
             child: SingleChildScrollView(
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
