@@ -69,19 +69,17 @@ class PosCartCard extends StatelessWidget {
                         );
                       },
                       onProductChanged: (selectedBatch) {
-                        final cleanProductId = selectedBatch.partNo.isNotEmpty
-                            ? selectedBatch.partNo
-                            : (selectedBatch.id.contains('/')
-                                ? selectedBatch.id.split('/')[0]
-                                : selectedBatch.id);
+                        final parentDocId = selectedBatch.id.contains('/')
+                            ? selectedBatch.id.split('/')[0]
+                            : selectedBatch.id;
                         final batchId = selectedBatch.id.contains('/')
                             ? selectedBatch.id.split('/')[1]
-                            : selectedBatch.id;
+                            : '';
 
                         context.read<PosBloc>().add(
                           UpdateCartProductEvent(
                             cartItemId: item.id,
-                            productId: cleanProductId,
+                            productId: parentDocId,
                             batchId: batchId,
                             partNo: selectedBatch.partNo,
                             itemName: selectedBatch.itemName,

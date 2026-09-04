@@ -86,8 +86,10 @@ class DatabaseMaintenanceRemoteDataSourceImpl
   @override
   Future<int> clearSalesHistory() async {
     // A. Fetch current cost code mapping to decode profit accurately
-    final costCodeSnap =
-        await firestore.collection('app_settings').doc('cost_codes').get();
+    final costCodeSnap = await firestore
+        .collection('app_settings')
+        .doc('cost_code_mapping')
+        .get();
     CostCodeMapping mapping = const CostCodeMapping(charToDigit: {});
     if (costCodeSnap.exists && costCodeSnap.data() != null) {
       final data = costCodeSnap.data()!;
@@ -97,34 +99,37 @@ class DatabaseMaintenanceRemoteDataSourceImpl
       );
     }
 
-    // B. Calculate total sales revenue, profit, items sold from records to be cleared
+    // B. Fetch all sales and sales records in parallel (2 parallel queries instead of N+1)
+    final results = await Future.wait([
+      firestore.collection('sales').get(),
+      firestore.collectionGroup('sales_records').get(),
+    ]);
+    final salesDocs = results[0].docs;
+    final recordsDocs = results[1].docs;
+
     double salesRevenue = 0.0;
     double salesProfit = 0.0;
     int salesItems = 0;
 
-    final salesDocs = await firestore.collection('sales').get();
-    for (final doc in salesDocs.docs) {
-      final records = await doc.reference.collection('sales_records').get();
-      for (final r in records.docs) {
-        final data = r.data();
-        final sellPrice = (data['sellPrice'] as num?)?.toDouble() ?? 0.0;
-        final qty = (data['quantity'] as num?)?.toInt() ?? 0;
-        final costCode = data['costCode'] as String? ?? '';
-        final costPerUnit = mapping.decode(costCode);
+    for (final r in recordsDocs) {
+      final data = r.data();
+      final sellPrice = (data['sellPrice'] as num?)?.toDouble() ?? 0.0;
+      final qty = (data['quantity'] as num?)?.toInt() ?? 0;
+      final costCode = data['costCode'] as String? ?? '';
+      final costPerUnit = mapping.decode(costCode);
 
-        final double profitPerUnit;
-        if (costPerUnit > 0 && costPerUnit < sellPrice) {
-          profitPerUnit = sellPrice - costPerUnit;
-        } else if (costPerUnit > 0 && costPerUnit >= sellPrice) {
-          profitPerUnit = sellPrice * 0.28;
-        } else {
-          profitPerUnit = sellPrice * 0.30;
-        }
-
-        salesRevenue += sellPrice * qty;
-        salesProfit += profitPerUnit * qty;
-        salesItems += qty;
+      final double profitPerUnit;
+      if (costPerUnit > 0 && costPerUnit < sellPrice) {
+        profitPerUnit = sellPrice - costPerUnit;
+      } else if (costPerUnit > 0 && costPerUnit >= sellPrice) {
+        profitPerUnit = sellPrice * 0.28;
+      } else {
+        profitPerUnit = sellPrice * 0.30;
       }
+
+      salesRevenue += sellPrice * qty;
+      salesProfit += profitPerUnit * qty;
+      salesItems += qty;
     }
 
     // C. Increment permanent financial ledger so revenue and profit are NEVER lost
@@ -137,35 +142,97 @@ class DatabaseMaintenanceRemoteDataSourceImpl
       }, SetOptions(merge: true));
     }
 
-    int count = 0;
-
-    // D. Delete subcollection docs in sales_records and top-level sales
-    for (final doc in salesDocs.docs) {
-      final records = await doc.reference.collection('sales_records').get();
+    // D. Delete all sales and sales_records in fast 400-document batches
+    final allDocs = [...recordsDocs, ...salesDocs];
+    for (int i = 0; i < allDocs.length; i += 400) {
+      final end = (i + 400 < allDocs.length) ? i + 400 : allDocs.length;
       final batch = firestore.batch();
-      for (final r in records.docs) {
-        batch.delete(r.reference);
-        count++;
+      for (int j = i; j < end; j++) {
+        batch.delete(allDocs[j].reference);
       }
-      batch.delete(doc.reference);
-      count++;
       await batch.commit();
     }
 
-    // Customer Invoices are deliberately preserved so clients can verify invoices at any time.
-
-    return count;
+    return allDocs.length;
   }
 
-  /// 2. Clear Returns History & reset invoice return flags
+  /// 2. Clear Returns History & reset invoice return flags while permanently preserving return deductions in financial ledger
   @override
   Future<int> clearReturnsHistory() async {
+    // A. Fetch current cost code mapping to decode profit deductions accurately
+    final costCodeSnap = await firestore
+        .collection('app_settings')
+        .doc('cost_code_mapping')
+        .get();
+    CostCodeMapping mapping = const CostCodeMapping(charToDigit: {});
+    if (costCodeSnap.exists && costCodeSnap.data() != null) {
+      final data = costCodeSnap.data()!;
+      final mapData = data['mapping'] as Map<String, dynamic>? ?? {};
+      mapping = CostCodeMapping(
+        charToDigit: mapData.map((k, v) => MapEntry(k, (v as num).toInt())),
+      );
+    }
+
+    // B. Fetch all returns to compute return deductions to be permanently archived
+    final returnsSnap = await firestore.collection('returns').get();
+    double totalReturnRefund = 0.0;
+    double totalReturnProfit = 0.0;
+    int totalReturnQuantity = 0;
+
+    for (final doc in returnsSnap.docs) {
+      final data = doc.data();
+      final refund = (data['totalRefundAmount'] as num?)?.toDouble() ?? 0.0;
+      final totalQty = (data['totalQuantity'] as num?)?.toInt() ?? 0;
+      totalReturnRefund += refund;
+      totalReturnQuantity += totalQty;
+
+      final items = (data['items'] as List<dynamic>?) ?? [];
+      for (final itemRaw in items) {
+        if (itemRaw is Map<String, dynamic>) {
+          final sellPrice = (itemRaw['sellPrice'] as num?)?.toDouble() ?? 0.0;
+          final qty = (itemRaw['quantity'] as num?)?.toInt() ?? 0;
+          final costCode = itemRaw['costCode'] as String? ?? '';
+          final costPerUnit = mapping.decode(costCode);
+
+          final double profitPerUnit;
+          if (costPerUnit > 0 && costPerUnit < sellPrice) {
+            profitPerUnit = sellPrice - costPerUnit;
+          } else if (costPerUnit > 0 && costPerUnit >= sellPrice) {
+            profitPerUnit = sellPrice * 0.28;
+          } else {
+            profitPerUnit = sellPrice * 0.30;
+          }
+
+          totalReturnProfit += profitPerUnit * qty;
+        }
+      }
+    }
+
+    // C. Deduct returns from permanent financial ledger so Net Revenue & Profit stay 100% accurate
+    if (totalReturnRefund > 0 || totalReturnProfit > 0) {
+      await firestore.collection('financial_ledger').doc('cumulative').set({
+        'accumulatedRevenue': FieldValue.increment(-totalReturnRefund),
+        'accumulatedProfit': FieldValue.increment(-totalReturnProfit),
+        'accumulatedItemsSold': FieldValue.increment(-totalReturnQuantity),
+        'lastArchivedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+    // D. Delete all return documents in fast 400-document batches
     int count = 0;
+    for (int i = 0; i < returnsSnap.docs.length; i += 400) {
+      final end = (i + 400 < returnsSnap.docs.length)
+          ? i + 400
+          : returnsSnap.docs.length;
+      final batch = firestore.batch();
+      for (int j = i; j < end; j++) {
+        batch.delete(returnsSnap.docs[j].reference);
+      }
+      await batch.commit();
+      count += (end - i);
+    }
 
-    // A. Delete all return documents
-    count += await _deleteQueryInChunks(firestore.collection('returns'));
-
-    // B. Reset returnedAmount & returnStatus on existing invoices
+    // E. Reset returnedAmount & returnStatus on existing invoices
     final invoicesSnap = await firestore
         .collection('invoices')
         .where('returnedAmount', isGreaterThan: 0)
@@ -189,8 +256,10 @@ class DatabaseMaintenanceRemoteDataSourceImpl
   @override
   Future<int> clearInventoryAndBatches() async {
     // A. Fetch current cost code mapping to decode buying costs
-    final costCodeSnap =
-        await firestore.collection('app_settings').doc('cost_codes').get();
+    final costCodeSnap = await firestore
+        .collection('app_settings')
+        .doc('cost_code_mapping')
+        .get();
     CostCodeMapping mapping = const CostCodeMapping(charToDigit: {});
     if (costCodeSnap.exists && costCodeSnap.data() != null) {
       final data = costCodeSnap.data()!;
@@ -200,29 +269,35 @@ class DatabaseMaintenanceRemoteDataSourceImpl
       );
     }
 
-    double totalInventoryInvestment = 0.0;
-    final productsSnap = await firestore.collection('products').get();
+    // B. Fetch all products and stock entries in parallel (2 parallel queries instead of N+1)
+    final results = await Future.wait([
+      firestore.collection('products').get(),
+      firestore.collectionGroup('stock_entries').get(),
+    ]);
+    final productsDocs = results[0].docs;
+    final entriesDocs = results[1].docs;
 
-    // B. Calculate investment across all products and batches being cleared
-    for (final doc in productsSnap.docs) {
-      final entries = await doc.reference.collection('stock_entries').get();
-      if (entries.docs.isEmpty) {
+    double totalInventoryInvestment = 0.0;
+
+    // Calculate investment across all stock entries
+    if (entriesDocs.isNotEmpty) {
+      for (final entry in entriesDocs) {
+        final entryData = entry.data();
+        final stock = (entryData['remainingQuantity'] as num?)?.toInt() ?? 0;
+        if (stock > 0) {
+          final costCode = entryData['costCode'] as String? ?? '';
+          final costPerUnit = mapping.decode(costCode);
+          totalInventoryInvestment += stock * costPerUnit;
+        }
+      }
+    } else {
+      for (final doc in productsDocs) {
         final data = doc.data();
         final stock = (data['totalStock'] as num?)?.toInt() ?? 0;
         if (stock > 0) {
           final costCode = data['costCode'] as String? ?? '';
           final costPerUnit = mapping.decode(costCode);
           totalInventoryInvestment += stock * costPerUnit;
-        }
-      } else {
-        for (final entry in entries.docs) {
-          final entryData = entry.data();
-          final stock = (entryData['remainingQuantity'] as num?)?.toInt() ?? 0;
-          if (stock > 0) {
-            final costCode = entryData['costCode'] as String? ?? '';
-            final costPerUnit = mapping.decode(costCode);
-            totalInventoryInvestment += stock * costPerUnit;
-          }
         }
       }
     }
@@ -235,22 +310,18 @@ class DatabaseMaintenanceRemoteDataSourceImpl
       }, SetOptions(merge: true));
     }
 
-    int count = 0;
-
-    // D. Delete batches and product documents
-    for (final doc in productsSnap.docs) {
-      final entries = await doc.reference.collection('stock_entries').get();
+    // D. Delete all stock entries and products in fast 400-document batches
+    final allDocs = [...entriesDocs, ...productsDocs];
+    for (int i = 0; i < allDocs.length; i += 400) {
+      final end = (i + 400 < allDocs.length) ? i + 400 : allDocs.length;
       final batch = firestore.batch();
-      for (final entry in entries.docs) {
-        batch.delete(entry.reference);
-        count++;
+      for (int j = i; j < end; j++) {
+        batch.delete(allDocs[j].reference);
       }
-      batch.delete(doc.reference);
-      count++;
       await batch.commit();
     }
 
-    return count;
+    return allDocs.length;
   }
 
   /// 4. Reset App Settings (Cost code mappings and store profile)
@@ -258,12 +329,12 @@ class DatabaseMaintenanceRemoteDataSourceImpl
   Future<void> resetAppSettings() async {
     final batch = firestore.batch();
 
-    final costCodeDoc =
-        firestore.collection('app_settings').doc('cost_codes');
+    final costCodeDoc = firestore
+        .collection('app_settings')
+        .doc('cost_code_mapping');
     batch.set(costCodeDoc, {'mapping': {}});
 
-    final shopDoc =
-        firestore.collection('app_settings').doc('shop_settings');
+    final shopDoc = firestore.collection('app_settings').doc('shop_settings');
     batch.set(shopDoc, {'shopName': '', 'address': '', 'phone': ''});
 
     await batch.commit();

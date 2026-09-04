@@ -152,11 +152,11 @@ class _PosCartItemTileState extends State<PosCartItemTile> {
         },
         onAddNewCard: (batch) {
           Navigator.pop(sheetContext);
-          final cleanProductId = batch.partNo.isNotEmpty
-              ? batch.partNo
-              : (batch.id.contains('/') ? batch.id.split('/')[0] : batch.id);
+          final cleanProductId = batch.id.contains('/')
+              ? batch.id.split('/')[0]
+              : batch.id;
           final batchId =
-              batch.id.contains('/') ? batch.id.split('/')[1] : batch.id;
+              batch.id.contains('/') ? batch.id.split('/')[1] : '';
 
           context.read<PosBloc>().add(
             AddToCartEvent(

@@ -202,18 +202,16 @@ class _PosPageState extends State<PosPage> {
                       // 1. "Find & Add Product" Component
                       PosProductSearchCard(
                         onProductSelected: (selectedBatch) {
-                          final cleanProductId = selectedBatch.partNo.isNotEmpty
-                              ? selectedBatch.partNo
-                              : (selectedBatch.id.contains('/')
-                                    ? selectedBatch.id.split('/')[0]
-                                    : selectedBatch.id);
+                          final parentDocId = selectedBatch.id.contains('/')
+                              ? selectedBatch.id.split('/')[0]
+                              : selectedBatch.id;
                           final batchId = selectedBatch.id.contains('/')
                               ? selectedBatch.id.split('/')[1]
-                              : selectedBatch.id;
+                              : '';
 
                           context.read<PosBloc>().add(
                             AddToCartEvent(
-                              productId: cleanProductId,
+                              productId: parentDocId,
                               batchId: batchId,
                               itemName: selectedBatch.itemName,
                               partNo: selectedBatch.partNo,

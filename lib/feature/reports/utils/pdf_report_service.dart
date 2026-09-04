@@ -3,7 +3,6 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/reports/domain/entities/analytics_report.dart';
 
@@ -15,25 +14,13 @@ class PdfReportService {
   static Future<void> _ensureFontsLoaded() async {
     if (_cachedRegularFont != null && _cachedBoldFont != null) return;
     try {
-      // 1. First priority: Load bundled local font assets (100% offline, zero delay)
-      final regularData = await rootBundle.load('assets/fonts/NotoSansBengali-Regular.ttf');
-      final boldData = await rootBundle.load('assets/fonts/NotoSansBengali-Bold.ttf');
+      final regularData = await rootBundle.load('assets/fonts/pdf_font_regular.ttf');
+      final boldData = await rootBundle.load('assets/fonts/pdf_font_bold.ttf');
       _cachedRegularFont = pw.Font.ttf(regularData);
       _cachedBoldFont = pw.Font.ttf(boldData);
     } catch (_) {
-      try {
-        // 2. Secondary fallback: Google Fonts CDN
-        final fonts = await Future.wait([
-          PdfGoogleFonts.notoSansBengaliRegular(),
-          PdfGoogleFonts.notoSansBengaliBold(),
-        ]).timeout(const Duration(seconds: 4));
-        _cachedRegularFont = fonts[0];
-        _cachedBoldFont = fonts[1];
-      } catch (_) {
-        // 3. Fallback: Standard Helvetica
-        _cachedRegularFont ??= pw.Font.helvetica();
-        _cachedBoldFont ??= pw.Font.helveticaBold();
-      }
+      _cachedRegularFont ??= pw.Font.helvetica();
+      _cachedBoldFont ??= pw.Font.helveticaBold();
     }
   }
 

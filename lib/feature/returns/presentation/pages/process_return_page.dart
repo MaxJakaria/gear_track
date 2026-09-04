@@ -243,8 +243,11 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
                             Text(
                               widget.invoice.invoiceId,
@@ -269,8 +272,11 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
                             Text(
                               'Original Total: ${widget.invoice.totalAmount.toCurrency()}',

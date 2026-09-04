@@ -30,13 +30,60 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
 
   PosRemoteDataSourceImpl({required this.firestore});
 
-  /// Direct O(1) in-memory resolution for product and batch references
-  _ResolvedCartItem _resolveCartItem(SaleModel sale) {
-    final docId = sale.partNo.isNotEmpty ? sale.partNo : sale.productId;
-    final productRef = firestore.collection('products').doc(docId);
-    final batchRef = sale.batchId.isNotEmpty
+  /// Direct O(1) in-memory resolution with dynamic fallback for product and batch references
+  Future<_ResolvedCartItem> _resolveCartItemAsync(SaleModel sale) async {
+    final rawId = sale.productId.trim().isNotEmpty
+        ? sale.productId.trim()
+        : sale.partNo.trim();
+    final docId = rawId.contains('/') ? rawId.split('/')[0] : rawId;
+    var productRef = firestore.collection('products').doc(docId);
+    DocumentReference<Map<String, dynamic>>? batchRef = sale.batchId.isNotEmpty
         ? productRef.collection('stock_entries').doc(sale.batchId)
         : null;
+
+    final checkSnap = await productRef.get();
+    if (!checkSnap.exists) {
+      final lookupPart = sale.partNo.isNotEmpty ? sale.partNo : docId;
+      final queryByPart = await firestore
+          .collection('products')
+          .where('partNo', isEqualTo: lookupPart)
+          .limit(1)
+          .get();
+
+      if (queryByPart.docs.isNotEmpty) {
+        productRef = queryByPart.docs.first.reference;
+        if (sale.batchId.isNotEmpty) {
+          batchRef = productRef.collection('stock_entries').doc(sale.batchId);
+        }
+      } else {
+        final queryBatch = await firestore
+            .collectionGroup('stock_entries')
+            .where('partNo', isEqualTo: lookupPart)
+            .limit(1)
+            .get();
+
+        if (queryBatch.docs.isNotEmpty) {
+          final entryDoc = queryBatch.docs.first;
+          final parentDocId = entryDoc.reference.parent.parent?.id;
+          if (parentDocId != null && parentDocId.isNotEmpty) {
+            productRef = firestore.collection('products').doc(parentDocId);
+            batchRef = entryDoc.reference;
+          }
+        }
+      }
+    } else if (batchRef != null) {
+      final batchSnap = await batchRef.get();
+      if (!batchSnap.exists && sale.partNo.isNotEmpty) {
+        final bQuery = await productRef
+            .collection('stock_entries')
+            .where('partNo', isEqualTo: sale.partNo)
+            .limit(1)
+            .get();
+        if (bQuery.docs.isNotEmpty) {
+          batchRef = bQuery.docs.first.reference;
+        }
+      }
+    }
 
     return _ResolvedCartItem(
       sale: sale,
@@ -52,8 +99,8 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
   }) async {
     if (sales.isEmpty) return;
 
-    // 1. Direct O(1) in-memory resolution of all items
-    final resolvedItems = sales.map(_resolveCartItem).toList();
+    // 1. Direct resolution of all items with fallback
+    final resolvedItems = await Future.wait(sales.map(_resolveCartItemAsync));
 
     // 2. Run Single Atomic Transaction for the Entire Checkout
     await firestore.runTransaction((transaction) async {
@@ -176,7 +223,7 @@ class PosRemoteDataSourceImpl implements PosRemoteDataSource {
 
   @override
   Future<void> addSale(SaleModel saleModel) async {
-    final item = _resolveCartItem(saleModel);
+    final item = await _resolveCartItemAsync(saleModel);
 
     await firestore.runTransaction((transaction) async {
       final productSnap = await transaction.get(item.productRef);
