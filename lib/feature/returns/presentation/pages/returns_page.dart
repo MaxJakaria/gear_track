@@ -322,7 +322,9 @@ class _ReturnsPageState extends State<ReturnsPage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) =>
-                                        const ReceiptVerificationPage(),
+                                        const ReceiptVerificationPage(
+                                          allowReturn: true,
+                                        ),
                                   ),
                                 );
                               },

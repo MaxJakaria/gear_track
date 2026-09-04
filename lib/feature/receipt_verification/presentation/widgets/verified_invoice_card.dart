@@ -10,11 +10,13 @@ import 'package:gear_track/feature/returns/presentation/pages/process_return_pag
 class VerifiedInvoiceCard extends StatelessWidget {
   final InvoiceEntity invoice;
   final VoidCallback onReset;
+  final bool showReturnButton;
 
   const VerifiedInvoiceCard({
     super.key,
     required this.invoice,
     required this.onReset,
+    this.showReturnButton = false,
   });
 
   @override
@@ -503,8 +505,8 @@ class VerifiedInvoiceCard extends StatelessWidget {
         ),
         const SizedBox(height: 14),
 
-        // Process Return Action Button
-        if (!invoice.isFullyReturned) ...[
+        // Process Return Action Button (Shown only when initiated from returns flow)
+        if (showReturnButton && !invoice.isFullyReturned) ...[
           ElevatedButton.icon(
             onPressed: () async {
               final returned = await Navigator.push<bool>(

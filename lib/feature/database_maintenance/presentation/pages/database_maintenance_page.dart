@@ -149,7 +149,7 @@ class _DatabaseMaintenancePageState extends State<DatabaseMaintenancePage> {
       context,
       title: 'Clear Returns History?',
       description:
-          'This removes ${_metrics.returnsCount} return voucher records and resets refund balances.\n\nSales revenue and stock investment will not be affected.',
+          'This removes ${_metrics.returnsCount} return voucher records.\n\nCustomer Invoices remain 100% intact for client verification. Lifetime Sales revenue and stock investment will not be affected.',
       confirmLabel: 'Clear Returns',
       icon: Icons.assignment_return_rounded,
       iconColor: const Color(0xFFF59E0B),

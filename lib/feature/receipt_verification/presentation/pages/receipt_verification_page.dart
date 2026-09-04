@@ -9,10 +9,13 @@ import 'package:gear_track/feature/receipt_verification/presentation/widgets/ver
 import 'package:gear_track/feature/receipt_verification/presentation/widgets/verified_invoice_card.dart';
 
 class ReceiptVerificationPage extends StatefulWidget {
-  const ReceiptVerificationPage({super.key});
+  final bool allowReturn;
+
+  const ReceiptVerificationPage({super.key, this.allowReturn = false});
 
   @override
-  State<ReceiptVerificationPage> createState() => _ReceiptVerificationPageState();
+  State<ReceiptVerificationPage> createState() =>
+      _ReceiptVerificationPageState();
 }
 
 class _ReceiptVerificationPageState extends State<ReceiptVerificationPage> {
@@ -28,16 +31,16 @@ class _ReceiptVerificationPageState extends State<ReceiptVerificationPage> {
   void _verify(String rawCode) {
     final cleanCode = rawCode.trim();
     if (cleanCode.isEmpty) return;
-    context
-        .read<ReceiptVerificationBloc>()
-        .add(VerifyReceiptCodeEvent(cleanCode));
+    context.read<ReceiptVerificationBloc>().add(
+      VerifyReceiptCodeEvent(cleanCode),
+    );
   }
 
   void _reset() {
     _idController.clear();
-    context
-        .read<ReceiptVerificationBloc>()
-        .add(ResetReceiptVerificationEvent());
+    context.read<ReceiptVerificationBloc>().add(
+      ResetReceiptVerificationEvent(),
+    );
   }
 
   @override
@@ -71,6 +74,7 @@ class _ReceiptVerificationPageState extends State<ReceiptVerificationPage> {
                       VerifiedInvoiceCard(
                         invoice: state.invoice,
                         onReset: _reset,
+                        showReturnButton: widget.allowReturn,
                       )
                     else if (state is ReceiptVerificationFailure)
                       VerificationErrorCard(
@@ -86,9 +90,7 @@ class _ReceiptVerificationPageState extends State<ReceiptVerificationPage> {
                       ),
                       const SizedBox(height: 16),
                       if (_selectedTabIndex == 0)
-                        VerificationScannerView(
-                          onScanned: _verify,
-                        )
+                        VerificationScannerView(onScanned: _verify)
                       else
                         VerificationManualInput(
                           controller: _idController,

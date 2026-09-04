@@ -232,23 +232,7 @@ class DatabaseMaintenanceRemoteDataSourceImpl
       count += (end - i);
     }
 
-    // E. Reset returnedAmount & returnStatus on existing invoices
-    final invoicesSnap = await firestore
-        .collection('invoices')
-        .where('returnedAmount', isGreaterThan: 0)
-        .get();
-
-    if (invoicesSnap.docs.isNotEmpty) {
-      final batch = firestore.batch();
-      for (final doc in invoicesSnap.docs) {
-        batch.update(doc.reference, {
-          'returnedAmount': 0.0,
-          'returnStatus': 'NONE',
-        });
-      }
-      await batch.commit();
-    }
-
+    // NOTE: Customer Invoices remain 100% intact so customers and shopkeepers can still verify invoices and return records without any data corruption.
     return count;
   }
 
