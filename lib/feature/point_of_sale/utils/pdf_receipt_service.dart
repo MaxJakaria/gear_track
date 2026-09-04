@@ -1,6 +1,6 @@
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
 import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
@@ -13,12 +13,10 @@ class PdfReceiptService {
   static Future<void> _ensureFontsLoaded() async {
     if (_cachedBanglaFont != null && _cachedBanglaFontBold != null) return;
     try {
-      final fonts = await Future.wait([
-        PdfGoogleFonts.notoSansBengaliRegular(),
-        PdfGoogleFonts.notoSansBengaliBold(),
-      ]).timeout(const Duration(seconds: 3));
-      _cachedBanglaFont = fonts[0];
-      _cachedBanglaFontBold = fonts[1];
+      final regularData = await rootBundle.load('assets/fonts/pdf_font_regular.ttf');
+      final boldData = await rootBundle.load('assets/fonts/pdf_font_bold.ttf');
+      _cachedBanglaFont = pw.Font.ttf(regularData);
+      _cachedBanglaFontBold = pw.Font.ttf(boldData);
     } catch (_) {
       _cachedBanglaFont ??= pw.Font.helvetica();
       _cachedBanglaFontBold ??= pw.Font.helveticaBold();
@@ -76,7 +74,7 @@ class PdfReceiptService {
       pw.Page(
         pageFormat: PdfPageFormat.roll80, // Thermal 80mm
         orientation: pw.PageOrientation.portrait,
-        margin: const pw.EdgeInsets.all(12),
+        margin: const pw.EdgeInsets.all(8),
         theme: pw.ThemeData.withFont(base: banglaFont, bold: banglaFontBold),
         build: (pw.Context context) {
           return pw.Column(
@@ -95,37 +93,37 @@ class PdfReceiptService {
                           pw.Text(
                             displayedShopName,
                             style: pw.TextStyle(
-                              fontSize: 16,
+                              fontSize: 8.5,
                               fontWeight: pw.FontWeight.bold,
                             ),
                           ),
                         if (displayedAddress.isNotEmpty) ...[
-                          pw.SizedBox(height: 3),
+                          pw.SizedBox(height: 1),
                           pw.Text(
                             displayedAddress,
-                            style: const pw.TextStyle(fontSize: 9),
+                            style: const pw.TextStyle(fontSize: 5.0),
                           ),
                         ],
                         if (displayedPhone.isNotEmpty) ...[
-                          pw.SizedBox(height: 2),
+                          pw.SizedBox(height: 0.8),
                           pw.Text(
                             'Phone: $displayedPhone',
-                            style: const pw.TextStyle(fontSize: 8.5),
+                            style: const pw.TextStyle(fontSize: 5.0),
                           ),
                         ],
                       ],
                     ),
                   ),
-                  pw.SizedBox(width: 8),
+                  pw.SizedBox(width: 4),
                   pw.BarcodeWidget(
                     barcode: pw.Barcode.qrCode(),
                     data: qrPayload, // Encodes ID, Date, Time & Total
-                    width: 44,
-                    height: 44,
+                    width: 24,
+                    height: 24,
                   ),
                 ],
               ),
-              pw.SizedBox(height: 12),
+              pw.SizedBox(height: 4),
 
               // Meta Info: ID, Date & Time
               pw.Row(
@@ -134,111 +132,105 @@ class PdfReceiptService {
                   pw.Text(
                     invoiceId,
                     style: pw.TextStyle(
-                      fontSize: 7.2,
+                      fontSize: 4.5,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                   pw.Text(
                     '$dateStr $timeStr',
-                    style: const pw.TextStyle(fontSize: 7),
+                    style: const pw.TextStyle(fontSize: 4.2),
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 2.5),
+
+              // Items Table (6 Columns: Sl., Product Name, Part No, Qty, Unit Price, Total Price)
+              pw.TableHelper.fromTextArray(
+                context: context,
+                headers: <String>[
+                  'Sl.',
+                  'Product Name',
+                  'Part No',
+                  'Qty',
+                  'Unit Price',
+                  'Total Price',
+                ],
+                data: <List<String>>[
+                  for (int i = 0; i < items.length; i++)
+                    [
+                      '${i + 1}',
+                      items[i].itemName,
+                      items[i].partNo.isNotEmpty ? items[i].partNo : '-',
+                      '${items[i].quantity} PCS',
+                      items[i].sellPrice.toCurrency(),
+                      items[i].subtotal.toCurrency(),
+                    ],
+                ],
+                border: pw.TableBorder.all(width: 0.25, color: PdfColors.grey500),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                headerStyle: pw.TextStyle(
+                  fontSize: 4.0,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+                cellStyle: const pw.TextStyle(fontSize: 3.8),
+                headerAlignments: {
+                  0: pw.Alignment.center,
+                  1: pw.Alignment.center,
+                  2: pw.Alignment.center,
+                  3: pw.Alignment.center,
+                  4: pw.Alignment.center,
+                  5: pw.Alignment.center,
+                },
+                cellAlignments: {
+                  0: pw.Alignment.center,
+                  1: pw.Alignment.center,
+                  2: pw.Alignment.center,
+                  3: pw.Alignment.center,
+                  4: pw.Alignment.center,
+                  5: pw.Alignment.center,
+                },
+                columnWidths: {
+                  0: const pw.FlexColumnWidth(0.7), // Sl.
+                  1: const pw.FlexColumnWidth(3.2), // Product Name
+                  2: const pw.FlexColumnWidth(1.9), // Part No
+                  3: const pw.FlexColumnWidth(1.1), // Qty
+                  4: const pw.FlexColumnWidth(1.6), // Unit Price
+                  5: const pw.FlexColumnWidth(1.8), // Total Price
+                },
+                cellPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 0.8, vertical: 1.2),
+                headerPadding:
+                    const pw.EdgeInsets.symmetric(horizontal: 0.8, vertical: 2.0),
+              ),
+              pw.SizedBox(height: 4),
+
+              // Total Row
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.end,
+                children: [
+                  pw.Text(
+                    'Total : ',
+                    style: pw.TextStyle(
+                      fontSize: 5.5,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    totalAmount.toCurrency(),
+                    style: pw.TextStyle(
+                      fontSize: 5.5,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
               pw.SizedBox(height: 6),
 
-              // Items Table - Consolidated by Product (3 Columns: Item Name, Qty & Rate, Total)
-              pw.TableHelper.fromTextArray(
-                context: context,
-                data: <List<String>>[
-                  <String>['Item Name', 'Qty & Rate', 'Total'],
-                  ...groupedItems.entries.map((entry) {
-                    final productName = entry.key;
-                    final batches = entry.value;
-
-                    final title = productName.length > 22
-                        ? '${productName.substring(0, 21)}.'
-                        : productName;
-
-                    // Formats: "qty × rate\nqty × rate" -> e.g. "2×100\n1×120"
-                    final qtyRateBreakdown = batches
-                        .map((b) {
-                          final priceStr = b.sellPrice % 1 == 0
-                              ? b.sellPrice.toInt().toString()
-                              : b.sellPrice.toString();
-                          return '${b.quantity}×$priceStr';
-                        })
-                        .join('\n');
-
-                    final subtotal = batches.fold(
-                      0.0,
-                      (sum, b) => sum + b.subtotal,
-                    );
-
-                    return [title, qtyRateBreakdown, subtotal.toCurrency()];
-                  }),
-                ],
-                border: pw.TableBorder.all(width: 0.2),
-                headerStyle: pw.TextStyle(
-                  fontSize: 8,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-                cellStyle: const pw.TextStyle(fontSize: 7.5),
-                headerAlignments: {
-                  0: pw.Alignment.centerLeft,
-                  1: pw.Alignment.center,
-                  2: pw.Alignment.centerRight,
-                },
-                cellAlignments: {
-                  0: pw.Alignment.centerLeft,
-                  1: pw.Alignment.center,
-                  2: pw.Alignment.centerRight,
-                },
-                columnWidths: {
-                  0: const pw.FlexColumnWidth(4.5),
-                  1: const pw.FlexColumnWidth(3.0),
-                  2: const pw.FlexColumnWidth(2.5),
-                },
-              ),
-              pw.SizedBox(height: 10),
-
-              // Total Row aligned with Table columns
-              pw.Row(
-                children: [
-                  pw.Expanded(flex: 45, child: pw.SizedBox()),
-                  pw.Expanded(
-                    flex: 30,
-                    child: pw.Text(
-                      'Total :',
-                      textAlign: pw.TextAlign.right,
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  pw.Expanded(
-                    flex: 25,
-                    child: pw.Padding(
-                      padding: const pw.EdgeInsets.only(right: 2),
-                      child: pw.Text(
-                        totalAmount.toCurrency(),
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 16),
-
               // Footer
               pw.Center(
                 child: pw.Text(
                   'May Allah put Barakah in your purchase.',
-                  style: pw.TextStyle(fontSize: 8),
+                  style: const pw.TextStyle(fontSize: 4.5),
                 ),
               ),
             ],

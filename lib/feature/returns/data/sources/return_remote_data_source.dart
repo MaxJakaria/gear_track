@@ -26,13 +26,60 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
 
   ReturnRemoteDataSourceImpl({required this.firestore});
 
-  /// Direct O(1) in-memory resolution for restocking product and batch references
-  _ResolvedRestockItem _resolveRestockItem(ReturnItemEntity item) {
-    final docId = item.partNo.isNotEmpty ? item.partNo : item.productId;
-    final productRef = firestore.collection('products').doc(docId);
-    final batchRef = item.batchId.isNotEmpty
+  /// Direct O(1) in-memory resolution with dynamic fallback for restocking product and batch references
+  Future<_ResolvedRestockItem> _resolveRestockItemAsync(ReturnItemEntity item) async {
+    final rawId = item.productId.trim().isNotEmpty
+        ? item.productId.trim()
+        : item.partNo.trim();
+    final docId = rawId.contains('/') ? rawId.split('/')[0] : rawId;
+    var productRef = firestore.collection('products').doc(docId);
+    DocumentReference<Map<String, dynamic>>? batchRef = item.batchId.isNotEmpty
         ? productRef.collection('stock_entries').doc(item.batchId)
         : null;
+
+    final checkSnap = await productRef.get();
+    if (!checkSnap.exists) {
+      final lookupPart = item.partNo.isNotEmpty ? item.partNo : docId;
+      final queryByPart = await firestore
+          .collection('products')
+          .where('partNo', isEqualTo: lookupPart)
+          .limit(1)
+          .get();
+
+      if (queryByPart.docs.isNotEmpty) {
+        productRef = queryByPart.docs.first.reference;
+        if (item.batchId.isNotEmpty) {
+          batchRef = productRef.collection('stock_entries').doc(item.batchId);
+        }
+      } else {
+        final queryBatch = await firestore
+            .collectionGroup('stock_entries')
+            .where('partNo', isEqualTo: lookupPart)
+            .limit(1)
+            .get();
+
+        if (queryBatch.docs.isNotEmpty) {
+          final entryDoc = queryBatch.docs.first;
+          final parentDocId = entryDoc.reference.parent.parent?.id;
+          if (parentDocId != null && parentDocId.isNotEmpty) {
+            productRef = firestore.collection('products').doc(parentDocId);
+            batchRef = entryDoc.reference;
+          }
+        }
+      }
+    } else if (batchRef != null) {
+      final batchSnap = await batchRef.get();
+      if (!batchSnap.exists && item.partNo.isNotEmpty) {
+        final bQuery = await productRef
+            .collection('stock_entries')
+            .where('partNo', isEqualTo: item.partNo)
+            .limit(1)
+            .get();
+        if (bQuery.docs.isNotEmpty) {
+          batchRef = bQuery.docs.first.reference;
+        }
+      }
+    }
 
     return _ResolvedRestockItem(
       item: item,
@@ -43,11 +90,10 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
 
   @override
   Future<ReturnModel> processReturn(ReturnModel returnModel) async {
-    // 1. Resolve restock items directly in O(1) time
-    final resolvedRestockItems = returnModel.items
-        .where((i) => i.restock)
-        .map(_resolveRestockItem)
-        .toList();
+    // 1. Resolve restock items with dynamic fallback
+    final restockItems = returnModel.items.where((i) => i.restock).toList();
+    final resolvedRestockItems =
+        await Future.wait(restockItems.map(_resolveRestockItemAsync));
 
     // 2. Run single atomic transaction
     await firestore.runTransaction((transaction) async {
@@ -71,43 +117,62 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
       final currentReturnedAmount =
           (invoiceData['returnedAmount'] as num?)?.toDouble() ?? 0.0;
 
+      // Track remaining return item quantities so identical products aren't double-counted
+      final remainingReturnItems = returnModel.items
+          .map((i) => {
+                'productId': i.productId,
+                'batchId': i.batchId,
+                'partNo': i.partNo,
+                'quantity': i.quantity,
+                'itemName': i.itemName,
+              })
+          .toList();
+
       // Check return quantities against invoice item remaining returnable quantities
-      for (final raw in rawItems) {
-        final itemMap = Map<String, dynamic>.from(raw as Map);
+      for (int i = 0; i < rawItems.length; i++) {
+        final itemMap = Map<String, dynamic>.from(rawItems[i] as Map);
         final itemProdId = itemMap['productId'] ?? '';
+        final itemBatchId = itemMap['batchId'] ?? '';
         final itemPartNo = itemMap['partNo'] ?? '';
         final int originalQty = (itemMap['quantity'] as num?)?.toInt() ?? 0;
         final int prevReturnedQty =
             (itemMap['returnedQuantity'] as num?)?.toInt() ?? 0;
+        final int maxAvailableToReturn =
+            (originalQty - prevReturnedQty).clamp(0, originalQty);
 
-        // Find if this item is in the current return
-        final matchingReturn = returnModel.items.firstWhere(
-          (r) =>
-              (r.productId.isNotEmpty && r.productId == itemProdId) ||
-              (r.partNo.isNotEmpty && r.partNo == itemPartNo),
-          orElse: () => const ReturnItemModel(
-            productId: '',
-            itemName: '',
-            partNo: '',
-            quantity: 0,
-            sellPrice: 0.0,
-          ),
-        );
+        int returnQtyForThisItem = 0;
 
-        if (matchingReturn.quantity > 0) {
-          final newReturnedQty = prevReturnedQty + matchingReturn.quantity;
-          if (newReturnedQty > originalQty) {
-            throw FirebaseException(
-              plugin: 'cloud_firestore',
-              code: 'out-of-range',
-              message:
-                  'Cannot return ${matchingReturn.quantity} units of "${matchingReturn.itemName}". '
-                  'Purchased: $originalQty, Already returned: $prevReturnedQty.',
-            );
-          }
-          itemMap['returnedQuantity'] = newReturnedQty;
-          itemMap['returnableQuantity'] = originalQty - newReturnedQty;
+        // Find match in remainingReturnItems (prioritize batchId, then partNo, then productId)
+        int matchIdx = -1;
+        if (itemBatchId.toString().isNotEmpty) {
+          matchIdx = remainingReturnItems.indexWhere((r) =>
+              (r['batchId'] as String?) == itemBatchId &&
+              (r['quantity'] as int) > 0);
         }
+        if (matchIdx == -1 && itemPartNo.toString().isNotEmpty) {
+          matchIdx = remainingReturnItems.indexWhere((r) =>
+              (r['partNo'] as String?) == itemPartNo &&
+              (r['quantity'] as int) > 0);
+        }
+        if (matchIdx == -1 && itemProdId.toString().isNotEmpty) {
+          matchIdx = remainingReturnItems.indexWhere((r) =>
+              (r['productId'] as String?) == itemProdId &&
+              (r['quantity'] as int) > 0);
+        }
+
+        if (matchIdx != -1) {
+          final retItem = remainingReturnItems[matchIdx];
+          final requestedQty = retItem['quantity'] as int;
+          final toDeduct = requestedQty > maxAvailableToReturn
+              ? maxAvailableToReturn
+              : requestedQty;
+          returnQtyForThisItem = toDeduct;
+          retItem['quantity'] = requestedQty - toDeduct;
+        }
+
+        final newReturnedQty = prevReturnedQty + returnQtyForThisItem;
+        itemMap['returnedQuantity'] = newReturnedQty;
+        itemMap['returnableQuantity'] = originalQty - newReturnedQty;
 
         updatedInvoiceItems.add(itemMap);
       }
@@ -170,12 +235,19 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
       // Step D: Calculate Invoice status
       final newReturnedAmount =
           currentReturnedAmount + returnModel.totalRefundAmount;
-      final bool allFullyReturned = updatedInvoiceItems.every((item) {
-        final q = (item['quantity'] as num?)?.toInt() ?? 0;
-        final r = (item['returnedQuantity'] as num?)?.toInt() ?? 0;
-        return r >= q;
-      });
-      final String returnStatus = allFullyReturned ? 'FULL' : 'PARTIAL';
+      final int totalOriginalCount = updatedInvoiceItems.fold(
+        0,
+        (sum, item) => sum + ((item['quantity'] as num?)?.toInt() ?? 0),
+      );
+      final int totalReturnedCount = updatedInvoiceItems.fold(
+        0,
+        (sum, item) => sum + ((item['returnedQuantity'] as num?)?.toInt() ?? 0),
+      );
+      final bool allFullyReturned = totalOriginalCount > 0 &&
+          totalReturnedCount >= totalOriginalCount;
+      final String returnStatus = allFullyReturned
+          ? 'FULL'
+          : (totalReturnedCount > 0 ? 'PARTIAL' : 'NONE');
 
       // Step E: Atomic Writes (All writes after all reads)
       // 1. Write Return Document

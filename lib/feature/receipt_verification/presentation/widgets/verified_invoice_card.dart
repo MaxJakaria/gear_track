@@ -241,8 +241,11 @@ class VerifiedInvoiceCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         Text(
                           '📅 ${invoice.formattedDate}   ⏰ ${invoice.formattedTime}',
@@ -257,8 +260,8 @@ class VerifiedInvoiceCard extends StatelessWidget {
                         if (invoice.isFullyReturned)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 7,
+                              vertical: 2.5,
                             ),
                             decoration: BoxDecoration(
                               color: const Color(
@@ -278,8 +281,8 @@ class VerifiedInvoiceCard extends StatelessWidget {
                         else if (invoice.isPartiallyReturned)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 7,
+                              vertical: 2.5,
                             ),
                             decoration: BoxDecoration(
                               color: const Color(
@@ -299,8 +302,8 @@ class VerifiedInvoiceCard extends StatelessWidget {
                         else
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                              horizontal: 7,
+                              vertical: 2.5,
                             ),
                             decoration: BoxDecoration(
                               color: const Color(
@@ -309,7 +312,7 @@ class VerifiedInvoiceCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
-                              'Paid in Full',
+                              'Active Sale (No Returns)',
                               style: TextStyle(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w800,

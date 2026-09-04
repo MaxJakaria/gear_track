@@ -1,6 +1,6 @@
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 import 'package:gear_track/core/utils/currency_formatter.dart';
@@ -12,12 +12,10 @@ class PdfReturnVoucherService {
   static Future<void> _ensureFontsLoaded() async {
     if (_cachedBanglaFont != null && _cachedBanglaFontBold != null) return;
     try {
-      final fonts = await Future.wait([
-        PdfGoogleFonts.notoSansBengaliRegular(),
-        PdfGoogleFonts.notoSansBengaliBold(),
-      ]).timeout(const Duration(seconds: 3));
-      _cachedBanglaFont = fonts[0];
-      _cachedBanglaFontBold = fonts[1];
+      final regularData = await rootBundle.load('assets/fonts/pdf_font_regular.ttf');
+      final boldData = await rootBundle.load('assets/fonts/pdf_font_bold.ttf');
+      _cachedBanglaFont = pw.Font.ttf(regularData);
+      _cachedBanglaFontBold = pw.Font.ttf(boldData);
     } catch (_) {
       _cachedBanglaFont ??= pw.Font.helvetica();
       _cachedBanglaFontBold ??= pw.Font.helveticaBold();
@@ -50,7 +48,7 @@ class PdfReturnVoucherService {
       pw.Page(
         pageFormat: PdfPageFormat.roll80,
         orientation: pw.PageOrientation.portrait,
-        margin: const pw.EdgeInsets.all(12),
+        margin: const pw.EdgeInsets.all(8),
         theme: pw.ThemeData.withFont(base: banglaFont, bold: banglaFontBold),
         build: (pw.Context context) {
           return pw.Column(
@@ -69,7 +67,7 @@ class PdfReturnVoucherService {
                           pw.Text(
                             displayedShopName,
                             style: pw.TextStyle(
-                              fontSize: 15,
+                              fontSize: 8.5,
                               fontWeight: pw.FontWeight.bold,
                             ),
                           ),
@@ -77,7 +75,7 @@ class PdfReturnVoucherService {
                           pw.Text(
                             displayedAddress,
                             style: const pw.TextStyle(
-                              fontSize: 8.5,
+                              fontSize: 5.0,
                               color: PdfColors.grey700,
                             ),
                           ),
@@ -85,17 +83,17 @@ class PdfReturnVoucherService {
                           pw.Text(
                             'Phone: $displayedPhone',
                             style: const pw.TextStyle(
-                              fontSize: 8.5,
+                              fontSize: 5.0,
                               color: PdfColors.grey700,
                             ),
                           ),
                       ],
                     ),
                   ),
-                  pw.SizedBox(width: 8),
+                  pw.SizedBox(width: 4),
                   pw.Container(
-                    width: 48,
-                    height: 48,
+                    width: 24,
+                    height: 24,
                     child: pw.BarcodeWidget(
                       barcode: pw.Barcode.qrCode(),
                       data: qrPayload,
@@ -103,45 +101,45 @@ class PdfReturnVoucherService {
                   ),
                 ],
               ),
-              pw.SizedBox(height: 8),
-              pw.Divider(thickness: 0.8, color: PdfColors.grey800),
+              pw.SizedBox(height: 4),
+              pw.Divider(thickness: 0.3, color: PdfColors.grey800),
 
               // Voucher Title Banner
               pw.Container(
                 width: double.infinity,
-                padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                padding: const pw.EdgeInsets.symmetric(vertical: 2.0),
                 decoration: const pw.BoxDecoration(color: PdfColors.grey200),
                 child: pw.Text(
                   'SALES RETURN & REFUND VOUCHER',
                   textAlign: pw.TextAlign.center,
                   style: pw.TextStyle(
-                    fontSize: 9.5,
+                    fontSize: 6.0,
                     fontWeight: pw.FontWeight.bold,
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
-              pw.SizedBox(height: 6),
+              pw.SizedBox(height: 3),
 
               // Metadata Details
               pw.Text(
                 'RETURN ID: ${returnRecord.returnId}',
                 style: pw.TextStyle(
-                  fontSize: 8.5,
+                  fontSize: 4.8,
                   fontWeight: pw.FontWeight.bold,
                 ),
               ),
               pw.Text(
                 'ORIGINAL INVOICE: ${returnRecord.invoiceId}',
                 style: const pw.TextStyle(
-                  fontSize: 8,
+                  fontSize: 4.5,
                   color: PdfColors.grey800,
                 ),
               ),
               pw.Text(
                 'DATE: ${returnRecord.formattedDate}  TIME: ${returnRecord.formattedTime}',
                 style: const pw.TextStyle(
-                  fontSize: 8,
+                  fontSize: 4.2,
                   color: PdfColors.grey700,
                 ),
               ),
@@ -149,13 +147,13 @@ class PdfReturnVoucherService {
                 pw.Text(
                   'REASON: ${returnRecord.reason}',
                   style: const pw.TextStyle(
-                    fontSize: 8,
+                    fontSize: 4.2,
                     color: PdfColors.grey800,
                   ),
                 ),
 
-              pw.SizedBox(height: 6),
-              pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+              pw.SizedBox(height: 3),
+              pw.Divider(thickness: 0.3, color: PdfColors.grey400),
 
               // Table Headers
               pw.Row(
@@ -166,7 +164,7 @@ class PdfReturnVoucherService {
                     child: pw.Text(
                       'RETURNED ITEM',
                       style: pw.TextStyle(
-                        fontSize: 8,
+                        fontSize: 4.2,
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
@@ -177,7 +175,7 @@ class PdfReturnVoucherService {
                       'QTY',
                       textAlign: pw.TextAlign.center,
                       style: pw.TextStyle(
-                        fontSize: 8,
+                        fontSize: 4.2,
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
@@ -188,19 +186,19 @@ class PdfReturnVoucherService {
                       'REFUND',
                       textAlign: pw.TextAlign.right,
                       style: pw.TextStyle(
-                        fontSize: 8,
+                        fontSize: 4.2,
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               ),
-              pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+              pw.Divider(thickness: 0.3, color: PdfColors.grey400),
 
               // Items List
               ...returnRecord.items.map((item) {
                 return pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(vertical: 2.5),
+                  padding: const pw.EdgeInsets.symmetric(vertical: 1.0),
                   child: pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -213,7 +211,7 @@ class PdfReturnVoucherService {
                             pw.Text(
                               item.itemName,
                               style: pw.TextStyle(
-                                fontSize: 8.5,
+                                fontSize: 4.5,
                                 fontWeight: pw.FontWeight.bold,
                               ),
                             ),
@@ -221,7 +219,7 @@ class PdfReturnVoucherService {
                               pw.Text(
                                 'P/N: ${item.partNo}',
                                 style: const pw.TextStyle(
-                                  fontSize: 7,
+                                  fontSize: 3.8,
                                   color: PdfColors.grey600,
                                 ),
                               ),
@@ -230,7 +228,7 @@ class PdfReturnVoucherService {
                                   ? '[Restocked to Stock]'
                                   : '[Damaged / Not Restocked]',
                               style: pw.TextStyle(
-                                fontSize: 6.5,
+                                fontSize: 3.6,
                                 color: item.restock
                                     ? PdfColors.green800
                                     : PdfColors.red800,
@@ -244,30 +242,18 @@ class PdfReturnVoucherService {
                         child: pw.Text(
                           '${item.quantity}',
                           textAlign: pw.TextAlign.center,
-                          style: const pw.TextStyle(fontSize: 8.5),
+                          style: const pw.TextStyle(fontSize: 4.5),
                         ),
                       ),
                       pw.Expanded(
                         flex: 2,
-                        child: pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.end,
-                          children: [
-                            pw.Text(
-                              item.refundAmount.toCurrency(),
-                              textAlign: pw.TextAlign.right,
-                              style: pw.TextStyle(
-                                fontSize: 8.5,
-                                fontWeight: pw.FontWeight.bold,
-                              ),
-                            ),
-                            pw.Text(
-                              '@ ${item.sellPrice.toCurrency()}',
-                              style: const pw.TextStyle(
-                                fontSize: 6.5,
-                                color: PdfColors.grey600,
-                              ),
-                            ),
-                          ],
+                        child: pw.Text(
+                          item.refundAmount.toCurrency(),
+                          textAlign: pw.TextAlign.right,
+                          style: pw.TextStyle(
+                            fontSize: 4.5,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -275,7 +261,7 @@ class PdfReturnVoucherService {
                 );
               }),
 
-              pw.Divider(thickness: 0.8, color: PdfColors.grey800),
+              pw.Divider(thickness: 0.3, color: PdfColors.grey800),
 
               // Summary Total
               pw.Row(
@@ -284,41 +270,41 @@ class PdfReturnVoucherService {
                   pw.Text(
                     'TOTAL REFUND PAID',
                     style: pw.TextStyle(
-                      fontSize: 10,
+                      fontSize: 5.5,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                   pw.Text(
                     returnRecord.totalRefundAmount.toCurrency(),
                     style: pw.TextStyle(
-                      fontSize: 12,
+                      fontSize: 6.0,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
                 ],
               ),
-              pw.SizedBox(height: 3),
+              pw.SizedBox(height: 1.5),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
                     'Total Items Returned',
                     style: const pw.TextStyle(
-                      fontSize: 8,
+                      fontSize: 4.2,
                       color: PdfColors.grey700,
                     ),
                   ),
                   pw.Text(
                     '${returnRecord.totalQuantity}',
                     style: const pw.TextStyle(
-                      fontSize: 8,
+                      fontSize: 4.2,
                       color: PdfColors.grey700,
                     ),
                   ),
                 ],
               ),
 
-              pw.SizedBox(height: 18),
+              pw.SizedBox(height: 8),
               // Signatures
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -326,21 +312,21 @@ class PdfReturnVoucherService {
                   pw.Column(
                     children: [
                       pw.Container(
-                        width: 70,
+                        width: 45,
                         decoration: const pw.BoxDecoration(
                           border: pw.Border(
                             top: pw.BorderSide(
-                              width: 0.5,
+                              width: 0.3,
                               color: PdfColors.grey600,
                             ),
                           ),
                         ),
                       ),
-                      pw.SizedBox(height: 2),
+                      pw.SizedBox(height: 1),
                       pw.Text(
                         'Customer Sig.',
                         style: const pw.TextStyle(
-                          fontSize: 7,
+                          fontSize: 4.2,
                           color: PdfColors.grey700,
                         ),
                       ),
@@ -349,21 +335,21 @@ class PdfReturnVoucherService {
                   pw.Column(
                     children: [
                       pw.Container(
-                        width: 70,
+                        width: 45,
                         decoration: const pw.BoxDecoration(
                           border: pw.Border(
                             top: pw.BorderSide(
-                              width: 0.5,
+                              width: 0.3,
                               color: PdfColors.grey600,
                             ),
                           ),
                         ),
                       ),
-                      pw.SizedBox(height: 2),
+                      pw.SizedBox(height: 1),
                       pw.Text(
                         'Authorized Sig.',
                         style: const pw.TextStyle(
-                          fontSize: 7,
+                          fontSize: 4.2,
                           color: PdfColors.grey700,
                         ),
                       ),
@@ -372,12 +358,12 @@ class PdfReturnVoucherService {
                 ],
               ),
 
-              pw.SizedBox(height: 14),
+              pw.SizedBox(height: 6),
               pw.Center(
                 child: pw.Text(
                   'Powered by GearTrack POS System',
                   style: const pw.TextStyle(
-                    fontSize: 7,
+                    fontSize: 4.0,
                     color: PdfColors.grey600,
                   ),
                 ),

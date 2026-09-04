@@ -142,9 +142,12 @@ class ReturnItemTile extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          Row(
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 2,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              if (item.partNo.isNotEmpty) ...[
+                              if (item.partNo.isNotEmpty)
                                 Text(
                                   item.partNo,
                                   style: TextStyle(
@@ -155,10 +158,10 @@ class ReturnItemTile extends StatelessWidget {
                                         : const Color(0xFF64748B),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                              ],
                               Text(
-                                'Sold: ${item.quantity}  •  Avail: $maxReturnable',
+                                item.returnedQuantity > 0
+                                    ? 'Sold: ${item.quantity} • Ret: ${item.returnedQuantity} • Avail: $maxReturnable'
+                                    : 'Sold: ${item.quantity} • Avail: $maxReturnable',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: isDark
@@ -226,14 +229,18 @@ class ReturnItemTile extends StatelessWidget {
                               : const Color(0xFF64748B),
                         ),
                         const SizedBox(width: 5),
-                        Text(
-                          'Already fully refunded',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
+                        Flexible(
+                          child: Text(
+                            'Already fully refunded',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
