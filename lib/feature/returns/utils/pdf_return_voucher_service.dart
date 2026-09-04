@@ -304,60 +304,6 @@ class PdfReturnVoucherService {
                 ],
               ),
 
-              pw.SizedBox(height: 8),
-              // Signatures
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Column(
-                    children: [
-                      pw.Container(
-                        width: 45,
-                        decoration: const pw.BoxDecoration(
-                          border: pw.Border(
-                            top: pw.BorderSide(
-                              width: 0.3,
-                              color: PdfColors.grey600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      pw.SizedBox(height: 1),
-                      pw.Text(
-                        'Customer Sig.',
-                        style: const pw.TextStyle(
-                          fontSize: 4.2,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Column(
-                    children: [
-                      pw.Container(
-                        width: 45,
-                        decoration: const pw.BoxDecoration(
-                          border: pw.Border(
-                            top: pw.BorderSide(
-                              width: 0.3,
-                              color: PdfColors.grey600,
-                            ),
-                          ),
-                        ),
-                      ),
-                      pw.SizedBox(height: 1),
-                      pw.Text(
-                        'Authorized Sig.',
-                        style: const pw.TextStyle(
-                          fontSize: 4.2,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
               pw.SizedBox(height: 6),
               pw.Center(
                 child: pw.Text(
