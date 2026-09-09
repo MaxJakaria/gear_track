@@ -85,7 +85,7 @@ class _VerificationManualInputState extends State<VerificationManualInput> {
               color: isDark ? Colors.white : const Color(0xFF0F172A),
             ),
             decoration: InputDecoration(
-              hintText: 'e.g. INV-260909-001',
+              hintText: 'e.g. INV-2026-000001',
               hintStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.normal,

@@ -189,10 +189,7 @@ class PdfReceiptService {
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
     final timeStr =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
-    final y2 = (now.year % 100).toString().padLeft(2, '0');
-    final m2 = now.month.toString().padLeft(2, '0');
-    final d2 = now.day.toString().padLeft(2, '0');
-    final invoiceId = invoice?.invoiceId ?? 'INV-$y2$m2$d2-001';
+    final invoiceId = invoice?.invoiceId ?? 'INV-${now.year}-000001';
 
     final qrPayload =
         invoice?.qrPayload ??
@@ -434,8 +431,8 @@ class PdfReceiptService {
             pw.BarcodeWidget(
               barcode: pw.Barcode.qrCode(),
               data: qr,
-              width: 24,
-              height: 24,
+              width: 20,
+              height: 20,
             ),
             pw.SizedBox(height: 2.5),
           ],

@@ -312,39 +312,32 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     final totalPaid = checkoutItems.fold(0.0, (total, i) => total + i.subtotal);
     final now = DateTime.now();
 
-    // Compact Invoice ID format: INV-YYMMDD-XXX
-    // e.g. INV-260909-001
-    final year2 = (now.year % 100).toString().padLeft(2, '0');
-    final month2 = now.month.toString().padLeft(2, '0');
-    final day2 = now.day.toString().padLeft(2, '0');
-    final dateStr = '$year2$month2$day2';
+    // Invoice ID format: INV-yyyy-XXXXXX (6-digit auto count, resets each year)
+    // e.g. INV-2026-000001
     int seq = 1;
     try {
-      final startOfDay = DateTime(now.year, now.month, now.day);
+      final startOfYear = DateTime(now.year, 1, 1);
       final snap = await FirebaseFirestore.instance
           .collection('invoices')
           .where(
             'saleDate',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYear),
           )
           .count()
           .get()
           .timeout(const Duration(seconds: 2));
       seq = (snap.count ?? 0) + 1;
     } catch (_) {
-      final todayInvoices = _allSales
+      final thisYearInvoices = _allSales
           .where(
-            (s) =>
-                s.saleDate.year == now.year &&
-                s.saleDate.month == now.month &&
-                s.saleDate.day == now.day,
+            (s) => s.saleDate.year == now.year && s.invoiceId.isNotEmpty,
           )
           .map((s) => s.invoiceId)
           .toSet();
-      seq = todayInvoices.length + 1;
+      seq = thisYearInvoices.length + 1;
     }
-    final seqStr = seq.toString().padLeft(3, '0');
-    final invoiceId = 'INV-$dateStr-$seqStr';
+    final seqStr = seq.toString().padLeft(6, '0');
+    final invoiceId = 'INV-${now.year}-$seqStr';
 
     final invoiceItems = checkoutItems
         .map(
@@ -375,7 +368,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     final salesList = checkoutItems
         .map(
           (item) => SaleEntity(
-            id: 'REC-$dateStr-${seqStr}_${itemIndex++}',
+            id: 'REC-${now.year}-${seqStr}_${itemIndex++}',
             productId: item.productId,
             batchId: item.batchId,
             partNo: item.partNo,

@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:gear_track/core/entities/shop_settings.dart';
+import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
 import 'package:gear_track/feature/reports/domain/entities/analytics_report.dart';
 
 class PdfReportService {
@@ -79,22 +82,28 @@ class PdfReportService {
     final sales = report.salesRecords;
 
     // Precompute formatted strings matching app sales table layout:
-    // [SL., DATE & TIME, PRODUCT NAME, PART NO, QTY, UNIT PRICE, TOTAL PRICE]
-    final dateFmt = DateFormat('dd/MM/yyyy');
-    final timeFmt = DateFormat('hh:mm a');
+    // [SL., INVOICE, PRODUCT NAME, PART NO, QTY, UNIT PRICE, TOTAL PRICE]
     final List<List<String>> preformattedRows = [];
+    int invoiceSl = 0;
+
     for (int i = 0; i < sales.length; i++) {
       final s = sales[i];
+      final bool isSameInvoice = i > 0 &&
+          s.invoiceId.isNotEmpty &&
+          s.invoiceId == sales[i - 1].invoiceId;
+
+      if (!isSameInvoice) {
+        invoiceSl++;
+      }
+
       final totalPrice = s.itemsSold * s.sellPrice;
-      final dateFormatted =
-          '${dateFmt.format(s.saleDate)}\n${timeFmt.format(s.saleDate).toLowerCase()}';
       final itemAndModel = s.model.isNotEmpty
           ? '${s.itemName}\n(${s.model})'
           : s.itemName;
 
       preformattedRows.add([
-        '${i + 1}',
-        dateFormatted,
+        isSameInvoice ? '' : '$invoiceSl',
+        isSameInvoice ? '' : (s.invoiceId.isNotEmpty ? s.invoiceId : '-'),
         itemAndModel,
         s.partNo.isNotEmpty ? s.partNo : '-',
         '${s.itemsSold} PCS',
@@ -328,13 +337,11 @@ class PdfReportService {
                   color: PdfColors.grey900,
                 ),
                 columnWidths: const {
-                  0: pw.FixedColumnWidth(
-                    36,
-                  ), // Sl. (supports up to 5 digits e.g. 99999)
-                  1: pw.FixedColumnWidth(68), // Date & Time
+                  0: pw.FixedColumnWidth(28), // Sl.
+                  1: pw.FixedColumnWidth(80), // Invoice
                   2: pw.FlexColumnWidth(2.0), // Product Name
-                  3: pw.FixedColumnWidth(88), // Part No
-                  4: pw.FixedColumnWidth(44), // Qty
+                  3: pw.FixedColumnWidth(80), // Part No
+                  4: pw.FixedColumnWidth(35), // Qty
                   5: pw.FixedColumnWidth(65), // Unit Price
                   6: pw.FixedColumnWidth(70), // Total Price
                 },
@@ -349,7 +356,7 @@ class PdfReportService {
                 },
                 headers: [
                   'Sl.',
-                  'Date & Time',
+                  'Invoice',
                   'Product Name',
                   'Part No',
                   'Qty',
@@ -367,5 +374,60 @@ class PdfReportService {
     );
 
     return pdf.save();
+  }
+
+  /// Builds a descriptive filename for the exported PDF report.
+  static String buildReportFileName({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    if (startDate != null && endDate != null) {
+      final start = DateFormat('yyyyMMdd').format(startDate);
+      final end = DateFormat('yyyyMMdd').format(endDate);
+      return 'geartrack_report_${start}_$end.pdf';
+    } else if (startDate != null) {
+      final start = DateFormat('yyyyMMdd').format(startDate);
+      return 'geartrack_report_$start.pdf';
+    } else {
+      final nowStr = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+      return 'geartrack_all_time_report_$nowStr.pdf';
+    }
+  }
+
+  /// Writes the generated PDF report bytes to the device's default Download storage.
+  static Future<File> saveReportToDevice({
+    required Uint8List pdfBytes,
+    required String fileName,
+    Directory? customDirectory,
+  }) async {
+    if (customDirectory != null) {
+      if (!await customDirectory.exists()) {
+        await customDirectory.create(recursive: true);
+      }
+      final file = File(
+        '${customDirectory.path}${Platform.pathSeparator}$fileName',
+      );
+      await file.writeAsBytes(pdfBytes, flush: true);
+      return file;
+    }
+
+    final candidates = await PdfReceiptService.getCandidateDownloadDirectories();
+    for (final dir in candidates) {
+      try {
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        final file = File('${dir.path}${Platform.pathSeparator}$fileName');
+        await file.writeAsBytes(pdfBytes, flush: true);
+        return file;
+      } catch (_) {
+        // Try next candidate directory
+      }
+    }
+
+    final fallbackDir = await getApplicationDocumentsDirectory();
+    final file = File('${fallbackDir.path}${Platform.pathSeparator}$fileName');
+    await file.writeAsBytes(pdfBytes, flush: true);
+    return file;
   }
 }

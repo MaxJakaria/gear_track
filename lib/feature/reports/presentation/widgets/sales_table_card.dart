@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/report_period.dart';
@@ -86,6 +87,27 @@ class SalesTableCard extends StatelessWidget {
         ? salesRecords
         : salesRecords.take(20).toList();
 
+    // Precompute invoice grouping and serial numbers
+    final List<_InvoiceGroup> invoiceGroups = [];
+    int currentInvoiceSl = 0;
+
+    for (final r in displayedRecords) {
+      if (invoiceGroups.isNotEmpty &&
+          r.invoiceId.isNotEmpty &&
+          invoiceGroups.last.invoiceId == r.invoiceId) {
+        invoiceGroups.last.items.add(r);
+      } else {
+        currentInvoiceSl++;
+        invoiceGroups.add(
+          _InvoiceGroup(
+            slNumber: currentInvoiceSl,
+            invoiceId: r.invoiceId,
+            items: [r],
+          ),
+        );
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -98,35 +120,44 @@ class SalesTableCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.history_rounded, size: 20, color: primaryBlue),
+                  Icon(
+                    Icons.table_chart_outlined,
+                    size: 18,
+                    color: primaryBlue,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     _title,
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: primaryBlue.withValues(alpha: isDark ? 0.20 : 0.12),
+                  color: isDark
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF334155)
+                        : const Color(0xFFE2E8F0),
+                    width: 0.8,
+                  ),
                 ),
                 child: Text(
                   '${displayedRecords.length} records',
                   style: TextStyle(
                     fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     color: isDark
-                        ? const Color(0xFF818CF8)
-                        : const Color(0xFF4F46E5),
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF64748B),
                   ),
                 ),
               ),
@@ -137,7 +168,7 @@ class SalesTableCard extends StatelessWidget {
         // Horizontally scrollable table container allowing full text display on all screen sizes
         LayoutBuilder(
           builder: (context, constraints) {
-            const double minTableWidth = 580.0;
+            const double minTableWidth = 610.0;
             final double tableWidth = constraints.maxWidth > minTableWidth
                 ? constraints.maxWidth
                 : minTableWidth;
@@ -173,7 +204,7 @@ class SalesTableCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             SizedBox(
-                              width: 30,
+                              width: 32,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 4.0,
@@ -196,7 +227,7 @@ class SalesTableCard extends StatelessWidget {
                               ),
                             ),
                             SizedBox(
-                              width: 82,
+                              width: 118,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 4.0,
@@ -212,7 +243,7 @@ class SalesTableCard extends StatelessWidget {
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  'Date &\nTime',
+                                  'Invoice',
                                   textAlign: TextAlign.center,
                                   style: headerTextStyle,
                                 ),
@@ -363,24 +394,22 @@ class SalesTableCard extends StatelessWidget {
                       ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: displayedRecords.length,
+                        itemCount: invoiceGroups.length,
                         separatorBuilder: (context, index) => Divider(
                           height: 1,
                           thickness: 1.0,
                           color: gridBorderColor,
                         ),
                         itemBuilder: (context, index) {
-                          final record = displayedRecords[index];
-                          final double totalPrice =
-                              record.sellPrice * record.itemsSold;
+                          final group = invoiceGroups[index];
 
                           return IntrinsicHeight(
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                // SL.
+                                // SL. (Unified across all items in invoice, vertically centered)
                                 SizedBox(
-                                  width: 30,
+                                  width: 32,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 4.0,
@@ -396,7 +425,8 @@ class SalesTableCard extends StatelessWidget {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      '${index + 1}',
+                                      '${group.slNumber}',
+                                      textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -408,14 +438,10 @@ class SalesTableCard extends StatelessWidget {
                                   ),
                                 ),
 
-                                // Date & Time
+                                // Invoice (Unified across all items in invoice, vertically centered, tap to copy)
                                 SizedBox(
-                                  width: 82,
+                                  width: 118,
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4.0,
-                                      vertical: 6.0,
-                                    ),
                                     decoration: BoxDecoration(
                                       border: Border(
                                         right: BorderSide(
@@ -424,228 +450,122 @@ class SalesTableCard extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    alignment: Alignment.center,
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          DateFormat(
-                                            'dd/MM/yyyy',
-                                          ).format(record.saleDate),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: isDark
-                                                ? const Color(0xFFE2E8F0)
-                                                : const Color(0xFF1E293B),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: group.invoiceId.isNotEmpty
+                                            ? () {
+                                                Clipboard.setData(
+                                                  ClipboardData(
+                                                    text: group.invoiceId,
+                                                  ),
+                                                );
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).hideCurrentSnackBar();
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons
+                                                              .check_circle_outline,
+                                                          color: Colors.white,
+                                                          size: 16,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            'Invoice "${group.invoiceId}" copied',
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    duration: const Duration(
+                                                      milliseconds: 1200,
+                                                    ),
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                  ),
+                                                );
+                                              }
+                                            : null,
+                                        child: Container(
+                                          alignment: Alignment.center,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6.0,
+                                            vertical: 6.0,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                group.invoiceId.isNotEmpty
+                                                    ? group.invoiceId
+                                                    : '-',
+                                                textAlign: TextAlign.center,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 10.0,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark
+                                                      ? const Color(0xFFE2E8F0)
+                                                      : const Color(0xFF1E293B),
+                                                ),
+                                              ),
+                                              if (group
+                                                  .invoiceId
+                                                  .isNotEmpty) ...[
+                                                const SizedBox(width: 3),
+                                                Icon(
+                                                  Icons.copy_rounded,
+                                                  size: 11,
+                                                  color: isDark
+                                                      ? const Color(0xFF64748B)
+                                                      : const Color(0xFF94A3B8),
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          DateFormat('hh:mm a')
-                                              .format(record.saleDate)
-                                              .toLowerCase(),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w500,
-                                            color: isDark
-                                                ? const Color(0xFF94A3B8)
-                                                : const Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
 
-                                // Product Name + Model (Full text displayed)
+                                // Item Rows (Divided only among items of this invoice)
                                 Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0,
-                                      vertical: 9.0,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        right: BorderSide(
-                                          color: gridBorderColor,
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          record.itemName,
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: isDark
-                                                ? Colors.white
-                                                : const Color(0xFF0F172A),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      for (
+                                        int i = 0;
+                                        i < group.items.length;
+                                        i++
+                                      ) ...[
+                                        if (i > 0)
+                                          Divider(
+                                            height: 1,
+                                            thickness: 0.8,
+                                            color: gridBorderColor,
                                           ),
+                                        _buildItemRow(
+                                          group.items[i],
+                                          gridBorderColor,
+                                          isDark,
                                         ),
-                                        if (record.model.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            record.model,
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 10.5,
-                                              color: isDark
-                                                  ? const Color(0xFF94A3B8)
-                                                  : const Color(0xFF64748B),
-                                            ),
-                                          ),
-                                        ],
                                       ],
-                                    ),
-                                  ),
-                                ),
-
-                                // Part No (Full text displayed)
-                                SizedBox(
-                                  width: 100,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4.0,
-                                      vertical: 9.0,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        right: BorderSide(
-                                          color: gridBorderColor,
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      record.partNo.isNotEmpty
-                                          ? record.partNo
-                                          : '-',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark
-                                            ? const Color(0xFFCBD5E1)
-                                            : const Color(0xFF334155),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // Qty Badge
-                                SizedBox(
-                                  width: 40,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 2.0,
-                                      vertical: 9.0,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        right: BorderSide(
-                                          color: gridBorderColor,
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 5,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            (isDark
-                                                    ? const Color(0xFF6366F1)
-                                                    : const Color(0xFF4F46E5))
-                                                .withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        '${record.itemsSold}',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDark
-                                              ? const Color(0xFF818CF8)
-                                              : const Color(0xFF4F46E5),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // Unit Price Column (Full text displayed)
-                                SizedBox(
-                                  width: 72,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4.0,
-                                      vertical: 9.0,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        right: BorderSide(
-                                          color: gridBorderColor,
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      _formatPrice(record.sellPrice),
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark
-                                            ? const Color(0xFFCBD5E1)
-                                            : const Color(0xFF334155),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // Total Price Column (Full text displayed)
-                                SizedBox(
-                                  width: 68,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 3.0,
-                                      vertical: 9.0,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      _formatPrice(totalPrice),
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark
-                                            ? const Color(0xFF34D399)
-                                            : const Color(
-                                                0xFF059669,
-                                              ), // Emerald
-                                      ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -662,4 +582,193 @@ class SalesTableCard extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildItemRow(
+    SalesRecordDetail record,
+    Color gridBorderColor,
+    bool isDark,
+  ) {
+    final double totalPrice = record.sellPrice * record.itemsSold;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Product Name + Model (Full text displayed)
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 9.0,
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: gridBorderColor, width: 0.8),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    record.itemName,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  if (record.model.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      record.model,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: isDark
+                            ? const Color(0xFF94A3B8)
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          // Part No (Full text displayed)
+          SizedBox(
+            width: 100,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4.0,
+                vertical: 9.0,
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: gridBorderColor, width: 0.8),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                record.partNo.isNotEmpty ? record.partNo : '-',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? const Color(0xFFCBD5E1)
+                      : const Color(0xFF334155),
+                ),
+              ),
+            ),
+          ),
+
+          // Qty Badge
+          SizedBox(
+            width: 40,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 2.0,
+                vertical: 9.0,
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: gridBorderColor, width: 0.8),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color:
+                      (isDark
+                              ? const Color(0xFF6366F1)
+                              : const Color(0xFF4F46E5))
+                          .withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${record.itemsSold}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? const Color(0xFF818CF8)
+                        : const Color(0xFF4F46E5),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Unit Price Column (Full text displayed)
+          SizedBox(
+            width: 72,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4.0,
+                vertical: 9.0,
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(color: gridBorderColor, width: 0.8),
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _formatPrice(record.sellPrice),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? const Color(0xFFCBD5E1)
+                      : const Color(0xFF334155),
+                ),
+              ),
+            ),
+          ),
+
+          // Total Price Column (Full text displayed)
+          SizedBox(
+            width: 68,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 3.0,
+                vertical: 9.0,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                _formatPrice(totalPrice),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDark
+                      ? const Color(0xFF34D399)
+                      : const Color(0xFF059669), // Emerald
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoiceGroup {
+  final int slNumber;
+  final String invoiceId;
+  final List<SalesRecordDetail> items;
+
+  _InvoiceGroup({
+    required this.slNumber,
+    required this.invoiceId,
+    required this.items,
+  });
 }

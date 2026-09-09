@@ -4,6 +4,7 @@ import '../../domain/entities/sales_record_detail.dart';
 class SalesRecordDetailModel extends SalesRecordDetail {
   const SalesRecordDetailModel({
     required super.id,
+    super.invoiceId = '',
     required super.saleDate,
     required super.partNo,
     required super.itemName,
@@ -13,14 +14,19 @@ class SalesRecordDetailModel extends SalesRecordDetail {
     required super.costCode,
   });
 
-  factory SalesRecordDetailModel.fromMap(Map<String, dynamic> map, {String? id}) {
+  factory SalesRecordDetailModel.fromMap(
+    Map<String, dynamic> map, {
+    String? id,
+  }) {
     return SalesRecordDetailModel(
       id: id ?? map['id'] ?? '',
+      invoiceId: map['invoiceId'] ?? '',
       saleDate: (map['saleDate'] is Timestamp)
           ? (map['saleDate'] as Timestamp).toDate()
           : (map['saleDate'] != null
-              ? DateTime.tryParse(map['saleDate'].toString()) ?? DateTime.now()
-              : DateTime.now()),
+                ? DateTime.tryParse(map['saleDate'].toString()) ??
+                      DateTime.now()
+                : DateTime.now()),
       partNo: map['partNo'] ?? '',
       itemName: map['itemName'] ?? '',
       model: map['model'] ?? '',
@@ -33,6 +39,7 @@ class SalesRecordDetailModel extends SalesRecordDetail {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'invoiceId': invoiceId,
       'saleDate': Timestamp.fromDate(saleDate),
       'partNo': partNo,
       'itemName': itemName,
@@ -46,6 +53,7 @@ class SalesRecordDetailModel extends SalesRecordDetail {
   factory SalesRecordDetailModel.fromEntity(SalesRecordDetail entity) {
     return SalesRecordDetailModel(
       id: entity.id,
+      invoiceId: entity.invoiceId,
       saleDate: entity.saleDate,
       partNo: entity.partNo,
       itemName: entity.itemName,

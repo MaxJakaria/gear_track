@@ -200,6 +200,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
         salesRecords.add(
           SalesRecordDetail(
             id: sale.id,
+            invoiceId: sale.invoiceId,
             saleDate: sale.saleDate,
             partNo: partNo,
             itemName: sale.itemName,
@@ -241,8 +242,12 @@ class ReportsRepositoryImpl implements ReportsRepository {
       totalProfit += financialLedger.accumulatedProfit;
       itemsSold += financialLedger.accumulatedItemsSold;
 
-      // Sort sales records descending by date
-      salesRecords.sort((a, b) => b.saleDate.compareTo(a.saleDate));
+      // Sort sales records descending by date, grouping same invoice records together
+      salesRecords.sort((a, b) {
+        final dateCmp = b.saleDate.compareTo(a.saleDate);
+        if (dateCmp != 0) return dateCmp;
+        return b.invoiceId.compareTo(a.invoiceId);
+      });
 
       // 5. Generate Daily Sales Trend (From Day 01 of Month to End of Month / Range)
       final List<DailySalesPoint> dailySalesTrend = [];

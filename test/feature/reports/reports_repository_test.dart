@@ -208,8 +208,8 @@ void main() {
             (p) => p.date.day == now.day,
           );
           expect(todayPoint.revenue, 240.0);
-          expect(report.monthlyProfitTrend.last.sales, 540.0);
-          expect(report.monthlyProfitTrend.last.profit, 180.0);
+          expect(report.monthlyProfitTrend[now.month - 1].sales, 540.0);
+          expect(report.monthlyProfitTrend[now.month - 1].profit, 180.0);
         },
       );
     });
