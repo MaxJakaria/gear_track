@@ -3,40 +3,52 @@ import 'package:gear_track/feature/receipt_verification/data/models/invoice_mode
 import 'package:gear_track/feature/returns/data/models/return_model.dart';
 import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 
+/// Contract for handling return operations and Firestore transaction synchronizations.
 abstract class ReturnRemoteDataSource {
+  /// Processes a customer return, updates invoice status, and restores inventory stock.
   Future<ReturnModel> processReturn(ReturnModel returnModel);
+
+  /// Retrieves the history of all processed returns ordered by date.
   Future<List<ReturnModel>> getReturns();
+
+  /// Fetches the details of an existing customer invoice by its unique ID.
   Future<InvoiceModel> getInvoiceForReturn(String invoiceId);
 }
 
-class _ResolvedRestockItem {
-  final ReturnItemEntity item;
-  final DocumentReference<Map<String, dynamic>> productRef;
-  final DocumentReference<Map<String, dynamic>>? batchRef;
+/// Internal lightweight record to bundle an item with its Firestore product and batch references.
+typedef _RestockItem = ({
+  ReturnItemEntity item,
+  DocumentReference<Map<String, dynamic>> productRef,
+  DocumentReference<Map<String, dynamic>> batchRef,
+});
 
-  _ResolvedRestockItem({
-    required this.item,
-    required this.productRef,
-    this.batchRef,
-  });
-}
-
+/// Implementation of [ReturnRemoteDataSource] backed by Firebase Cloud Firestore.
 class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
   final FirebaseFirestore firestore;
 
-  ReturnRemoteDataSourceImpl({required this.firestore});
+  const ReturnRemoteDataSourceImpl({required this.firestore});
 
-  /// Direct O(1) in-memory resolution with dynamic fallback for restocking product and batch references
-  Future<_ResolvedRestockItem> _resolveRestockItemAsync(ReturnItemEntity item) async {
+  // ---------------------------------------------------------------------------
+  // Reference Resolution Helpers
+  // ---------------------------------------------------------------------------
+
+  /// Resolves the exact Firestore DocumentReference for both the parent product and its batch.
+  /// Uses a multi-tier lookup (batch ID -> part number -> auto-generate new batch) to guarantee
+  /// restocking targets are always valid even for older or imported receipts.
+  Future<_RestockItem> _resolveRestockItem(ReturnItemEntity item) async {
     final rawId = item.productId.trim().isNotEmpty
         ? item.productId.trim()
         : item.partNo.trim();
     final docId = rawId.contains('/') ? rawId.split('/')[0] : rawId;
-    var productRef = firestore.collection('products').doc(docId);
-    DocumentReference<Map<String, dynamic>>? batchRef = item.batchId.isNotEmpty
-        ? productRef.collection('stock_entries').doc(item.batchId)
-        : null;
+    var batchId = item.batchId.trim();
 
+    // Extract batch ID if embedded in composite format (e.g., 'productId/batchId')
+    if (batchId.isEmpty && rawId.contains('/')) {
+      batchId = rawId.split('/')[1].trim();
+    }
+
+    // 1. Locate the parent product document in the 'products' collection
+    var productRef = firestore.collection('products').doc(docId);
     final checkSnap = await productRef.get();
     if (!checkSnap.exists) {
       final lookupPart = item.partNo.isNotEmpty ? item.partNo : docId;
@@ -48,60 +60,69 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
 
       if (queryByPart.docs.isNotEmpty) {
         productRef = queryByPart.docs.first.reference;
-        if (item.batchId.isNotEmpty) {
-          batchRef = productRef.collection('stock_entries').doc(item.batchId);
-        }
       } else {
+        // Fallback: search across all subcollections via collectionGroup
         final queryBatch = await firestore
             .collectionGroup('stock_entries')
             .where('partNo', isEqualTo: lookupPart)
             .limit(1)
             .get();
-
         if (queryBatch.docs.isNotEmpty) {
-          final entryDoc = queryBatch.docs.first;
-          final parentDocId = entryDoc.reference.parent.parent?.id;
+          final parentDocId = queryBatch.docs.first.reference.parent.parent?.id;
           if (parentDocId != null && parentDocId.isNotEmpty) {
             productRef = firestore.collection('products').doc(parentDocId);
-            batchRef = entryDoc.reference;
+            if (batchId.isEmpty) batchId = queryBatch.docs.first.id;
           }
-        }
-      }
-    } else if (batchRef != null) {
-      final batchSnap = await batchRef.get();
-      if (!batchSnap.exists && item.partNo.isNotEmpty) {
-        final bQuery = await productRef
-            .collection('stock_entries')
-            .where('partNo', isEqualTo: item.partNo)
-            .limit(1)
-            .get();
-        if (bQuery.docs.isNotEmpty) {
-          batchRef = bQuery.docs.first.reference;
         }
       }
     }
 
-    return _ResolvedRestockItem(
-      item: item,
-      productRef: productRef,
-      batchRef: batchRef,
-    );
+    // 2. Locate the specific batch document inside the product's 'stock_entries' subcollection
+    DocumentReference<Map<String, dynamic>>? batchRef;
+    if (batchId.isNotEmpty) {
+      final candidateRef = productRef.collection('stock_entries').doc(batchId);
+      final batchSnap = await candidateRef.get();
+      if (batchSnap.exists) batchRef = candidateRef;
+    }
+
+    // Fallback: match by part number under this product if candidate batch was missing
+    if (batchRef == null && item.partNo.isNotEmpty) {
+      final bQuery = await productRef
+          .collection('stock_entries')
+          .where('partNo', isEqualTo: item.partNo)
+          .limit(1)
+          .get();
+      if (bQuery.docs.isNotEmpty) batchRef = bQuery.docs.first.reference;
+    }
+
+    // Ultimate fallback: if product currently has no recorded batches, generate a new batch ID
+    batchRef ??= productRef
+        .collection('stock_entries')
+        .doc('${DateTime.now().millisecondsSinceEpoch}_RET');
+
+    return (item: item, productRef: productRef, batchRef: batchRef);
   }
+
+  // ---------------------------------------------------------------------------
+  // Return Processing (Single Atomic Transaction)
+  // ---------------------------------------------------------------------------
 
   @override
   Future<ReturnModel> processReturn(ReturnModel returnModel) async {
-    // 1. Resolve restock items with dynamic fallback
+    // Pre-resolve restocking targets outside the transaction to avoid async queries inside it
     final restockItems = returnModel.items.where((i) => i.restock).toList();
-    final resolvedRestockItems =
-        await Future.wait(restockItems.map(_resolveRestockItemAsync));
+    final resolvedItems = await Future.wait(
+      restockItems.map(_resolveRestockItem),
+    );
 
-    // 2. Run single atomic transaction
     await firestore.runTransaction((transaction) async {
-      // Step A: Read Invoice
-      final invoiceRef =
-          firestore.collection('invoices').doc(returnModel.invoiceId);
+      // -----------------------------------------------------------------------
+      // Step 1: READ - Fetch and validate the original customer invoice
+      // -----------------------------------------------------------------------
+      final invoiceRef = firestore
+          .collection('invoices')
+          .doc(returnModel.invoiceId);
       final invoiceSnap = await transaction.get(invoiceRef);
-
       if (!invoiceSnap.exists) {
         throw FirebaseException(
           plugin: 'cloud_firestore',
@@ -110,174 +131,188 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         );
       }
 
+      // -----------------------------------------------------------------------
+      // Step 2: READ - Fetch target product and batch documents (all reads first)
+      // -----------------------------------------------------------------------
+      final Map<String, int> productStocks = {};
+      final Map<String, DocumentSnapshot<Map<String, dynamic>>> productSnaps =
+          {};
+      for (final r in resolvedItems) {
+        final pId = r.productRef.id;
+        if (!productSnaps.containsKey(pId)) {
+          final snap = await transaction.get(r.productRef);
+          productSnaps[pId] = snap;
+          productStocks[pId] = snap.exists
+              ? (snap.data()?['totalStock'] as num?)?.toInt() ?? 0
+              : 0;
+        }
+      }
+
+      final Map<String, int> batchStocks = {};
+      final Map<String, int> batchInitials = {};
+      final Map<String, DocumentSnapshot<Map<String, dynamic>>> batchSnaps = {};
+      for (final r in resolvedItems) {
+        final path = r.batchRef.path;
+        if (!batchSnaps.containsKey(path)) {
+          final snap = await transaction.get(r.batchRef);
+          batchSnaps[path] = snap;
+          batchStocks[path] = snap.exists
+              ? (snap.data()?['remainingQuantity'] as num?)?.toInt() ?? 0
+              : 0;
+          batchInitials[path] = snap.exists
+              ? (snap.data()?['quantity'] as num?)?.toInt() ?? 0
+              : 0;
+        }
+      }
+
+      // -----------------------------------------------------------------------
+      // Step 3: COMPUTE - Update returned and returnable quantities on invoice items
+      // -----------------------------------------------------------------------
       final invoiceData = invoiceSnap.data() ?? {};
       final rawItems = invoiceData['items'] as List<dynamic>? ?? [];
-      final List<Map<String, dynamic>> updatedInvoiceItems = [];
-
-      final currentReturnedAmount =
-          (invoiceData['returnedAmount'] as num?)?.toDouble() ?? 0.0;
-
-      // Track remaining return item quantities so identical products aren't double-counted
-      final remainingReturnItems = returnModel.items
-          .map((i) => {
-                'productId': i.productId,
-                'batchId': i.batchId,
-                'partNo': i.partNo,
-                'quantity': i.quantity,
-                'itemName': i.itemName,
-              })
+      final remainingReturns = returnModel.items
+          .map(
+            (i) => {
+              'batchId': i.batchId,
+              'partNo': i.partNo,
+              'qty': i.quantity,
+            },
+          )
           .toList();
 
-      // Check return quantities against invoice item remaining returnable quantities
-      for (int i = 0; i < rawItems.length; i++) {
-        final itemMap = Map<String, dynamic>.from(rawItems[i] as Map);
-        final itemProdId = itemMap['productId'] ?? '';
-        final itemBatchId = itemMap['batchId'] ?? '';
-        final itemPartNo = itemMap['partNo'] ?? '';
-        final int originalQty = (itemMap['quantity'] as num?)?.toInt() ?? 0;
-        final int prevReturnedQty =
-            (itemMap['returnedQuantity'] as num?)?.toInt() ?? 0;
-        final int maxAvailableToReturn =
-            (originalQty - prevReturnedQty).clamp(0, originalQty);
+      final List<Map<String, dynamic>> updatedItems = [];
+      for (final raw in rawItems) {
+        final item = Map<String, dynamic>.from(raw as Map);
+        final origQty = (item['quantity'] as num?)?.toInt() ?? 0;
+        final prevReturned = (item['returnedQuantity'] as num?)?.toInt() ?? 0;
+        final maxReturnable = (origQty - prevReturned).clamp(0, origQty);
 
-        int returnQtyForThisItem = 0;
+        final bId = (item['batchId'] ?? '').toString();
+        final pNo = (item['partNo'] ?? '').toString();
 
-        // Find match in remainingReturnItems (prioritize batchId, then partNo, then productId)
-        int matchIdx = -1;
-        if (itemBatchId.toString().isNotEmpty) {
-          matchIdx = remainingReturnItems.indexWhere((r) =>
-              (r['batchId'] as String?) == itemBatchId &&
-              (r['quantity'] as int) > 0);
-        }
-        if (matchIdx == -1 && itemPartNo.toString().isNotEmpty) {
-          matchIdx = remainingReturnItems.indexWhere((r) =>
-              (r['partNo'] as String?) == itemPartNo &&
-              (r['quantity'] as int) > 0);
-        }
-        if (matchIdx == -1 && itemProdId.toString().isNotEmpty) {
-          matchIdx = remainingReturnItems.indexWhere((r) =>
-              (r['productId'] as String?) == itemProdId &&
-              (r['quantity'] as int) > 0);
-        }
+        // Match by batchId (preferred) or partNo
+        final matchIdx = remainingReturns.indexWhere(
+          (r) =>
+              (bId.isNotEmpty && r['batchId'] == bId || r['partNo'] == pNo) &&
+              (r['qty'] as int) > 0,
+        );
 
+        int returnQty = 0;
         if (matchIdx != -1) {
-          final retItem = remainingReturnItems[matchIdx];
-          final requestedQty = retItem['quantity'] as int;
-          final toDeduct = requestedQty > maxAvailableToReturn
-              ? maxAvailableToReturn
-              : requestedQty;
-          returnQtyForThisItem = toDeduct;
-          retItem['quantity'] = requestedQty - toDeduct;
+          final ret = remainingReturns[matchIdx];
+          final req = ret['qty'] as int;
+          returnQty = req > maxReturnable ? maxReturnable : req;
+          ret['qty'] = req - returnQty;
         }
 
-        final newReturnedQty = prevReturnedQty + returnQtyForThisItem;
-        itemMap['returnedQuantity'] = newReturnedQty;
-        itemMap['returnableQuantity'] = originalQty - newReturnedQty;
-
-        updatedInvoiceItems.add(itemMap);
+        final newReturned = prevReturned + returnQty;
+        item['returnedQuantity'] = newReturned;
+        item['returnableQuantity'] = (origQty - newReturned).clamp(0, origQty);
+        updatedItems.add(item);
       }
 
-      // Step B: Read Product and Batch documents for restock items
-      final Map<String, DocumentSnapshot<Map<String, dynamic>>> productSnapshots = {};
-      final Map<String, int> productStocks = {};
-
-      for (final rItem in resolvedRestockItems) {
-        final pId = rItem.productRef.id;
-        if (!productSnapshots.containsKey(pId)) {
-          final snap = await transaction.get(rItem.productRef);
-          if (snap.exists) {
-            productSnapshots[pId] = snap;
-            productStocks[pId] =
-                (snap.data()?['totalStock'] as num?)?.toInt() ?? 0;
-          }
-        }
-      }
-
-      final Map<String, DocumentSnapshot<Map<String, dynamic>>> batchSnapshots = {};
-      final Map<String, int> batchStocks = {};
-
-      for (final rItem in resolvedRestockItems) {
-        if (rItem.batchRef != null) {
-          final bPath = rItem.batchRef!.path;
-          if (!batchSnapshots.containsKey(bPath)) {
-            final snap = await transaction.get(rItem.batchRef!);
-            if (snap.exists) {
-              batchSnapshots[bPath] = snap;
-              batchStocks[bPath] =
-                  (snap.data()?['remainingQuantity'] as num?)?.toInt() ?? 0;
-            }
-          }
-        }
-      }
-
-      // Step C: Compute stock additions
-      final Map<String, int> finalProductStocks = Map.from(productStocks);
-      final Map<DocumentReference<Map<String, dynamic>>, int> batchUpdates = {};
-
-      for (final rItem in resolvedRestockItems) {
-        final pId = rItem.productRef.id;
-        if (finalProductStocks.containsKey(pId)) {
-          finalProductStocks[pId] =
-              (finalProductStocks[pId] ?? 0) + rItem.item.quantity;
-        }
-
-        if (rItem.batchRef != null) {
-          final bPath = rItem.batchRef!.path;
-          if (batchStocks.containsKey(bPath)) {
-            final newBatchStock =
-                (batchStocks[bPath] ?? 0) + rItem.item.quantity;
-            batchStocks[bPath] = newBatchStock;
-            batchUpdates[rItem.batchRef!] = newBatchStock;
-          }
-        }
-      }
-
-      // Step D: Calculate Invoice status
-      final newReturnedAmount =
-          currentReturnedAmount + returnModel.totalRefundAmount;
-      final int totalOriginalCount = updatedInvoiceItems.fold<int>(
+      // Determine new overall invoice return status: FULL, PARTIAL, or NONE
+      final totalOrig = updatedItems.fold<int>(
         0,
-        (acc, item) => acc + ((item['quantity'] as num?)?.toInt() ?? 0),
+        (t, i) => t + ((i['quantity'] as num?)?.toInt() ?? 0),
       );
-      final int totalReturnedCount = updatedInvoiceItems.fold<int>(
+      final totalRet = updatedItems.fold<int>(
         0,
-        (acc, item) =>
-            acc + ((item['returnedQuantity'] as num?)?.toInt() ?? 0),
+        (t, i) => t + ((i['returnedQuantity'] as num?)?.toInt() ?? 0),
       );
-      final bool allFullyReturned = totalOriginalCount > 0 &&
-          totalReturnedCount >= totalOriginalCount;
-      final String returnStatus = allFullyReturned
+      final returnStatus = (totalOrig > 0 && totalRet >= totalOrig)
           ? 'FULL'
-          : (totalReturnedCount > 0 ? 'PARTIAL' : 'NONE');
+          : (totalRet > 0 ? 'PARTIAL' : 'NONE');
+      final newRefundAmount =
+          ((invoiceData['returnedAmount'] as num?)?.toDouble() ?? 0.0) +
+          returnModel.totalRefundAmount;
 
-      // Step E: Atomic Writes (All writes after all reads)
-      // 1. Write Return Document
-      final returnRef =
-          firestore.collection('returns').doc(returnModel.returnId);
-      transaction.set(returnRef, returnModel.toMap());
+      // -----------------------------------------------------------------------
+      // Step 4: COMPUTE - Calculate stock increments for products and batches
+      // -----------------------------------------------------------------------
+      final Map<DocumentReference<Map<String, dynamic>>, int> batchUpdates = {};
+      for (final r in resolvedItems) {
+        final pId = r.productRef.id;
+        productStocks[pId] = (productStocks[pId] ?? 0) + r.item.quantity;
 
-      // 2. Update Invoice
+        final path = r.batchRef.path;
+        final newBatchQty = (batchStocks[path] ?? 0) + r.item.quantity;
+        batchStocks[path] = newBatchQty;
+        batchUpdates[r.batchRef] = newBatchQty;
+      }
+
+      // -----------------------------------------------------------------------
+      // Step 5: WRITE - Execute atomic database commits (all writes after reads)
+      // -----------------------------------------------------------------------
+
+      // A. Save the new return record in the 'returns' collection
+      transaction.set(
+        firestore.collection('returns').doc(returnModel.returnId),
+        returnModel.toMap(),
+      );
+
+      // B. Update invoice items, cumulative refund total, and return status
       transaction.update(invoiceRef, {
-        'items': updatedInvoiceItems,
-        'returnedAmount': newReturnedAmount,
+        'items': updatedItems,
+        'returnedAmount': newRefundAmount,
         'returnStatus': returnStatus,
         'lastReturnDate': Timestamp.fromDate(returnModel.returnDate),
       });
 
-      // 3. Update Product Total Stocks
-      for (final entry in finalProductStocks.entries) {
-        final pRef = firestore.collection('products').doc(entry.key);
-        transaction.update(pRef, {'totalStock': entry.value});
+      // C. Update totalStock in the parent 'products' collection
+      for (final entry in productStocks.entries) {
+        final ref = firestore.collection('products').doc(entry.key);
+        if (productSnaps[entry.key]?.exists == true) {
+          transaction.update(ref, {'totalStock': entry.value});
+        } else {
+          final sample = resolvedItems
+              .firstWhere((r) => r.productRef.id == entry.key)
+              .item;
+          transaction.set(ref, {
+            'partNo': sample.partNo,
+            'itemName': sample.itemName,
+            'model': '',
+            'costCode': sample.costCode,
+            'totalStock': entry.value,
+            'entryDate': Timestamp.fromDate(returnModel.returnDate),
+          }, SetOptions(merge: true));
+        }
       }
 
-      // 4. Update Batch Stocks
+      // D. Restock batch quantities in the 'stock_entries' subcollection
       for (final entry in batchUpdates.entries) {
-        transaction.update(entry.key, {'remainingQuantity': entry.value});
+        final path = entry.key.path;
+        final newStock = entry.value;
+        final snap = batchSnaps[path];
+
+        if (snap?.exists == true) {
+          final oldInitial = batchInitials[path] ?? 0;
+          transaction.update(entry.key, {
+            'remainingQuantity': newStock,
+            if (newStock > oldInitial) 'quantity': newStock,
+          });
+        } else {
+          // If this is a newly created batch entry document, set all fields
+          final sample = resolvedItems
+              .firstWhere((r) => r.batchRef.path == path)
+              .item;
+          transaction.set(entry.key, {
+            'date': Timestamp.fromDate(returnModel.returnDate),
+            'partNo': sample.partNo,
+            'quantity': newStock,
+            'remainingQuantity': newStock,
+            'costCode': sample.costCode,
+          });
+        }
       }
     });
 
     return returnModel;
   }
+
+  // ---------------------------------------------------------------------------
+  // Queries
+  // ---------------------------------------------------------------------------
 
   @override
   Future<List<ReturnModel>> getReturns() async {
@@ -285,7 +320,6 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         .collection('returns')
         .orderBy('returnDate', descending: true)
         .get();
-
     return snapshot.docs.map((doc) => ReturnModel.fromFirestore(doc)).toList();
   }
 
@@ -293,7 +327,6 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
   Future<InvoiceModel> getInvoiceForReturn(String invoiceId) async {
     final cleanId = invoiceId.trim();
     final doc = await firestore.collection('invoices').doc(cleanId).get();
-
     if (!doc.exists) {
       throw FirebaseException(
         plugin: 'cloud_firestore',
@@ -301,7 +334,6 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         message: 'No invoice found with ID: $cleanId',
       );
     }
-
     return InvoiceModel.fromFirestore(doc);
   }
 }
