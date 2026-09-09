@@ -434,10 +434,10 @@ class PdfReceiptService {
             pw.BarcodeWidget(
               barcode: pw.Barcode.qrCode(),
               data: qr,
-              width: 32,
-              height: 32,
+              width: 24,
+              height: 24,
             ),
-            pw.SizedBox(height: 3),
+            pw.SizedBox(height: 2.5),
           ],
           pw.Text(
             'May Allah put Barakah in your purchase.',
