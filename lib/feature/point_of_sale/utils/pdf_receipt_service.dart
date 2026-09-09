@@ -250,14 +250,13 @@ class PdfReceiptService {
               partyAddress,
               servedBy,
               entryTime,
-              qrPayload,
             ),
             pw.SizedBox(height: 4),
             _buildItemsTable(context, displayItems),
             pw.SizedBox(height: 4),
             _buildTotalSection(totalAmount),
             pw.SizedBox(height: 6),
-            _buildFooter(),
+            _buildFooter(qrPayload),
           ],
         ),
       ),
@@ -326,7 +325,6 @@ class PdfReceiptService {
     String partyAddress,
     String servedBy,
     String entryTime,
-    String qr,
   ) {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -361,15 +359,6 @@ class PdfReceiptService {
                     _buildMetaItem('Entry Time', entryTime),
                 ],
               ),
-              if (qr.isNotEmpty) ...[
-                pw.SizedBox(height: 2.5),
-                pw.BarcodeWidget(
-                  barcode: pw.Barcode.qrCode(),
-                  data: qr,
-                  width: 24,
-                  height: 24,
-                ),
-              ],
             ],
           ),
         ),
@@ -436,11 +425,25 @@ class PdfReceiptService {
     );
   }
 
-  static pw.Widget _buildFooter() {
+  static pw.Widget _buildFooter(String qr) {
     return pw.Center(
-      child: pw.Text(
-        'May Allah put Barakah in your purchase.',
-        style: const pw.TextStyle(fontSize: 4.5),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          if (qr.isNotEmpty) ...[
+            pw.BarcodeWidget(
+              barcode: pw.Barcode.qrCode(),
+              data: qr,
+              width: 32,
+              height: 32,
+            ),
+            pw.SizedBox(height: 3),
+          ],
+          pw.Text(
+            'May Allah put Barakah in your purchase.',
+            style: const pw.TextStyle(fontSize: 4.5),
+          ),
+        ],
       ),
     );
   }
