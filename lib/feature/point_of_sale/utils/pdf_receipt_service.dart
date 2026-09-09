@@ -352,12 +352,17 @@ class PdfReceiptService {
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              if (servedBy.isNotEmpty)
-                _buildMetaItem('Served by', servedBy, alignRight: true),
-              if (entryTime.isNotEmpty)
-                _buildMetaItem('Entry Time', entryTime, alignRight: true),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (servedBy.isNotEmpty)
+                    _buildMetaItem('Served by', servedBy),
+                  if (entryTime.isNotEmpty)
+                    _buildMetaItem('Entry Time', entryTime),
+                ],
+              ),
               if (qr.isNotEmpty) ...[
-                pw.SizedBox(height: 2),
+                pw.SizedBox(height: 2.5),
                 pw.BarcodeWidget(
                   barcode: pw.Barcode.qrCode(),
                   data: qr,
