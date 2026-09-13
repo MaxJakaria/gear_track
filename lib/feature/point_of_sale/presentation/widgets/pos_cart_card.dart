@@ -4,9 +4,8 @@ import 'package:gear_track/core/utils/currency_formatter.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_empty_view.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_item_tile.dart';
-import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_checkout_button.dart';
 
-/// "Sales Cart" Card Component
+/// Standalone "Sales Cart" Card Component showing items list and total amount
 class PosCartCard extends StatelessWidget {
   const PosCartCard({super.key});
 
@@ -18,20 +17,22 @@ class PosCartCard extends StatelessWidget {
     return BlocBuilder<PosBloc, PosState>(
       builder: (context, state) {
         final cartItems = state is PosLoaded ? state.cartItems : const [];
-        final totalAmount = state is PosLoaded ? state.totalAmount : 0.0;
         final itemCount = state is PosLoaded ? state.totalItemCount : 0;
-        final isProcessing = state is SaleAdding;
+        final totalAmount = state is PosLoaded ? state.totalAmount : 0.0;
+        final outOfStockCount = cartItems
+            .where((i) => i.availableStock <= 0)
+            .length;
 
         return Container(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
@@ -39,16 +40,21 @@ class PosCartCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header Row: Green Pill + Sales Cart Title + Item Count Badge
-              _buildHeader(theme, itemCount),
+              _buildHeader(theme, itemCount, outOfStockCount: outOfStockCount),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
               // Cart Items List / Empty View
               if (cartItems.isEmpty)
                 const PosCartEmptyView()
-              else
-                Column(
-                  children: cartItems.map((item) {
+              else ...[
+                ListView.builder(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = cartItems[index];
                     return PosCartItemTile(
                       key: ValueKey(item.id),
                       item: item,
@@ -94,41 +100,33 @@ class PosCartCard extends StatelessWidget {
                         );
                       },
                     );
-                  }).toList(),
+                  },
                 ),
 
-              // Summary Footer & Checkout Button
-              if (cartItems.isNotEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(
-                    height: 1,
-                    color: theme.colorScheme.outlineVariant,
-                  ),
-                ),
-                Text(
-                  'TOTAL AMOUNT',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  totalAmount.toCurrency(),
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w500,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                PosCheckoutButton(
-                  cartItems: List.from(cartItems),
-                  totalAmount: totalAmount,
-                  isLoading: isProcessing,
+                // Total Amount Section
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      'TOTAL AMOUNT',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    Text(
+                      totalAmount.toCurrency(),
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -138,7 +136,11 @@ class PosCartCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(ThemeData theme, int itemCount) {
+  Widget _buildHeader(
+    ThemeData theme,
+    int itemCount, {
+    int outOfStockCount = 0,
+  }) {
     return Row(
       children: [
         Container(
@@ -150,14 +152,8 @@ class PosCartCard extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          'Sales Cart',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
+        // Cart Icon
+        Icon(Icons.shopping_cart, color: theme.colorScheme.primary, size: 24),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -175,6 +171,39 @@ class PosCartCard extends StatelessWidget {
             ),
           ),
         ),
+        if (outOfStockCount > 0) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 13,
+                  color: Color(0xFFEF4444),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$outOfStockCount out of stock',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

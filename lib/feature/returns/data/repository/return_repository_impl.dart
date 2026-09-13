@@ -4,6 +4,7 @@ import 'package:gear_track/core/error/failure.dart';
 import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
 import 'package:gear_track/feature/returns/data/models/return_model.dart';
 import 'package:gear_track/feature/returns/data/sources/return_remote_data_source.dart';
+import 'package:gear_track/feature/returns/domain/entities/paginated_returns_entity.dart';
 import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 import 'package:gear_track/feature/returns/domain/repository/return_repository.dart';
 
@@ -52,10 +53,25 @@ class ReturnRepositoryImpl implements ReturnRepository {
   }
 
   @override
-  Future<Either<Failure, List<ReturnEntity>>> getReturns() async {
+  Future<Either<Failure, PaginatedReturnsEntity>> getReturns({
+    int page = 1,
+    int pageSize = 10,
+  }) async {
     try {
-      final returns = await remoteDataSource.getReturns();
-      return Right(returns);
+      final response = await remoteDataSource.getReturns(
+        page: page,
+        pageSize: pageSize,
+      );
+      final entity = PaginatedReturnsEntity(
+        returns: response.returns,
+        totalCount: response.totalCount,
+        totalRefundsAllTime: response.totalRefundsAllTime,
+        totalItemsReturnedAllTime: response.totalItemsReturnedAllTime,
+        currentPage: response.currentPage,
+        totalPages: response.totalPages,
+        hasMore: response.hasMore,
+      );
+      return Right(entity);
     } on FirebaseException catch (e) {
       return Left(Failure(e.message ?? 'Failed to load returns list.'));
     } catch (e) {
@@ -74,6 +90,22 @@ class ReturnRepositoryImpl implements ReturnRepository {
       return Left(Failure(e.message ?? 'Invoice not found.'));
     } catch (e) {
       return Left(Failure('Failed to fetch invoice: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<InvoiceEntity>>> searchInvoicesForReturn(
+    String query,
+  ) async {
+    try {
+      final invoices = await remoteDataSource.searchInvoicesForReturn(query);
+      return Right(invoices);
+    } on FirebaseException catch (e) {
+      return Left(
+        Failure(e.message ?? 'Database error while searching invoices.'),
+      );
+    } catch (e) {
+      return Left(Failure('Failed to search invoices: $e'));
     }
   }
 }

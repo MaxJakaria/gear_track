@@ -1,6 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:gear_track/core/error/failure.dart';
-import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
+import 'package:gear_track/feature/returns/domain/entities/paginated_returns_entity.dart';
 import 'package:gear_track/feature/returns/domain/repository/return_repository.dart';
 
 class GetReturns {
@@ -8,7 +8,10 @@ class GetReturns {
 
   GetReturns(this.repository);
 
-  Future<Either<Failure, List<ReturnEntity>>> call() async {
-    return await repository.getReturns();
+  Future<Either<Failure, PaginatedReturnsEntity>> call({
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    return await repository.getReturns(page: page, pageSize: pageSize);
   }
 }

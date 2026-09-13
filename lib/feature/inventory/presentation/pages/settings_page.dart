@@ -27,6 +27,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _shopNameController;
   late final TextEditingController _shopAddressController;
   late final TextEditingController _shopPhoneController;
+  late final TextEditingController _shopEmailController;
 
   // Cost Code Cipher Controllers
   late final TextEditingController _keywordController;
@@ -46,6 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _shopNameController = TextEditingController();
     _shopAddressController = TextEditingController();
     _shopPhoneController = TextEditingController();
+    _shopEmailController = TextEditingController();
     _keywordController = TextEditingController();
     _testCodeController = TextEditingController();
 
@@ -62,6 +64,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _shopNameController.dispose();
     _shopAddressController.dispose();
     _shopPhoneController.dispose();
+    _shopEmailController.dispose();
     _keywordController.dispose();
     _testCodeController.dispose();
 
@@ -93,12 +96,14 @@ class _SettingsPageState extends State<SettingsPage> {
           _shopNameController.clear();
           _shopAddressController.clear();
           _shopPhoneController.clear();
+          _shopEmailController.clear();
         },
         (shop) {
           final s = shop as ShopSettings;
           _shopNameController.text = s.shopName;
           _shopAddressController.text = s.address;
           _shopPhoneController.text = s.phone;
+          _shopEmailController.text = s.email;
         },
       );
 
@@ -143,6 +148,7 @@ class _SettingsPageState extends State<SettingsPage> {
       shopName: _shopNameController.text.trim(),
       address: _shopAddressController.text.trim(),
       phone: _shopPhoneController.text.trim(),
+      email: _shopEmailController.text.trim(),
     );
   }
 
@@ -923,17 +929,17 @@ class _SettingsPageState extends State<SettingsPage> {
                       // Phone Number Input
                       TextFormField(
                         controller: _shopPhoneController,
-                        keyboardType: TextInputType.phone,
+                        keyboardType: TextInputType.text,
                         style: const TextStyle(fontSize: 13.5),
                         decoration: InputDecoration(
-                          labelText: 'Phone Number *',
+                          labelText: 'Phone / Mobile Numbers *',
                           labelStyle: TextStyle(
                             fontSize: 13,
                             color: isDark
                                 ? const Color(0xFF94A3B8)
                                 : const Color(0xFF64748B),
                           ),
-                          hintText: 'e.g. +880 1712-345678',
+                          hintText: 'e.g. 01712-345678, 01812-345678',
                           hintStyle: TextStyle(
                             fontSize: 12.5,
                             color: isDark
@@ -969,6 +975,45 @@ class _SettingsPageState extends State<SettingsPage> {
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Email Address Input
+                      TextFormField(
+                        controller: _shopEmailController,
+                        keyboardType: TextInputType.emailAddress,
+                        style: const TextStyle(fontSize: 13.5),
+                        decoration: InputDecoration(
+                          labelText: 'Shop Email',
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                          ),
+                          hintText: 'e.g. geartrack@gmail.com',
+                          hintStyle: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark
+                                ? const Color(0xFF64748B)
+                                : const Color(0xFF94A3B8),
+                          ),
+                          filled: true,
+                          fillColor: inputFillColor,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.email_rounded,
+                            size: 20,
+                            color: primaryColor,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 24),
 

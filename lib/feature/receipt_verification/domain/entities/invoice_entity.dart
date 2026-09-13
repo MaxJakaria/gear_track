@@ -47,6 +47,10 @@ class InvoiceEntity extends Equatable {
   final String shopName;
   final String shopPhone;
   final String shopAddress;
+  final String shopEmail;
+  final String partyName;
+  final String partyAddress;
+  final String servedBy;
   final double returnedAmount;
   final String returnStatus; // 'NONE', 'PARTIAL', 'FULL'
 
@@ -59,6 +63,10 @@ class InvoiceEntity extends Equatable {
     this.shopName = '',
     this.shopPhone = '',
     this.shopAddress = '',
+    this.shopEmail = '',
+    this.partyName = '',
+    this.partyAddress = '',
+    this.servedBy = '',
     this.returnedAmount = 0.0,
     this.returnStatus = 'NONE',
   });
@@ -75,7 +83,7 @@ class InvoiceEntity extends Equatable {
     final year = saleDate.year;
     final month = saleDate.month.toString().padLeft(2, '0');
     final day = saleDate.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
+    return '$day/$month/$year';
   }
 
   String get formattedTime {
@@ -99,6 +107,10 @@ class InvoiceEntity extends Equatable {
     shopName,
     shopPhone,
     shopAddress,
+    shopEmail,
+    partyName,
+    partyAddress,
+    servedBy,
     returnedAmount,
     returnStatus,
   ];

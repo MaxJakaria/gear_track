@@ -48,16 +48,44 @@ class CartItem extends Equatable {
     );
   }
 
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'productId': productId,
+      'batchId': batchId,
+      'itemName': itemName,
+      'partNo': partNo,
+      'costCode': costCode,
+      'availableStock': availableStock,
+      'quantity': quantity,
+      'sellPrice': sellPrice,
+    };
+  }
+
+  factory CartItem.fromMap(Map<String, dynamic> map) {
+    return CartItem(
+      id: map['id'] ?? '',
+      productId: map['productId'] ?? '',
+      batchId: map['batchId'] ?? '',
+      itemName: map['itemName'] ?? '',
+      partNo: map['partNo'] ?? '',
+      costCode: map['costCode'] ?? '',
+      availableStock: (map['availableStock'] as num?)?.toInt() ?? 0,
+      quantity: (map['quantity'] as num?)?.toInt() ?? 1,
+      sellPrice: (map['sellPrice'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
   @override
   List<Object?> get props => [
-        id,
-        productId,
-        batchId,
-        itemName,
-        partNo,
-        costCode,
-        availableStock,
-        quantity,
-        sellPrice,
-      ];
+    id,
+    productId,
+    batchId,
+    itemName,
+    partNo,
+    costCode,
+    availableStock,
+    quantity,
+    sellPrice,
+  ];
 }

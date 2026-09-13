@@ -152,9 +152,31 @@ class ClearCartEvent extends PosEvent {
 
 class CheckoutCartEvent extends PosEvent {
   final bool generatePdf;
+  final String partyName;
+  final String partyAddress;
+  final String servedBy;
 
-  const CheckoutCartEvent({this.generatePdf = true});
+  const CheckoutCartEvent({
+    this.generatePdf = true,
+    this.partyName = '',
+    this.partyAddress = '',
+    this.servedBy = '',
+  });
 
   @override
-  List<Object?> get props => [generatePdf];
+  List<Object?> get props => [
+    generatePdf,
+    partyName,
+    partyAddress,
+    servedBy,
+  ];
+}
+
+class SyncCartWithInventoryEvent extends PosEvent {
+  final List<Product> products;
+
+  const SyncCartWithInventoryEvent(this.products);
+
+  @override
+  List<Object?> get props => [products];
 }

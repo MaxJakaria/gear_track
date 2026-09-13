@@ -4,6 +4,7 @@ import 'package:gear_track/feature/returns/domain/repository/return_repository.d
 import 'package:gear_track/feature/returns/domain/usecases/get_invoice_for_return.dart';
 import 'package:gear_track/feature/returns/domain/usecases/get_returns.dart';
 import 'package:gear_track/feature/returns/domain/usecases/process_return.dart';
+import 'package:gear_track/feature/returns/domain/usecases/search_invoices_for_return.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_bloc.dart';
 import 'package:get_it/get_it.dart';
 
@@ -22,6 +23,7 @@ void returnsDependencies(GetIt sl) {
   sl.registerLazySingleton(() => ProcessReturn(sl()));
   sl.registerLazySingleton(() => GetReturns(sl()));
   sl.registerLazySingleton(() => GetInvoiceForReturn(sl()));
+  sl.registerLazySingleton(() => SearchInvoicesForReturn(sl()));
 
   // BLoC
   sl.registerFactory(
@@ -29,6 +31,7 @@ void returnsDependencies(GetIt sl) {
       processReturn: sl(),
       getReturns: sl(),
       getInvoiceForReturn: sl(),
+      searchInvoicesForReturn: sl(),
     ),
   );
 }

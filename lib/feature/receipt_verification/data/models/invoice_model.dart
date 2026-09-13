@@ -67,6 +67,10 @@ class InvoiceModel extends InvoiceEntity {
     super.shopName = '',
     super.shopPhone = '',
     super.shopAddress = '',
+    super.shopEmail = '',
+    super.partyName = '',
+    super.partyAddress = '',
+    super.servedBy = '',
     super.returnedAmount = 0.0,
     super.returnStatus = 'NONE',
   });
@@ -76,6 +80,9 @@ class InvoiceModel extends InvoiceEntity {
     required DateTime saleDate,
     required List<CartItem> cartItems,
     ShopSettings shopSettings = const ShopSettings(),
+    String partyName = '',
+    String partyAddress = '',
+    String servedBy = '',
   }) {
     final items = cartItems
         .map((i) => InvoiceItemModel.fromCartItem(i))
@@ -98,6 +105,10 @@ class InvoiceModel extends InvoiceEntity {
       shopName: shopSettings.shopName,
       shopPhone: shopSettings.phone,
       shopAddress: shopSettings.address,
+      shopEmail: shopSettings.email,
+      partyName: partyName,
+      partyAddress: partyAddress,
+      servedBy: servedBy,
       returnedAmount: 0.0,
       returnStatus: 'NONE',
     );
@@ -130,6 +141,10 @@ class InvoiceModel extends InvoiceEntity {
       shopName: data['shopName'] ?? '',
       shopPhone: data['shopPhone'] ?? '',
       shopAddress: data['shopAddress'] ?? '',
+      shopEmail: data['shopEmail'] ?? '',
+      partyName: data['partyName'] ?? '',
+      partyAddress: data['partyAddress'] ?? '',
+      servedBy: data['servedBy'] ?? '',
       returnedAmount: (data['returnedAmount'] as num?)?.toDouble() ?? 0.0,
       returnStatus: data['returnStatus'] ?? 'NONE',
     );
@@ -146,6 +161,10 @@ class InvoiceModel extends InvoiceEntity {
       'shopName': shopName,
       'shopPhone': shopPhone,
       'shopAddress': shopAddress,
+      'shopEmail': shopEmail,
+      'partyName': partyName,
+      'partyAddress': partyAddress,
+      'servedBy': servedBy,
       'qrPayload': qrPayload,
       'returnedAmount': returnedAmount,
       'returnStatus': returnStatus,
@@ -155,6 +174,7 @@ class InvoiceModel extends InvoiceEntity {
         }
         return InvoiceItemModel(
           productId: i.productId,
+          batchId: i.batchId,
           itemName: i.itemName,
           partNo: i.partNo,
           quantity: i.quantity,

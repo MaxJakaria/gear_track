@@ -1,7 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 import 'package:gear_track/init_dependencies.dart';
 import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
@@ -51,54 +50,96 @@ class _ReportsPageState extends State<ReportsPage> {
 
     setState(() => _isGeneratingPdf = true);
 
-    ShopSettings shopSettings = const ShopSettings();
-    try {
-      final getShopSettings = serviceLocator<GetShopSettings>();
-      final result = await getShopSettings().timeout(const Duration(seconds: 2));
-      result.fold((_) {}, (settings) => shopSettings = settings);
-    } catch (_) {}
-
-    try {
-      final pdfBytes = await PdfReportService.generateReportPdf(
-        report: report,
-        shopSettings: shopSettings,
-        startDate: state.customStartDate,
-        endDate: state.customEndDate,
-        isFilterApplied: state.customStartDate != null,
-      );
-
-      if (!mounted) return;
-      setState(() => _isGeneratingPdf = false);
-
-      final String filename;
-      if (state.customStartDate != null && state.customEndDate != null) {
-        final start = DateFormat('yyyyMMdd').format(state.customStartDate!);
-        final end = DateFormat('yyyyMMdd').format(state.customEndDate!);
-        filename = 'geartrack_report_${start}_$end.pdf';
-      } else if (state.customStartDate != null) {
-        final start = DateFormat('yyyyMMdd').format(state.customStartDate!);
-        filename = 'geartrack_report_$start.pdf';
-      } else {
-        final nowStr = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
-        filename = 'geartrack_all_time_report_$nowStr.pdf';
-      }
-
-      await Printing.sharePdf(
-        bytes: pdfBytes,
-        filename: filename,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isGeneratingPdf = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to generate PDF: $e'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-          behavior: SnackBarBehavior.floating,
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Generating PDF report in background...'),
+          ],
         ),
-      );
-    }
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    Future.microtask(() async {
+      try {
+        ShopSettings shopSettings = const ShopSettings();
+        try {
+          final getShopSettings = serviceLocator<GetShopSettings>();
+          final result = await getShopSettings().timeout(const Duration(seconds: 2));
+          result.fold((_) {}, (settings) => shopSettings = settings);
+        } catch (_) {}
+
+        final pdfBytes = await PdfReportService.generateReportPdf(
+          report: report,
+          shopSettings: shopSettings,
+          startDate: state.customStartDate,
+          endDate: state.customEndDate,
+          isFilterApplied: state.customStartDate != null,
+        );
+
+        final fileName = PdfReportService.buildReportFileName(
+          startDate: state.customStartDate,
+          endDate: state.customEndDate,
+        );
+
+        final savedFile = await PdfReportService.saveReportToDevice(
+          pdfBytes: pdfBytes,
+          fileName: fileName,
+        );
+
+        if (!mounted) return;
+        setState(() => _isGeneratingPdf = false);
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'PDF report saved to Downloads:\n${savedFile.path.split(Platform.pathSeparator).last}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isGeneratingPdf = false);
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save PDF report: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
   }
 
   @override

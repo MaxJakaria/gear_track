@@ -28,7 +28,7 @@ void posDependencies(GetIt sl) {
   sl.registerLazySingleton(() => SaveInvoice(sl()));
 
   // BLoC
-  sl.registerFactory(
+  sl.registerLazySingleton(
     () => PosBloc(
       addSale: sl(),
       checkoutCart: sl(),

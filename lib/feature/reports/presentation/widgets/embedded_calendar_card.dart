@@ -130,7 +130,11 @@ class _EmbeddedCalendarCardState extends State<EmbeddedCalendarCard> {
               Expanded(
                 child: Text(
                   (_startDate != null && _endDate != null)
-                      ? '${DateFormat('MMM d').format(_startDate!)} – ${DateFormat('MMM d, yyyy').format(_endDate!)}'
+                      ? ((_startDate!.year == _endDate!.year &&
+                                  _startDate!.month == _endDate!.month &&
+                                  _startDate!.day == _endDate!.day)
+                              ? DateFormat('MMM d, yyyy').format(_startDate!)
+                              : '${DateFormat('MMM d').format(_startDate!)} – ${DateFormat('MMM d, yyyy').format(_endDate!)}')
                       : (_startDate != null
                             ? DateFormat('MMM d, yyyy').format(_startDate!)
                             : 'All Time Overview'),

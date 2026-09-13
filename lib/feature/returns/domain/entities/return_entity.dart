@@ -64,7 +64,7 @@ class ReturnEntity extends Equatable {
     final year = returnDate.year;
     final month = returnDate.month.toString().padLeft(2, '0');
     final day = returnDate.day.toString().padLeft(2, '0');
-    return '$year-$month-$day';
+    return '$day/$month/$year';
   }
 
   String get formattedTime {

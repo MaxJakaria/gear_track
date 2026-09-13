@@ -10,18 +10,15 @@ import 'package:gear_track/feature/reports/data/repository/reports_repository_im
 import 'package:gear_track/feature/reports/data/sources/reports_remote_data_source.dart';
 import 'package:gear_track/feature/reports/domain/entities/financial_ledger.dart';
 import 'package:gear_track/feature/reports/domain/entities/report_period.dart';
-import 'package:gear_track/feature/returns/data/models/return_model.dart';
 
 class MockReportsRemoteDataSource implements ReportsRemoteDataSource {
   final List<SaleModel> sales;
   final List<ProductModel> products;
-  final List<ReturnModel> returns;
   final FinancialLedger financialLedger;
 
   MockReportsRemoteDataSource({
     required this.sales,
     required this.products,
-    this.returns = const [],
     this.financialLedger = const FinancialLedger(),
   });
 
@@ -32,9 +29,6 @@ class MockReportsRemoteDataSource implements ReportsRemoteDataSource {
   Future<List<ProductModel>> getAllProducts() async => products;
 
   @override
-  Future<List<ReturnModel>> getAllReturns() async => returns;
-
-  @override
   Future<FinancialLedger> getFinancialLedger() async => financialLedger;
 }
 
@@ -42,11 +36,9 @@ class MockSettingsRepository implements SettingsRepository {
   final CostCodeMapping mapping;
   final ShopSettings shopSettings;
 
-  MockSettingsRepository({
-    CostCodeMapping? mapping,
-    ShopSettings? shopSettings,
-  })  : mapping = mapping ?? CostCodeMapping.defaultMapping(),
-        shopSettings = shopSettings ?? const ShopSettings();
+  MockSettingsRepository({CostCodeMapping? mapping, ShopSettings? shopSettings})
+    : mapping = mapping ?? CostCodeMapping.defaultMapping(),
+      shopSettings = shopSettings ?? const ShopSettings();
 
   @override
   Future<Either<Failure, CostCodeMapping>> getCostCodeMapping() async {
@@ -66,9 +58,7 @@ class MockSettingsRepository implements SettingsRepository {
   }
 
   @override
-  Future<Either<Failure, void>> saveShopSettings(
-    ShopSettings settings,
-  ) async {
+  Future<Either<Failure, void>> saveShopSettings(ShopSettings settings) async {
     return const Right(null);
   }
 }
@@ -136,22 +126,19 @@ void main() {
       final result = await repo.getAnalyticsReport(ReportPeriod.today);
 
       expect(result.isRight(), true);
-      result.fold(
-        (failure) => fail('Should succeed'),
-        (report) {
-          expect(report.period, ReportPeriod.today);
-          // Today's sale: 2 * 120 = 240
-          expect(report.summary.totalSales, 240.0);
-          // Profit: (120 - 80) * 2 = 80
-          expect(report.summary.totalProfit, 80.0);
-          expect(report.summary.itemsSold, 2);
-          // 1 product has stock <= 5
-          expect(report.summary.lowStockAlerts, 1);
-          expect(report.salesRecords.length, 1);
-          expect(report.salesRecords.first.partNo, 'BRK-001');
-          expect(report.salesRecords.first.model, 'Universal');
-        },
-      );
+      result.fold((failure) => fail('Should succeed'), (report) {
+        expect(report.period, ReportPeriod.today);
+        // Today's sale: 2 * 120 = 240
+        expect(report.summary.totalSales, 240.0);
+        // Profit: (120 - 80) * 2 = 80
+        expect(report.summary.totalProfit, 80.0);
+        expect(report.summary.itemsSold, 2);
+        // 1 product has stock <= 5
+        expect(report.summary.lowStockAlerts, 1);
+        expect(report.salesRecords.length, 1);
+        expect(report.salesRecords.first.partNo, 'BRK-001');
+        expect(report.salesRecords.first.model, 'Universal');
+      });
     });
 
     test('should calculate summary for This Month correctly', () async {
@@ -167,39 +154,36 @@ void main() {
       final result = await repo.getAnalyticsReport(ReportPeriod.thisMonth);
 
       expect(result.isRight(), true);
-      result.fold(
-        (failure) => fail('Should succeed'),
-        (report) {
-          expect(report.period, ReportPeriod.thisMonth);
-          // Month sales: (2 * 120) + (1 * 300) = 540
-          expect(report.summary.totalSales, 540.0);
-          // Month profit: ((120 - 80) * 2) + ((300 - 200) * 1) = 80 + 100 = 180
-          expect(report.summary.totalProfit, 180.0);
-          expect(report.summary.itemsSold, 3);
-          expect(report.summary.lowStockAlerts, 1);
-          expect(report.salesRecords.length, 2);
-        },
-      );
+      result.fold((failure) => fail('Should succeed'), (report) {
+        expect(report.period, ReportPeriod.thisMonth);
+        // Month sales: (2 * 120) + (1 * 300) = 540
+        expect(report.summary.totalSales, 540.0);
+        // Month profit: ((120 - 80) * 2) + ((300 - 200) * 1) = 80 + 100 = 180
+        expect(report.summary.totalProfit, 180.0);
+        expect(report.summary.itemsSold, 3);
+        expect(report.summary.lowStockAlerts, 1);
+        expect(report.salesRecords.length, 2);
+      });
     });
 
-    test('should generate month daily trend and 12-month profit trend', () async {
-      final mockSource = MockReportsRemoteDataSource(
-        sales: testSales,
-        products: testProducts,
-      );
-      final repo = ReportsRepositoryImpl(
-        remoteDataSource: mockSource,
-        settingsRepository: MockSettingsRepository(),
-      );
+    test(
+      'should generate month daily trend and 12-month profit trend',
+      () async {
+        final mockSource = MockReportsRemoteDataSource(
+          sales: testSales,
+          products: testProducts,
+        );
+        final repo = ReportsRepositoryImpl(
+          remoteDataSource: mockSource,
+          settingsRepository: MockSettingsRepository(),
+        );
 
-      final result = await repo.getAnalyticsReport(ReportPeriod.trends);
+        final result = await repo.getAnalyticsReport(ReportPeriod.trends);
 
-      final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+        final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
 
-      expect(result.isRight(), true);
-      result.fold(
-        (failure) => fail('Should succeed'),
-        (report) {
+        expect(result.isRight(), true);
+        result.fold((failure) => fail('Should succeed'), (report) {
           expect(report.dailySalesTrend.length, daysInMonth);
           expect(report.dailySalesTrend.first.label, '01');
           expect(report.monthlyProfitTrend.length, 12);
@@ -208,11 +192,11 @@ void main() {
             (p) => p.date.day == now.day,
           );
           expect(todayPoint.revenue, 240.0);
-          expect(report.monthlyProfitTrend.last.sales, 540.0);
-          expect(report.monthlyProfitTrend.last.profit, 180.0);
-        },
-      );
-    });
+          expect(report.monthlyProfitTrend[now.month - 1].sales, 540.0);
+          expect(report.monthlyProfitTrend[now.month - 1].profit, 180.0);
+        });
+      },
+    );
 
     test('should calculate summary for Custom date range correctly', () async {
       final mockSource = MockReportsRemoteDataSource(
@@ -234,66 +218,49 @@ void main() {
       );
 
       expect(result.isRight(), true);
-      result.fold(
-        (failure) => fail('Should succeed'),
-        (report) {
-          expect(report.period, ReportPeriod.custom);
-          expect(report.summary.totalSales, 240.0);
-          expect(report.summary.totalProfit, 80.0);
-          expect(report.summary.itemsSold, 2);
-          expect(report.salesRecords.length, 1);
-        },
-      );
+      result.fold((failure) => fail('Should succeed'), (report) {
+        expect(report.period, ReportPeriod.custom);
+        expect(report.summary.totalSales, 240.0);
+        expect(report.summary.totalProfit, 80.0);
+        expect(report.summary.itemsSold, 2);
+        expect(report.salesRecords.length, 1);
+      });
     });
 
-    test('should deduct return refunds and return profit from summary', () async {
-      final testReturns = [
-        ReturnModel(
-          returnId: 'ret1',
-          invoiceId: 'inv1',
-          returnDate: now,
-          totalRefundAmount: 120.0,
-          totalQuantity: 1,
-          reason: 'Defective',
-          items: const [
-            ReturnItemModel(
-              productId: 'BRK-001',
-              itemName: 'Brake Pad Set',
-              partNo: 'BRK-001',
-              quantity: 1,
-              sellPrice: 120.0,
-              costCode: '80',
-              restock: true,
-            ),
-          ],
-        ),
-      ];
+    test(
+      'should calculate KPI metrics accurately from active sales records',
+      () async {
+        // With active sales: 1 unit sold at 120 (cost 80)
+        final activeSales = [
+          SaleModel(
+            id: 'sale1',
+            productId: 'BRK-001',
+            saleDate: now,
+            itemName: 'Brake Pad Set',
+            quantity: 1,
+            sellPrice: 120.0,
+            costCode: '80',
+          ),
+        ];
 
-      final mockSource = MockReportsRemoteDataSource(
-        sales: testSales,
-        products: testProducts,
-        returns: testReturns,
-      );
-      final repo = ReportsRepositoryImpl(
-        remoteDataSource: mockSource,
-        settingsRepository: MockSettingsRepository(),
-      );
+        final mockSource = MockReportsRemoteDataSource(
+          sales: activeSales,
+          products: testProducts,
+        );
+        final repo = ReportsRepositoryImpl(
+          remoteDataSource: mockSource,
+          settingsRepository: MockSettingsRepository(),
+        );
 
-      final result = await repo.getAnalyticsReport(ReportPeriod.today);
+        final result = await repo.getAnalyticsReport(ReportPeriod.today);
 
-      expect(result.isRight(), true);
-      result.fold(
-        (failure) => fail('Should succeed'),
-        (report) {
-          // Gross was 240, refund is 120 -> net sales = 120
+        expect(result.isRight(), true);
+        result.fold((failure) => fail('Should succeed'), (report) {
           expect(report.summary.totalSales, 120.0);
-          // Gross profit was 80, returned item profit was (120 - 80) * 1 = 40 -> net profit = 40
           expect(report.summary.totalProfit, 40.0);
-          // 2 sold - 1 returned = 1
           expect(report.summary.itemsSold, 1);
-        },
-      );
-    });
+        });
+      },
+    );
   });
 }
-
