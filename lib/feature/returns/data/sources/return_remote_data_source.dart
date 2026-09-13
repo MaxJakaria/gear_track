@@ -144,19 +144,59 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
     _lastDocOfPage.clear();
     _cachedTotalCount = 0;
 
-    // Pre-resolve restocking targets outside the transaction to avoid async queries inside it
+    // 1. Pre-resolve restocking targets outside the transaction
     final restockItems = returnModel.items.where((i) => i.restock).toList();
     final resolvedItems = await Future.wait(
       restockItems.map(_resolveRestockItem),
     );
 
+    // 2. Pre-fetch invoice to get product IDs and pre-fetch sales records per product subcollection
+    final invoiceRef = firestore
+        .collection('invoices')
+        .doc(returnModel.invoiceId);
+    final invoicePreSnap = await invoiceRef.get();
+    if (!invoicePreSnap.exists) {
+      throw FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'not-found',
+        message: 'Invoice not found: ${returnModel.invoiceId}',
+      );
+    }
+
+    final invoicePreData = invoicePreSnap.data() ?? {};
+    final rawInvoiceItems = invoicePreData['items'] as List<dynamic>? ?? [];
+
+    final Set<String> targetProductIds = {};
+    for (final raw in rawInvoiceItems) {
+      if (raw is Map) {
+        final pId = (raw['productId'] ?? '').toString().trim();
+        if (pId.isNotEmpty) {
+          targetProductIds.add(pId.contains('/') ? pId.split('/')[0] : pId);
+        }
+      }
+    }
+    for (final r in resolvedItems) {
+      targetProductIds.add(r.productRef.id);
+    }
+
+    // Direct subcollection query avoids needing composite collectionGroup indexes in Firestore
+    final List<QueryDocumentSnapshot<Map<String, dynamic>>> allSalesDocs = [];
+    for (final pId in targetProductIds) {
+      try {
+        final pSalesSnap = await firestore
+            .collection('sales')
+            .doc(pId)
+            .collection('sales_records')
+            .where('invoiceId', isEqualTo: returnModel.invoiceId)
+            .get();
+        allSalesDocs.addAll(pSalesSnap.docs);
+      } catch (_) {}
+    }
+
     await firestore.runTransaction((transaction) async {
       // -----------------------------------------------------------------------
       // Step 1: READ - Fetch and validate the original customer invoice
       // -----------------------------------------------------------------------
-      final invoiceRef = firestore
-          .collection('invoices')
-          .doc(returnModel.invoiceId);
       final invoiceSnap = await transaction.get(invoiceRef);
       if (!invoiceSnap.exists) {
         throw FirebaseException(
@@ -200,8 +240,18 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         }
       }
 
+      // Read sales records inside transaction
+      final Map<String, DocumentSnapshot<Map<String, dynamic>>> salesDocSnaps =
+          {};
+      for (final doc in allSalesDocs) {
+        final snap = await transaction.get(doc.reference);
+        if (snap.exists) {
+          salesDocSnaps[doc.id] = snap;
+        }
+      }
+
       // -----------------------------------------------------------------------
-      // Step 3: COMPUTE - Update returned and returnable quantities on invoice items
+      // Step 3: COMPUTE - Update returned and active remaining invoice items
       // -----------------------------------------------------------------------
       final invoiceData = invoiceSnap.data() ?? {};
       final rawItems = invoiceData['items'] as List<dynamic>? ?? [];
@@ -210,25 +260,31 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
             (i) => {
               'batchId': i.batchId,
               'partNo': i.partNo,
+              'productId': i.productId,
               'qty': i.quantity,
             },
           )
           .toList();
 
-      final List<Map<String, dynamic>> updatedItems = [];
+      final List<Map<String, dynamic>> activeInvoiceItems = [];
+      int totalOriginalQty = 0;
+      int totalReturnedQty = 0;
+
       for (final raw in rawItems) {
         final item = Map<String, dynamic>.from(raw as Map);
         final origQty = (item['quantity'] as num?)?.toInt() ?? 0;
-        final prevReturned = (item['returnedQuantity'] as num?)?.toInt() ?? 0;
-        final maxReturnable = (origQty - prevReturned).clamp(0, origQty);
+        totalOriginalQty += origQty;
 
         final bId = (item['batchId'] ?? '').toString();
         final pNo = (item['partNo'] ?? '').toString();
+        final pId = (item['productId'] ?? '').toString();
 
-        // Match by batchId (preferred) or partNo
+        // Match by batchId (preferred), partNo, or productId
         final matchIdx = remainingReturns.indexWhere(
           (r) =>
-              (bId.isNotEmpty && r['batchId'] == bId || r['partNo'] == pNo) &&
+              (bId.isNotEmpty && r['batchId'] == bId ||
+                  pNo.isNotEmpty && r['partNo'] == pNo ||
+                  pId.isNotEmpty && r['productId'] == pId) &&
               (r['qty'] as int) > 0,
         );
 
@@ -236,31 +292,78 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         if (matchIdx != -1) {
           final ret = remainingReturns[matchIdx];
           final req = ret['qty'] as int;
-          returnQty = req > maxReturnable ? maxReturnable : req;
+          returnQty = req > origQty ? origQty : req;
           ret['qty'] = req - returnQty;
         }
 
-        final newReturned = prevReturned + returnQty;
-        item['returnedQuantity'] = newReturned;
-        item['returnableQuantity'] = (origQty - newReturned).clamp(0, origQty);
-        updatedItems.add(item);
+        totalReturnedQty += returnQty;
+        final remainingQty = origQty - returnQty;
+
+        if (remainingQty > 0) {
+          item['quantity'] = remainingQty;
+          final unitPrice = (item['sellPrice'] as num?)?.toDouble() ?? 0.0;
+          item['subtotal'] = remainingQty * unitPrice;
+          item['returnedQuantity'] =
+              ((item['returnedQuantity'] as num?)?.toInt() ?? 0) + returnQty;
+          item['returnableQuantity'] = remainingQty;
+          activeInvoiceItems.add(item);
+        }
       }
 
-      // Determine new overall invoice return status: FULL, PARTIAL, or NONE
-      final totalOrig = updatedItems.fold<int>(
-        0,
-        (t, i) => t + ((i['quantity'] as num?)?.toInt() ?? 0),
-      );
-      final totalRet = updatedItems.fold<int>(
-        0,
-        (t, i) => t + ((i['returnedQuantity'] as num?)?.toInt() ?? 0),
-      );
-      final returnStatus = (totalOrig > 0 && totalRet >= totalOrig)
-          ? 'FULL'
-          : (totalRet > 0 ? 'PARTIAL' : 'NONE');
-      final newRefundAmount =
-          ((invoiceData['returnedAmount'] as num?)?.toDouble() ?? 0.0) +
-          returnModel.totalRefundAmount;
+      final bool isFullReturn =
+          totalReturnedQty >= totalOriginalQty || activeInvoiceItems.isEmpty;
+
+      // Compute sales records updates / deletions
+      final List<DocumentReference> salesToDelete = [];
+      final Map<DocumentReference, int> salesToUpdate = {};
+
+      if (isFullReturn) {
+        for (final doc in allSalesDocs) {
+          salesToDelete.add(doc.reference);
+        }
+      } else {
+        final remainingSalesReturns = returnModel.items
+            .map(
+              (i) => {
+                'batchId': i.batchId,
+                'partNo': i.partNo,
+                'productId': i.productId,
+                'qty': i.quantity,
+              },
+            )
+            .toList();
+
+        for (final doc in allSalesDocs) {
+          final sData = salesDocSnaps[doc.id]?.data() ?? doc.data();
+          final curQty = (sData['quantity'] as num?)?.toInt() ?? 0;
+          final sBatchId = (sData['batchId'] ?? '').toString();
+          final sPartNo = (sData['partNo'] ?? '').toString();
+          final sProductId = (sData['productId'] ?? '').toString();
+
+          final matchIdx = remainingSalesReturns.indexWhere(
+            (r) =>
+                (sBatchId.isNotEmpty && r['batchId'] == sBatchId ||
+                    sPartNo.isNotEmpty && r['partNo'] == sPartNo ||
+                    sProductId.isNotEmpty && r['productId'] == sProductId) &&
+                (r['qty'] as int) > 0,
+          );
+
+          int retQty = 0;
+          if (matchIdx != -1) {
+            final ret = remainingSalesReturns[matchIdx];
+            final req = ret['qty'] as int;
+            retQty = req > curQty ? curQty : req;
+            ret['qty'] = req - retQty;
+          }
+
+          final newQty = curQty - retQty;
+          if (newQty <= 0) {
+            salesToDelete.add(doc.reference);
+          } else {
+            salesToUpdate[doc.reference] = newQty;
+          }
+        }
+      }
 
       // -----------------------------------------------------------------------
       // Step 4: COMPUTE - Calculate stock increments for products and batches
@@ -286,15 +389,40 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         returnModel.toMap(),
       );
 
-      // B. Update invoice items, cumulative refund total, and return status
-      transaction.update(invoiceRef, {
-        'items': updatedItems,
-        'returnedAmount': newRefundAmount,
-        'returnStatus': returnStatus,
-        'lastReturnDate': Timestamp.fromDate(returnModel.returnDate),
-      });
+      // B. Delete invoice if full return, or update with remaining active items
+      if (isFullReturn) {
+        transaction.delete(invoiceRef);
+      } else {
+        final double newTotalAmount = activeInvoiceItems.fold<double>(
+          0.0,
+          (acc, i) => acc + ((i['subtotal'] as num?)?.toDouble() ?? 0.0),
+        );
+        final int newTotalItems = activeInvoiceItems.fold<int>(
+          0,
+          (acc, i) => acc + ((i['quantity'] as num?)?.toInt() ?? 0),
+        );
 
-      // C. Update totalStock in the parent 'products' collection
+        transaction.update(invoiceRef, {
+          'items': activeInvoiceItems,
+          'totalAmount': newTotalAmount,
+          'totalItems': newTotalItems,
+          'returnedAmount':
+              ((invoiceData['returnedAmount'] as num?)?.toDouble() ?? 0.0) +
+              returnModel.totalRefundAmount,
+          'returnStatus': 'PARTIAL',
+          'lastReturnDate': Timestamp.fromDate(returnModel.returnDate),
+        });
+      }
+
+      // C. Delete or update matching sales records
+      for (final ref in salesToDelete) {
+        transaction.delete(ref);
+      }
+      for (final entry in salesToUpdate.entries) {
+        transaction.update(entry.key, {'quantity': entry.value});
+      }
+
+      // D. Update totalStock in the parent 'products' collection
       for (final entry in productStocks.entries) {
         final ref = firestore.collection('products').doc(entry.key);
         if (productSnaps[entry.key]?.exists == true) {
@@ -314,7 +442,7 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         }
       }
 
-      // D. Restock batch quantities in the 'stock_entries' subcollection
+      // E. Restock batch quantities in the 'stock_entries' subcollection
       for (final entry in batchUpdates.entries) {
         final path = entry.key.path;
         final newStock = entry.value;

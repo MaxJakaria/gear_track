@@ -6,7 +6,6 @@ import 'package:gear_track/feature/reports/domain/entities/financial_ledger.dart
 import '../../../../core/error/failure.dart';
 import '../../../../feature/inventory/data/models/product_model.dart';
 import '../../../../feature/point_of_sale/data/models/sale_model.dart';
-import '../../../../feature/returns/data/models/return_model.dart';
 import '../../domain/entities/analytics_report.dart';
 import '../../domain/entities/daily_sales_point.dart';
 import '../../domain/entities/monthly_profit_point.dart';
@@ -23,7 +22,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
   List<SaleModel>? _cachedSales;
   List<ProductModel>? _cachedProducts;
-  List<ReturnModel>? _cachedReturns;
   CostCodeMapping? _cachedCostCodeMapping;
   FinancialLedger? _cachedFinancialLedger;
 
@@ -42,19 +40,16 @@ class ReportsRepositoryImpl implements ReportsRepository {
     try {
       final List<SaleModel> allSales;
       final List<ProductModel> allProducts;
-      final List<ReturnModel> allReturns;
       final CostCodeMapping costCodeMapping;
       final FinancialLedger financialLedger;
 
       if (!forceRefresh &&
           _cachedSales != null &&
           _cachedProducts != null &&
-          _cachedReturns != null &&
           _cachedCostCodeMapping != null &&
           _cachedFinancialLedger != null) {
         allSales = _cachedSales!;
         allProducts = _cachedProducts!;
-        allReturns = _cachedReturns!;
         costCodeMapping = _cachedCostCodeMapping!;
         financialLedger = _cachedFinancialLedger!;
       } else {
@@ -62,7 +57,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
           remoteDataSource.getAllSales(),
           remoteDataSource.getAllProducts(),
           settingsRepository.getCostCodeMapping(),
-          remoteDataSource.getAllReturns(),
           remoteDataSource.getFinancialLedger(),
         ]);
 
@@ -73,12 +67,10 @@ class ReportsRepositoryImpl implements ReportsRepository {
         costCodeMapping = costCodeMappingEither.getOrElse(
           (_) => CostCodeMapping.defaultMapping(),
         );
-        allReturns = results[3] as List<ReturnModel>;
-        financialLedger = results[4] as FinancialLedger;
+        financialLedger = results[3] as FinancialLedger;
 
         _cachedSales = allSales;
         _cachedProducts = allProducts;
-        _cachedReturns = allReturns;
         _cachedCostCodeMapping = costCodeMapping;
         _cachedFinancialLedger = financialLedger;
       }
@@ -133,10 +125,23 @@ class ReportsRepositoryImpl implements ReportsRepository {
       } else if (period == ReportPeriod.custom &&
           startDate != null &&
           endDate != null) {
-        effectiveStart =
-            DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
-        effectiveEnd =
-            DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59, 999);
+        effectiveStart = DateTime(
+          startDate.year,
+          startDate.month,
+          startDate.day,
+          0,
+          0,
+          0,
+        );
+        effectiveEnd = DateTime(
+          endDate.year,
+          endDate.month,
+          endDate.day,
+          23,
+          59,
+          59,
+          999,
+        );
 
         periodSales = allSales.where((s) {
           return !s.saleDate.isBefore(effectiveStart!) &&
@@ -145,29 +150,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
       } else {
         // Overall period: all sales
         periodSales = allSales;
-      }
-
-      // Filter returns for active period
-      final List<ReturnModel> periodReturns;
-      if (period == ReportPeriod.today) {
-        periodReturns = allReturns.where((r) {
-          final d = r.returnDate;
-          return d.year == now.year && d.month == now.month && d.day == now.day;
-        }).toList();
-      } else if (period == ReportPeriod.thisMonth) {
-        periodReturns = allReturns.where((r) {
-          final d = r.returnDate;
-          return d.year == now.year && d.month == now.month;
-        }).toList();
-      } else if (period == ReportPeriod.custom &&
-          effectiveStart != null &&
-          effectiveEnd != null) {
-        periodReturns = allReturns.where((r) {
-          return !r.returnDate.isBefore(effectiveStart!) &&
-              !r.returnDate.isAfter(effectiveEnd!);
-        }).toList();
-      } else {
-        periodReturns = allReturns;
       }
 
       // 4. Calculate KPI metrics for the current active period
@@ -212,31 +194,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
         );
       }
 
-      // Deduct returns (Selling Price / Revenue, Profit, and Quantity)
-      double totalReturnRefund = 0.0;
-      double totalReturnProfit = 0.0;
-      int totalReturnQuantity = 0;
-
-      for (final ret in periodReturns) {
-        totalReturnRefund += ret.totalRefundAmount;
-        totalReturnQuantity += ret.totalQuantity;
-
-        for (final item in ret.items) {
-          final costPerUnit = costCodeMapping.decode(item.costCode);
-          final double profitPerUnit;
-          if (costPerUnit > 0) {
-            profitPerUnit = item.sellPrice - costPerUnit;
-          } else {
-            profitPerUnit = item.sellPrice * 0.30;
-          }
-          totalReturnProfit += profitPerUnit * item.quantity;
-        }
-      }
-
-      totalSales = (totalSales - totalReturnRefund).clamp(0.0, double.infinity);
-      totalProfit = totalProfit - totalReturnProfit;
-      itemsSold = (itemsSold - totalReturnQuantity).clamp(0, 9999999);
-
       // Permanently add baseline revenue & profit from financial ledger (preserved across history clears)
       totalSales += financialLedger.accumulatedRevenue;
       totalProfit += financialLedger.accumulatedProfit;
@@ -273,17 +230,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
             (acc, s) => acc + (s.sellPrice * s.quantity),
           );
 
-          final dayReturns = allReturns.where((r) {
-            final d = r.returnDate;
-            return d.year == targetDay.year &&
-                d.month == targetDay.month &&
-                d.day == targetDay.day;
-          });
-          final dayRefund = dayReturns.fold<double>(
-            0.0,
-            (acc, r) => acc + r.totalRefundAmount,
-          );
-
           double dayGrossProfit = 0.0;
           for (final s in daySales) {
             final costPerUnit = costCodeMapping.decode(s.costCode);
@@ -296,26 +242,12 @@ class ReportsRepositoryImpl implements ReportsRepository {
             dayGrossProfit += profitPerUnit * s.quantity;
           }
 
-          double dayReturnProfit = 0.0;
-          for (final r in dayReturns) {
-            for (final item in r.items) {
-              final costPerUnit = costCodeMapping.decode(item.costCode);
-              final double profitPerUnit;
-              if (costPerUnit > 0) {
-                profitPerUnit = item.sellPrice - costPerUnit;
-              } else {
-                profitPerUnit = item.sellPrice * 0.30;
-              }
-              dayReturnProfit += profitPerUnit * item.quantity;
-            }
-          }
-
           dailySalesTrend.add(
             DailySalesPoint(
               date: targetDay,
               label: targetDay.day.toString().padLeft(2, '0'),
-              revenue: (dayGross - dayRefund).clamp(0.0, double.infinity),
-              profit: dayGrossProfit - dayReturnProfit,
+              revenue: dayGross.clamp(0.0, double.infinity),
+              profit: dayGrossProfit,
             ),
           );
         }
@@ -337,17 +269,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
             (acc, s) => acc + (s.sellPrice * s.quantity),
           );
 
-          final dayReturns = allReturns.where((r) {
-            final d = r.returnDate;
-            return d.year == targetDay.year &&
-                d.month == targetDay.month &&
-                d.day == targetDay.day;
-          });
-          final dayRefund = dayReturns.fold<double>(
-            0.0,
-            (acc, r) => acc + r.totalRefundAmount,
-          );
-
           double dayGrossProfit = 0.0;
           for (final s in daySales) {
             final costPerUnit = costCodeMapping.decode(s.costCode);
@@ -360,26 +281,12 @@ class ReportsRepositoryImpl implements ReportsRepository {
             dayGrossProfit += profitPerUnit * s.quantity;
           }
 
-          double dayReturnProfit = 0.0;
-          for (final r in dayReturns) {
-            for (final item in r.items) {
-              final costPerUnit = costCodeMapping.decode(item.costCode);
-              final double profitPerUnit;
-              if (costPerUnit > 0) {
-                profitPerUnit = item.sellPrice - costPerUnit;
-              } else {
-                profitPerUnit = item.sellPrice * 0.30;
-              }
-              dayReturnProfit += profitPerUnit * item.quantity;
-            }
-          }
-
           dailySalesTrend.add(
             DailySalesPoint(
               date: targetDay,
               label: day.toString().padLeft(2, '0'),
-              revenue: (dayGross - dayRefund).clamp(0.0, double.infinity),
-              profit: dayGrossProfit - dayReturnProfit,
+              revenue: dayGross.clamp(0.0, double.infinity),
+              profit: dayGrossProfit,
             ),
           );
         }
@@ -414,26 +321,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
           }
           mSales += rev;
           mProfit += profitUnit * s.quantity;
-        }
-
-        // Deduct monthly returns
-        final monthReturnsList = allReturns.where((r) {
-          final d = r.returnDate;
-          return d.year == targetYear && d.month == targetMonth;
-        });
-
-        for (final ret in monthReturnsList) {
-          mSales -= ret.totalRefundAmount;
-          for (final item in ret.items) {
-            final cost = costCodeMapping.decode(item.costCode);
-            final double profitUnit;
-            if (cost > 0) {
-              profitUnit = item.sellPrice - cost;
-            } else {
-              profitUnit = item.sellPrice * 0.30;
-            }
-            mProfit -= profitUnit * item.quantity;
-          }
         }
 
         monthlyProfitTrend.add(

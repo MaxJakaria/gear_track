@@ -38,12 +38,16 @@ class _ReturnsPageState extends State<ReturnsPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
+      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+        context.read<ReturnBloc>().add(
+          const FetchReturnsEvent(page: 1, forceRefresh: true),
+        );
+      }
       if (mounted) setState(() {});
     });
-    final returnState = context.read<ReturnBloc>().state;
-    if (returnState is! ReturnsLoadedSuccess) {
-      context.read<ReturnBloc>().add(const FetchReturnsEvent(page: 1));
-    }
+    context.read<ReturnBloc>().add(
+      const FetchReturnsEvent(page: 1, forceRefresh: true),
+    );
   }
 
   @override
