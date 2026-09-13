@@ -6,6 +6,7 @@ import 'package:gear_track/core/theme/app_colors.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/pages/pdf_preview_page.dart';
 import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
+import 'package:gear_track/feature/receipt_verification/presentation/pages/receipt_verification_page.dart';
 import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_event.dart';
@@ -85,6 +86,7 @@ class _ReturnsPageState extends State<ReturnsPage>
       ),
     );
     if (result == true && mounted) {
+      _clearSearch();
       context.read<ReturnBloc>().add(
         const FetchReturnsEvent(page: 1, forceRefresh: true),
       );
@@ -134,6 +136,22 @@ class _ReturnsPageState extends State<ReturnsPage>
       appBar: AppBar(
         title: const Text('Returns & Refunds'),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            tooltip: 'Scan Receipt QR',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const ReceiptVerificationPage(allowReturn: true),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 6),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Padding(

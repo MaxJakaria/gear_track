@@ -10,6 +10,9 @@ class SalesRecordDetail extends Equatable {
   final int itemsSold;
   final double sellPrice;
   final String costCode;
+  final String partyName;
+  final String partyAddress;
+  final String servedBy;
 
   const SalesRecordDetail({
     required this.id,
@@ -21,6 +24,9 @@ class SalesRecordDetail extends Equatable {
     required this.itemsSold,
     required this.sellPrice,
     required this.costCode,
+    this.partyName = '',
+    this.partyAddress = '',
+    this.servedBy = '',
   });
 
   @override
@@ -34,5 +40,8 @@ class SalesRecordDetail extends Equatable {
     itemsSold,
     sellPrice,
     costCode,
+    partyName,
+    partyAddress,
+    servedBy,
   ];
 }

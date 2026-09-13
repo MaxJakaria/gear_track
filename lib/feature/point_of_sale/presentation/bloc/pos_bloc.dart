@@ -321,13 +321,8 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     // e.g. INV-2026-000001
     int seq = 1;
     try {
-      final startOfYear = DateTime(now.year, 1, 1);
       final snap = await FirebaseFirestore.instance
           .collection('invoices')
-          .where(
-            'saleDate',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYear),
-          )
           .count()
           .get()
           .timeout(const Duration(seconds: 2));
@@ -341,8 +336,17 @@ class PosBloc extends Bloc<PosEvent, PosState> {
           .toSet();
       seq = thisYearInvoices.length + 1;
     }
-    final seqStr = seq.toString().padLeft(6, '0');
-    final invoiceId = 'INV-${now.year}-$seqStr';
+
+    String seqStr = seq.toString().padLeft(6, '0');
+    String invoiceId = 'INV-${now.year}-$seqStr';
+
+    // Ensure collision-proof uniqueness against all known sales in memory
+    final existingInvoices = _allSales.map((s) => s.invoiceId).toSet();
+    while (existingInvoices.contains(invoiceId)) {
+      seq++;
+      seqStr = seq.toString().padLeft(6, '0');
+      invoiceId = 'INV-${now.year}-$seqStr';
+    }
 
     final invoiceItems = checkoutItems
         .map(
@@ -358,37 +362,8 @@ class PosBloc extends Bloc<PosEvent, PosState> {
         )
         .toList();
 
-    final invoice = InvoiceEntity(
-      invoiceId: invoiceId,
-      saleDate: now,
-      totalAmount: totalPaid,
-      totalItems: checkoutItems.fold(0, (total, i) => total + i.quantity),
-      items: invoiceItems,
-      partyName: event.partyName,
-      partyAddress: event.partyAddress,
-      servedBy: event.servedBy,
-    );
-
-    int itemIndex = 1;
-    final salesList = checkoutItems
-        .map(
-          (item) => SaleEntity(
-            id: 'REC-${now.year}-${seqStr}_${itemIndex++}',
-            productId: item.productId,
-            batchId: item.batchId,
-            partNo: item.partNo,
-            saleDate: now,
-            itemName: item.itemName,
-            quantity: item.quantity,
-            sellPrice: item.sellPrice,
-            costCode: item.costCode,
-            invoiceId: invoiceId,
-          ),
-        )
-        .toList();
-
     // -------------------------------------------------------------------------
-    // STEP 1: PRE-FLIGHT PDF GENERATION (Generate PDF in memory first)
+    // Load Shop Settings so invoice saved in Firestore includes full business details
     // -------------------------------------------------------------------------
     ShopSettings shopSettings = const ShopSettings();
     try {
@@ -399,6 +374,46 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       result.fold((_) {}, (settings) => shopSettings = settings);
     } catch (_) {}
 
+    final invoice = InvoiceEntity(
+      invoiceId: invoiceId,
+      saleDate: now,
+      totalAmount: totalPaid,
+      totalItems: checkoutItems.fold(0, (total, i) => total + i.quantity),
+      items: invoiceItems,
+      shopName: shopSettings.shopName,
+      shopPhone: shopSettings.phone,
+      shopAddress: shopSettings.address,
+      shopEmail: shopSettings.email,
+      partyName: event.partyName,
+      partyAddress: event.partyAddress,
+      servedBy: event.servedBy,
+    );
+
+    int itemIndex = 1;
+    final nowMicros = now.microsecondsSinceEpoch;
+    final salesList = checkoutItems
+        .map(
+          (item) => SaleEntity(
+            id: 'REC-${now.year}-${seqStr}_${itemIndex++}_$nowMicros',
+            productId: item.productId,
+            batchId: item.batchId,
+            partNo: item.partNo,
+            saleDate: now,
+            itemName: item.itemName,
+            quantity: item.quantity,
+            sellPrice: item.sellPrice,
+            costCode: item.costCode,
+            invoiceId: invoiceId,
+            partyName: event.partyName,
+            partyAddress: event.partyAddress,
+            servedBy: event.servedBy,
+          ),
+        )
+        .toList();
+
+    // -------------------------------------------------------------------------
+    // STEP 1: PRE-FLIGHT PDF GENERATION (Generate PDF in memory first)
+    // -------------------------------------------------------------------------
     Uint8List? generatedPdfBytes;
     try {
       final doc = await PdfReceiptService.generateReceipt(

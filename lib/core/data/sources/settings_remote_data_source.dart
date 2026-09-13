@@ -78,6 +78,7 @@ class SettingsRemoteDataSourceImpl implements SettingsRemoteDataSource {
       'shopName': settings.shopName.trim(),
       'address': settings.address.trim(),
       'phone': settings.phone.trim(),
+      'email': settings.email.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }

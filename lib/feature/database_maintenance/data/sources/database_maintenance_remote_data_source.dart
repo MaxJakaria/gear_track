@@ -315,7 +315,7 @@ class DatabaseMaintenanceRemoteDataSourceImpl
     batch.set(costCodeDoc, {'mapping': {}});
 
     final shopDoc = firestore.collection('app_settings').doc('shop_settings');
-    batch.set(shopDoc, {'shopName': '', 'address': '', 'phone': ''});
+    batch.set(shopDoc, {'shopName': '', 'address': '', 'phone': '', 'email': ''});
 
     await batch.commit();
   }

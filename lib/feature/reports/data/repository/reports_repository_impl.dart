@@ -107,18 +107,20 @@ class ReportsRepositoryImpl implements ReportsRepository {
         }
       }
 
-      // 3. Filter sales based on period for Summary & Table
+      // 3. Filter sales based on period for Summary & Table (excluding zero-quantity/returned items)
+      final List<SaleModel> activeSales =
+          allSales.where((s) => s.quantity > 0).toList();
       final List<SaleModel> periodSales;
       DateTime? effectiveStart;
       DateTime? effectiveEnd;
 
       if (period == ReportPeriod.today) {
-        periodSales = allSales.where((s) {
+        periodSales = activeSales.where((s) {
           final d = s.saleDate;
           return d.year == now.year && d.month == now.month && d.day == now.day;
         }).toList();
       } else if (period == ReportPeriod.thisMonth) {
-        periodSales = allSales.where((s) {
+        periodSales = activeSales.where((s) {
           final d = s.saleDate;
           return d.year == now.year && d.month == now.month;
         }).toList();
@@ -143,13 +145,13 @@ class ReportsRepositoryImpl implements ReportsRepository {
           999,
         );
 
-        periodSales = allSales.where((s) {
+        periodSales = activeSales.where((s) {
           return !s.saleDate.isBefore(effectiveStart!) &&
               !s.saleDate.isAfter(effectiveEnd!);
         }).toList();
       } else {
-        // Overall period: all sales
-        periodSales = allSales;
+        // Overall period: active sales
+        periodSales = activeSales;
       }
 
       // 4. Calculate KPI metrics for the current active period
@@ -190,6 +192,9 @@ class ReportsRepositoryImpl implements ReportsRepository {
             itemsSold: sale.quantity,
             sellPrice: sale.sellPrice,
             costCode: sale.costCode,
+            partyName: sale.partyName,
+            partyAddress: sale.partyAddress,
+            servedBy: sale.servedBy,
           ),
         );
       }
@@ -218,7 +223,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
         for (int i = 0; i < daysToGenerate; i++) {
           final targetDay = effectiveStart.add(Duration(days: i));
 
-          final daySales = allSales.where((s) {
+          final daySales = activeSales.where((s) {
             final d = s.saleDate;
             return d.year == targetDay.year &&
                 d.month == targetDay.month &&
@@ -257,7 +262,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
         for (int day = 1; day <= daysInMonth; day++) {
           final targetDay = DateTime(now.year, now.month, day);
-          final daySales = allSales.where((s) {
+          final daySales = activeSales.where((s) {
             final d = s.saleDate;
             return d.year == targetDay.year &&
                 d.month == targetDay.month &&
@@ -302,7 +307,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
         final targetMonthDate = DateTime(targetYear, m, 1);
         final targetMonth = m;
 
-        final monthSalesList = allSales.where((s) {
+        final monthSalesList = activeSales.where((s) {
           final d = s.saleDate;
           return d.year == targetYear && d.month == targetMonth;
         });

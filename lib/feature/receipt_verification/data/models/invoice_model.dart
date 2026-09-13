@@ -114,6 +114,25 @@ class InvoiceModel extends InvoiceEntity {
     );
   }
 
+  factory InvoiceModel.fromEntity(InvoiceEntity entity) {
+    return InvoiceModel(
+      invoiceId: entity.invoiceId,
+      saleDate: entity.saleDate,
+      totalAmount: entity.totalAmount,
+      totalItems: entity.totalItems,
+      items: entity.items,
+      shopName: entity.shopName,
+      shopPhone: entity.shopPhone,
+      shopAddress: entity.shopAddress,
+      shopEmail: entity.shopEmail,
+      partyName: entity.partyName,
+      partyAddress: entity.partyAddress,
+      servedBy: entity.servedBy,
+      returnedAmount: entity.returnedAmount,
+      returnStatus: entity.returnStatus,
+    );
+  }
+
   factory InvoiceModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
