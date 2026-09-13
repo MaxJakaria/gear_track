@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
 import 'package:gear_track/feature/reports/domain/entities/analytics_report.dart';
+import 'package:gear_track/feature/reports/domain/entities/sales_record_detail.dart';
 
 class PdfReportService {
   // Static font cache to prevent reloading font assets on every PDF generation
@@ -81,35 +82,16 @@ class PdfReportService {
     final summary = report.summary;
     final sales = report.salesRecords;
 
-    // Precompute formatted strings matching app sales table layout:
-    // [SL., INVOICE, PRODUCT NAME, PART NO, QTY, UNIT PRICE, TOTAL PRICE]
-    final List<List<String>> preformattedRows = [];
-    int invoiceSl = 0;
-
-    for (int i = 0; i < sales.length; i++) {
-      final s = sales[i];
-      final bool isSameInvoice = i > 0 &&
+    // Group sales records by invoice
+    final List<List<SalesRecordDetail>> invoiceGroups = [];
+    for (final s in sales) {
+      if (invoiceGroups.isNotEmpty &&
           s.invoiceId.isNotEmpty &&
-          s.invoiceId == sales[i - 1].invoiceId;
-
-      if (!isSameInvoice) {
-        invoiceSl++;
+          invoiceGroups.last.first.invoiceId == s.invoiceId) {
+        invoiceGroups.last.add(s);
+      } else {
+        invoiceGroups.add([s]);
       }
-
-      final totalPrice = s.itemsSold * s.sellPrice;
-      final itemAndModel = s.model.isNotEmpty
-          ? '${s.itemName}\n(${s.model})'
-          : s.itemName;
-
-      preformattedRows.add([
-        isSameInvoice ? '' : '$invoiceSl',
-        isSameInvoice ? '' : (s.invoiceId.isNotEmpty ? s.invoiceId : '-'),
-        itemAndModel,
-        s.partNo.isNotEmpty ? s.partNo : '-',
-        '${s.itemsSold} PCS',
-        formatCurrency(s.sellPrice),
-        formatCurrency(totalPrice),
-      ]);
     }
 
     // Build the PDF Document
@@ -295,7 +277,7 @@ class PdfReportService {
           );
           widgets.add(pw.SizedBox(height: 4));
 
-          // 4. Sales Table (Single table matching app columns with repeatHeader: true on page change)
+          // 4. Sales Table
           if (sales.isEmpty) {
             widgets.add(
               pw.Container(
@@ -315,55 +297,331 @@ class PdfReportService {
               ),
             );
           } else {
-            widgets.add(
-              pw.TableHelper.fromTextArray(
-                border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
-                headerDecoration: const pw.BoxDecoration(
+            final List<pw.TableRow> tableRows = [];
+            const itemsColumnWidths = {
+              0: pw.FlexColumnWidth(2.0), // Product Name
+              1: pw.FixedColumnWidth(80), // Part No
+              2: pw.FixedColumnWidth(35), // Qty
+              3: pw.FixedColumnWidth(65), // Unit Price
+              4: pw.FixedColumnWidth(70), // Total Price
+            };
+
+            // Table Header Row (repeats across page breaks)
+            tableRows.add(
+              pw.TableRow(
+                repeat: true,
+                decoration: const pw.BoxDecoration(
                   color: PdfColors.grey100,
+                  border: pw.Border(
+                    bottom: pw.BorderSide(color: PdfColors.black, width: 0.5),
+                  ),
                 ),
-                headerHeight: 22,
-                cellHeight: 22,
-                cellPadding: const pw.EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 4,
+                children: [
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 5,
+                    ),
+                    alignment: pw.Alignment.center,
+                    child: pw.Text(
+                      'Sl.',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey900,
+                      ),
+                    ),
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 5,
+                    ),
+                    alignment: pw.Alignment.center,
+                    child: pw.Text(
+                      'Invoice',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey900,
+                      ),
+                    ),
+                  ),
+                  pw.Table(
+                    border: const pw.TableBorder(
+                      verticalInside: pw.BorderSide(
+                        color: PdfColors.black,
+                        width: 0.5,
+                      ),
+                    ),
+                    columnWidths: itemsColumnWidths,
+                    children: [
+                      pw.TableRow(
+                        children: [
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 5,
+                            ),
+                            alignment: pw.Alignment.centerLeft,
+                            child: pw.Text(
+                              'Product Name',
+                              style: pw.TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.grey900,
+                              ),
+                            ),
+                          ),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 5,
+                            ),
+                            alignment: pw.Alignment.centerLeft,
+                            child: pw.Text(
+                              'Part No',
+                              style: pw.TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.grey900,
+                              ),
+                            ),
+                          ),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 5,
+                            ),
+                            alignment: pw.Alignment.center,
+                            child: pw.Text(
+                              'Qty',
+                              style: pw.TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.grey900,
+                              ),
+                            ),
+                          ),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 5,
+                            ),
+                            alignment: pw.Alignment.center,
+                            child: pw.Text(
+                              'Unit Price',
+                              style: pw.TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.grey900,
+                              ),
+                            ),
+                          ),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 5,
+                            ),
+                            alignment: pw.Alignment.centerRight,
+                            child: pw.Text(
+                              'Total Price',
+                              style: pw.TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.grey900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+
+            // Table Data Rows
+            int invoiceSl = 0;
+            for (int g = 0; g < invoiceGroups.length; g++) {
+              final group = invoiceGroups[g];
+              invoiceSl++;
+              final String invoiceIdStr = group.first.invoiceId.isNotEmpty
+                  ? group.first.invoiceId
+                  : '-';
+
+              final List<pw.TableRow> itemRows = [];
+              for (int i = 0; i < group.length; i++) {
+                final s = group[i];
+                final totalPrice = s.itemsSold * s.sellPrice;
+
+                itemRows.add(
+                  pw.TableRow(
+                    children: [
+                      // Product Name
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
+                        alignment: pw.Alignment.centerLeft,
+                        child: pw.Text(
+                          s.itemName,
+                          style: const pw.TextStyle(
+                            fontSize: 8,
+                            color: PdfColors.grey900,
+                          ),
+                        ),
+                      ),
+
+                      // Part No
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
+                        alignment: pw.Alignment.centerLeft,
+                        child: pw.Text(
+                          s.partNo.isNotEmpty ? s.partNo : '-',
+                          style: const pw.TextStyle(
+                            fontSize: 8,
+                            color: PdfColors.grey900,
+                          ),
+                        ),
+                      ),
+
+                      // Qty
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
+                        alignment: pw.Alignment.center,
+                        child: pw.Text(
+                          '${s.itemsSold}',
+                          style: const pw.TextStyle(
+                            fontSize: 8,
+                            color: PdfColors.grey900,
+                          ),
+                        ),
+                      ),
+
+                      // Unit Price
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
+                        alignment: pw.Alignment.center,
+                        child: pw.Text(
+                          formatCurrency(s.sellPrice),
+                          style: const pw.TextStyle(
+                            fontSize: 8,
+                            color: PdfColors.grey900,
+                          ),
+                        ),
+                      ),
+
+                      // Total Price
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
+                        alignment: pw.Alignment.centerRight,
+                        child: pw.Text(
+                          formatCurrency(totalPrice),
+                          style: const pw.TextStyle(
+                            fontSize: 8,
+                            color: PdfColors.grey900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              tableRows.add(
+                pw.TableRow(
+                  children: [
+                    // 0: Sl. (Vertically and horizontally centered across the entire invoice)
+                    pw.Container(
+                      alignment: pw.Alignment.center,
+                      padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      child: pw.Text(
+                        '$invoiceSl',
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(
+                          fontSize: 8,
+                          color: PdfColors.grey900,
+                        ),
+                      ),
+                    ),
+
+                    // 1: Invoice (Vertically and horizontally centered across the entire invoice)
+                    pw.Container(
+                      alignment: pw.Alignment.center,
+                      padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      child: pw.Text(
+                        invoiceIdStr,
+                        textAlign: pw.TextAlign.center,
+                        style: const pw.TextStyle(
+                          fontSize: 8,
+                          color: PdfColors.grey900,
+                        ),
+                      ),
+                    ),
+
+                    // 2: Items Sub-table
+                    pw.Table(
+                      border: const pw.TableBorder(
+                        horizontalInside: pw.BorderSide(
+                          color: PdfColors.grey400,
+                          width: 0.5,
+                        ),
+                        verticalInside: pw.BorderSide(
+                          color: PdfColors.black,
+                          width: 0.5,
+                        ),
+                      ),
+                      columnWidths: itemsColumnWidths,
+                      children: itemRows,
+                    ),
+                  ],
                 ),
-                headerStyle: pw.TextStyle(
-                  fontSize: 8.5,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.grey900,
-                ),
-                cellStyle: const pw.TextStyle(
-                  fontSize: 8,
-                  color: PdfColors.grey900,
+              );
+            }
+
+            widgets.add(
+              pw.Table(
+                defaultVerticalAlignment: pw.TableCellVerticalAlignment.full,
+                border: const pw.TableBorder(
+                  top: pw.BorderSide(color: PdfColors.black, width: 0.5),
+                  bottom: pw.BorderSide(color: PdfColors.black, width: 0.5),
+                  left: pw.BorderSide(color: PdfColors.black, width: 0.5),
+                  right: pw.BorderSide(color: PdfColors.black, width: 0.5),
+                  horizontalInside: pw.BorderSide(
+                    color: PdfColors.black,
+                    width: 0.5,
+                  ),
+                  verticalInside: pw.BorderSide(
+                    color: PdfColors.black,
+                    width: 0.5,
+                  ),
                 ),
                 columnWidths: const {
                   0: pw.FixedColumnWidth(28), // Sl.
                   1: pw.FixedColumnWidth(80), // Invoice
-                  2: pw.FlexColumnWidth(2.0), // Product Name
-                  3: pw.FixedColumnWidth(80), // Part No
-                  4: pw.FixedColumnWidth(35), // Qty
-                  5: pw.FixedColumnWidth(65), // Unit Price
-                  6: pw.FixedColumnWidth(70), // Total Price
+                  2: pw.FlexColumnWidth(1.0), // Items
                 },
-                cellAlignments: {
-                  0: pw.Alignment.center,
-                  1: pw.Alignment.center,
-                  2: pw.Alignment.centerLeft,
-                  3: pw.Alignment.centerLeft,
-                  4: pw.Alignment.center,
-                  5: pw.Alignment.center,
-                  6: pw.Alignment.centerRight,
-                },
-                headers: [
-                  'Sl.',
-                  'Invoice',
-                  'Product Name',
-                  'Part No',
-                  'Qty',
-                  'Unit Price',
-                  'Total Price',
-                ],
-                data: preformattedRows,
+                children: tableRows,
               ),
             );
           }

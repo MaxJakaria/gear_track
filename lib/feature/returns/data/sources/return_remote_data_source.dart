@@ -3,16 +3,43 @@ import 'package:gear_track/feature/receipt_verification/data/models/invoice_mode
 import 'package:gear_track/feature/returns/data/models/return_model.dart';
 import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 
+/// Data transfer object holding paginated return models and server aggregation statistics.
+class PaginatedReturnsResponse {
+  final List<ReturnModel> returns;
+  final int totalCount;
+  final double totalRefundsAllTime;
+  final int totalItemsReturnedAllTime;
+  final int currentPage;
+  final int totalPages;
+  final bool hasMore;
+
+  const PaginatedReturnsResponse({
+    required this.returns,
+    required this.totalCount,
+    required this.totalRefundsAllTime,
+    required this.totalItemsReturnedAllTime,
+    required this.currentPage,
+    required this.totalPages,
+    required this.hasMore,
+  });
+}
+
 /// Contract for handling return operations and Firestore transaction synchronizations.
 abstract class ReturnRemoteDataSource {
   /// Processes a customer return, updates invoice status, and restores inventory stock.
   Future<ReturnModel> processReturn(ReturnModel returnModel);
 
-  /// Retrieves the history of all processed returns ordered by date.
-  Future<List<ReturnModel>> getReturns();
+  /// Retrieves a paginated slice of returns directly from Firestore with limit and cursors.
+  Future<PaginatedReturnsResponse> getReturns({
+    int page = 1,
+    int pageSize = 10,
+  });
 
   /// Fetches the details of an existing customer invoice by its unique ID.
   Future<InvoiceModel> getInvoiceForReturn(String invoiceId);
+
+  /// Searches invoices strictly by Customer Name (partyName) or Invoice ID (invoiceId).
+  Future<List<InvoiceModel>> searchInvoicesForReturn(String query);
 }
 
 /// Internal lightweight record to bundle an item with its Firestore product and batch references.
@@ -25,8 +52,12 @@ typedef _RestockItem = ({
 /// Implementation of [ReturnRemoteDataSource] backed by Firebase Cloud Firestore.
 class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
   final FirebaseFirestore firestore;
+  final Map<int, DocumentSnapshot> _lastDocOfPage = {};
+  int _cachedTotalCount = 0;
+  double _cachedTotalRefunds = 0.0;
+  int _cachedTotalItems = 0;
 
-  const ReturnRemoteDataSourceImpl({required this.firestore});
+  ReturnRemoteDataSourceImpl({required this.firestore});
 
   // ---------------------------------------------------------------------------
   // Reference Resolution Helpers
@@ -109,6 +140,10 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
 
   @override
   Future<ReturnModel> processReturn(ReturnModel returnModel) async {
+    // Invalidate pagination cache so newly processed return appears on page 1
+    _lastDocOfPage.clear();
+    _cachedTotalCount = 0;
+
     // Pre-resolve restocking targets outside the transaction to avoid async queries inside it
     final restockItems = returnModel.items.where((i) => i.restock).toList();
     final resolvedItems = await Future.wait(
@@ -315,12 +350,96 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<List<ReturnModel>> getReturns() async {
-    final snapshot = await firestore
-        .collection('returns')
-        .orderBy('returnDate', descending: true)
-        .get();
-    return snapshot.docs.map((doc) => ReturnModel.fromFirestore(doc)).toList();
+  Future<PaginatedReturnsResponse> getReturns({
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    // 1. Refresh server-side total count on page 1 or if uninitialized
+    if (page == 1 || _cachedTotalCount == 0) {
+      _lastDocOfPage.clear();
+      try {
+        final countSnap = await firestore.collection('returns').count().get();
+        _cachedTotalCount = countSnap.count ?? 0;
+      } catch (_) {}
+    }
+
+    // 2. Query Firestore with cursor and limit
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = [];
+    if (page == 1) {
+      final snapshot = await firestore
+          .collection('returns')
+          .orderBy('returnDate', descending: true)
+          .limit(pageSize)
+          .get();
+      docs = snapshot.docs;
+      if (docs.isNotEmpty) {
+        _lastDocOfPage[1] = docs.last;
+      }
+    } else {
+      final prevDoc = _lastDocOfPage[page - 1];
+      if (prevDoc != null) {
+        final snapshot = await firestore
+            .collection('returns')
+            .orderBy('returnDate', descending: true)
+            .startAfterDocument(prevDoc)
+            .limit(pageSize)
+            .get();
+        docs = snapshot.docs;
+        if (docs.isNotEmpty) {
+          _lastDocOfPage[page] = docs.last;
+        }
+      } else {
+        // Fallback if previous page boundary isn't cached:
+        final snapshot = await firestore
+            .collection('returns')
+            .orderBy('returnDate', descending: true)
+            .limit(page * pageSize)
+            .get();
+        for (int i = 0; i < page; i++) {
+          final endIdx = ((i + 1) * pageSize) - 1;
+          if (endIdx < snapshot.docs.length) {
+            _lastDocOfPage[i + 1] = snapshot.docs[endIdx];
+          } else if (snapshot.docs.isNotEmpty) {
+            _lastDocOfPage[i + 1] = snapshot.docs.last;
+          }
+        }
+        final startIndex = (page - 1) * pageSize;
+        if (startIndex < snapshot.docs.length) {
+          docs = snapshot.docs.sublist(
+            startIndex,
+            (startIndex + pageSize).clamp(0, snapshot.docs.length),
+          );
+        }
+      }
+    }
+
+    final returnModels =
+        docs.map((doc) => ReturnModel.fromFirestore(doc)).toList();
+
+    // Compute metrics on page 1
+    if (page == 1 || _cachedTotalRefunds == 0.0) {
+      _cachedTotalRefunds =
+          returnModels.fold(0.0, (s, r) => s + r.totalRefundAmount);
+      _cachedTotalItems = returnModels.fold(0, (s, r) => s + r.totalQuantity);
+    }
+
+    if (_cachedTotalCount == 0 && docs.isNotEmpty) {
+      _cachedTotalCount = docs.length;
+    }
+
+    final totalPages = _cachedTotalCount <= 0
+        ? 1
+        : (_cachedTotalCount / pageSize).ceil();
+
+    return PaginatedReturnsResponse(
+      returns: returnModels,
+      totalCount: _cachedTotalCount,
+      totalRefundsAllTime: _cachedTotalRefunds,
+      totalItemsReturnedAllTime: _cachedTotalItems,
+      currentPage: page,
+      totalPages: totalPages,
+      hasMore: page < totalPages,
+    );
   }
 
   @override
@@ -335,5 +454,55 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
       );
     }
     return InvoiceModel.fromFirestore(doc);
+  }
+
+  @override
+  Future<List<InvoiceModel>> searchInvoicesForReturn(String query) async {
+    final cleanQuery = query.trim().toLowerCase();
+    if (cleanQuery.isEmpty) return [];
+
+    final List<InvoiceModel> results = [];
+    final Set<String> processedInvoiceIds = {};
+
+    // 1. Exact document ID lookup
+    try {
+      final doc =
+          await firestore.collection('invoices').doc(query.trim()).get();
+      if (doc.exists) {
+        final model = InvoiceModel.fromFirestore(doc);
+        if (!model.isFullyReturned && model.remainingReturnableItems > 0) {
+          results.add(model);
+          processedInvoiceIds.add(model.invoiceId);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Query recent invoices ordered by saleDate descending
+    final snapshot = await firestore
+        .collection('invoices')
+        .orderBy('saleDate', descending: true)
+        .limit(200)
+        .get();
+
+    for (final doc in snapshot.docs) {
+      if (processedInvoiceIds.contains(doc.id)) continue;
+      final model = InvoiceModel.fromFirestore(doc);
+
+      // Strictly matches Customer Name (partyName) or Invoice ID (invoiceId)
+      final bool invoiceIdMatches =
+          model.invoiceId.toLowerCase().contains(cleanQuery);
+      final bool customerNameMatches =
+          model.partyName.toLowerCase().contains(cleanQuery);
+
+      if (invoiceIdMatches || customerNameMatches) {
+        // Exclude invoices where all items have already been returned
+        if (!model.isFullyReturned && model.remainingReturnableItems > 0) {
+          results.add(model);
+          processedInvoiceIds.add(model.invoiceId);
+        }
+      }
+    }
+
+    return results;
   }
 }

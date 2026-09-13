@@ -15,8 +15,13 @@ import 'package:gear_track/feature/returns/presentation/widgets/return_summary_c
 /// Minimalist, high-end return processing page matching GearTrack's luxury UI
 class ProcessReturnPage extends StatefulWidget {
   final InvoiceEntity invoice;
+  final int? initialItemIndex;
 
-  const ProcessReturnPage({super.key, required this.invoice});
+  const ProcessReturnPage({
+    super.key,
+    required this.invoice,
+    this.initialItemIndex,
+  });
 
   @override
   State<ProcessReturnPage> createState() => _ProcessReturnPageState();
@@ -32,7 +37,10 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
   void initState() {
     super.initState();
     for (int i = 0; i < widget.invoice.items.length; i++) {
-      _selectedQuantities[i] = 0;
+      final isTarget =
+          widget.initialItemIndex != null && widget.initialItemIndex == i;
+      final returnable = widget.invoice.items[i].returnableQuantity;
+      _selectedQuantities[i] = isTarget && returnable > 0 ? 1 : 0;
       _restockMap[i] = true;
       _reasonMap[i] = ReturnItemTile.returnReasons.first;
     }

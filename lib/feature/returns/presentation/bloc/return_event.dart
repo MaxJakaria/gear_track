@@ -9,7 +9,16 @@ abstract class ReturnEvent extends Equatable {
 }
 
 class FetchReturnsEvent extends ReturnEvent {
-  const FetchReturnsEvent();
+  final int page;
+  final bool forceRefresh;
+
+  const FetchReturnsEvent({
+    this.page = 1,
+    this.forceRefresh = false,
+  });
+
+  @override
+  List<Object?> get props => [page, forceRefresh];
 }
 
 class FetchInvoiceForReturnEvent extends ReturnEvent {
@@ -32,4 +41,17 @@ class ProcessReturnEvent extends ReturnEvent {
 
 class ResetReturnStateEvent extends ReturnEvent {
   const ResetReturnStateEvent();
+}
+
+class SearchInvoicesForReturnEvent extends ReturnEvent {
+  final String query;
+
+  const SearchInvoicesForReturnEvent(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
+class ClearInvoiceSearchEvent extends ReturnEvent {
+  const ClearInvoiceSearchEvent();
 }

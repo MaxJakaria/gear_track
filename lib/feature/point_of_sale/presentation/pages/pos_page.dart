@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
-import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
@@ -14,7 +12,6 @@ import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart'
 import 'package:gear_track/feature/receipt_verification/presentation/pages/receipt_verification_page.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/pages/returns_page.dart';
-import 'package:gear_track/init_dependencies.dart';
 
 /// Point of Sale (POS) Primary Screen Page
 class PosPage extends StatefulWidget {
@@ -91,56 +88,14 @@ class _PosPageState extends State<PosPage> {
               // Immediately refresh Reports so analytics and revenue reflect this sale
               context.read<ReportsBloc>().add(const RefreshReportsEvent());
 
-              if (state.generatePdf && state.checkoutCartItems.isNotEmpty) {
-                if (mounted) {
-                  setState(() {
-                    _isGeneratingPdf = true;
-                  });
-                }
-
-                ShopSettings shopSettings = const ShopSettings();
-                try {
-                  final getShopSettings = serviceLocator<GetShopSettings>();
-                  final result = await getShopSettings().timeout(
-                    const Duration(seconds: 2),
-                  );
-                  result.fold((_) {}, (settings) => shopSettings = settings);
-                } catch (_) {}
-
-                try {
-                  final doc = await PdfReceiptService.generateReceipt(
-                    state.checkoutCartItems,
-                    state.totalPaid,
-                    shopSettings: shopSettings,
-                    invoice: state.invoice,
-                  ).timeout(const Duration(seconds: 6));
-                  final bytes = await doc.save().timeout(
-                    const Duration(seconds: 4),
-                  );
-
-                  if (!context.mounted) return;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PdfPreviewPage(pdfBytes: bytes),
-                    ),
-                  );
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to generate PDF: $e'),
-                      backgroundColor: const Color(0xFFD32F2F),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                } finally {
-                  if (mounted) {
-                    setState(() {
-                      _isGeneratingPdf = false;
-                    });
-                  }
-                }
+              if (state.generatePdf && state.pdfBytes != null) {
+                if (!context.mounted) return;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PdfPreviewPage(pdfBytes: state.pdfBytes!),
+                  ),
+                );
               } else {
                 if (!context.mounted) return;
                 final invoice = state.invoice;
@@ -150,28 +105,19 @@ class _PosPageState extends State<PosPage> {
                   billNo: invoice?.invoiceId,
                 );
 
-                // Auto-save receipt PDF to device in background
-                Future.microtask(() async {
-                  try {
-                    ShopSettings shopSettings = const ShopSettings();
+                if (state.pdfBytes != null) {
+                  // Auto-save pre-generated receipt PDF to device in background
+                  Future.microtask(() async {
                     try {
-                      final getShopSettings = serviceLocator<GetShopSettings>();
-                      final result = await getShopSettings().timeout(
-                        const Duration(seconds: 2),
+                      await PdfReceiptService.saveReceiptBytesToDevice(
+                        bytes: state.pdfBytes!,
+                        fileName: fileName,
                       );
-                      result.fold((_) {}, (settings) => shopSettings = settings);
-                    } catch (_) {}
-
-                    await PdfReceiptService.saveReceiptToDevice(
-                      items: state.checkoutCartItems,
-                      totalAmount: state.totalPaid,
-                      shopSettings: shopSettings,
-                      invoice: state.invoice,
-                    );
-                  } catch (e) {
-                    debugPrint('Background PDF receipt auto-save failed: $e');
-                  }
-                });
+                    } catch (e) {
+                      debugPrint('Background PDF receipt auto-save failed: $e');
+                    }
+                  });
+                }
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

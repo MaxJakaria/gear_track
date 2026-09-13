@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -121,6 +122,43 @@ class PdfReceiptService {
     return candidates.isNotEmpty
         ? candidates.first
         : await getApplicationDocumentsDirectory();
+  }
+
+  /// Writes pre-generated PDF bytes directly to device default Download storage.
+  static Future<File> saveReceiptBytesToDevice({
+    required Uint8List bytes,
+    required String fileName,
+    Directory? customDirectory,
+  }) async {
+    if (customDirectory != null) {
+      if (!await customDirectory.exists()) {
+        await customDirectory.create(recursive: true);
+      }
+      final file = File(
+        '${customDirectory.path}${Platform.pathSeparator}$fileName',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return file;
+    }
+
+    final candidates = await getCandidateDownloadDirectories();
+    for (final dir in candidates) {
+      try {
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        final file = File('${dir.path}${Platform.pathSeparator}$fileName');
+        await file.writeAsBytes(bytes, flush: true);
+        return file;
+      } catch (_) {
+        // Try next candidate directory
+      }
+    }
+
+    final fallbackDir = await getApplicationDocumentsDirectory();
+    final file = File('${fallbackDir.path}${Platform.pathSeparator}$fileName');
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
   }
 
   /// Generates the receipt and writes the PDF file directly to device default Download storage.

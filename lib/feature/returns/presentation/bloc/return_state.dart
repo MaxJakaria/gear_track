@@ -22,17 +22,84 @@ class ReturnLoading extends ReturnState {
 
 class ReturnsLoadedSuccess extends ReturnState {
   final List<ReturnEntity> returns;
+  final int currentPage;
+  final int totalPages;
+  final int totalCount;
+  final double totalRefundsAllTime;
+  final int totalItemsReturnedAllTime;
+  final bool hasMore;
+  final bool isHistoryLoading;
+  final List<InvoiceEntity>? searchedInvoices;
+  final bool isSearchingInvoice;
+  final String searchQuery;
+  final String? searchError;
 
-  const ReturnsLoadedSuccess(this.returns);
+  const ReturnsLoadedSuccess(
+    this.returns, {
+    this.currentPage = 1,
+    this.totalPages = 1,
+    this.totalCount = 0,
+    this.totalRefundsAllTime = 0.0,
+    this.totalItemsReturnedAllTime = 0,
+    this.hasMore = false,
+    this.isHistoryLoading = false,
+    this.searchedInvoices,
+    this.isSearchingInvoice = false,
+    this.searchQuery = '',
+    this.searchError,
+  });
 
-  double get totalRefundsAllTime =>
-      returns.fold(0.0, (sum, r) => sum + r.totalRefundAmount);
+  bool get hasSearched => searchedInvoices != null;
 
-  int get totalItemsReturnedAllTime =>
-      returns.fold(0, (sum, r) => sum + r.totalQuantity);
+  ReturnsLoadedSuccess copyWith({
+    List<ReturnEntity>? returns,
+    int? currentPage,
+    int? totalPages,
+    int? totalCount,
+    double? totalRefundsAllTime,
+    int? totalItemsReturnedAllTime,
+    bool? hasMore,
+    bool? isHistoryLoading,
+    List<InvoiceEntity>? searchedInvoices,
+    bool? isSearchingInvoice,
+    String? searchQuery,
+    String? searchError,
+    bool clearSearchedInvoices = false,
+  }) {
+    return ReturnsLoadedSuccess(
+      returns ?? this.returns,
+      currentPage: currentPage ?? this.currentPage,
+      totalPages: totalPages ?? this.totalPages,
+      totalCount: totalCount ?? this.totalCount,
+      totalRefundsAllTime: totalRefundsAllTime ?? this.totalRefundsAllTime,
+      totalItemsReturnedAllTime:
+          totalItemsReturnedAllTime ?? this.totalItemsReturnedAllTime,
+      hasMore: hasMore ?? this.hasMore,
+      isHistoryLoading: isHistoryLoading ?? this.isHistoryLoading,
+      searchedInvoices: clearSearchedInvoices
+          ? null
+          : (searchedInvoices ?? this.searchedInvoices),
+      isSearchingInvoice: isSearchingInvoice ?? this.isSearchingInvoice,
+      searchQuery: searchQuery ?? this.searchQuery,
+      searchError: searchError,
+    );
+  }
 
   @override
-  List<Object?> get props => [returns];
+  List<Object?> get props => [
+        returns,
+        currentPage,
+        totalPages,
+        totalCount,
+        totalRefundsAllTime,
+        totalItemsReturnedAllTime,
+        hasMore,
+        isHistoryLoading,
+        searchedInvoices,
+        isSearchingInvoice,
+        searchQuery,
+        searchError,
+      ];
 }
 
 class InvoiceLoadedForReturnSuccess extends ReturnState {

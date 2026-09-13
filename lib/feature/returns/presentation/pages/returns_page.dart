@@ -3,19 +3,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
 import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
-import 'package:gear_track/core/utils/currency_formatter.dart';
+import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/pages/pdf_preview_page.dart';
-import 'package:gear_track/feature/receipt_verification/presentation/pages/receipt_verification_page.dart';
+import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
 import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_event.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_state.dart';
 import 'package:gear_track/feature/returns/presentation/pages/process_return_page.dart';
-import 'package:gear_track/feature/returns/presentation/widgets/return_history_card.dart';
+import 'package:gear_track/feature/returns/presentation/widgets/process_return_tab.dart';
+import 'package:gear_track/feature/returns/presentation/widgets/return_history_tab.dart';
 import 'package:gear_track/feature/returns/utils/pdf_return_voucher_service.dart';
 import 'package:gear_track/init_dependencies.dart';
 
-/// Minimalist, high-end returns & refunds hub matching GearTrack's luxury UI
+/// Minimalist, high-end returns & refunds hub matching GearTrack's luxury UI.
+/// Features a two-tab workflow:
+/// 1. Process Return: Search sold invoices by Customer Name (partyName) or Invoice ID (invoiceId),
+///    inspect products in expandable cards, and proceed to return.
+/// 2. Return History: Database-paginated completed return records, metrics summary, and PDF receipt reprints.
 class ReturnsPage extends StatefulWidget {
   const ReturnsPage({super.key});
 
@@ -23,40 +28,63 @@ class ReturnsPage extends StatefulWidget {
   State<ReturnsPage> createState() => _ReturnsPageState();
 }
 
-class _ReturnsPageState extends State<ReturnsPage> {
+class _ReturnsPageState extends State<ReturnsPage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
-  bool _isSearchingInvoice = false;
-  String _searchQuery = '';
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     final returnState = context.read<ReturnBloc>().state;
     if (returnState is! ReturnsLoadedSuccess) {
-      context.read<ReturnBloc>().add(const FetchReturnsEvent());
+      context.read<ReturnBloc>().add(const FetchReturnsEvent(page: 1));
     }
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   void _clearSearch() {
     _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-    });
+    context.read<ReturnBloc>().add(const ClearInvoiceSearchEvent());
   }
 
-  void _searchInvoice() {
+  void _searchInvoices() {
     final query = _searchController.text.trim();
-    if (query.isEmpty) return;
-    setState(() {
-      _isSearchingInvoice = true;
-    });
-    context.read<ReturnBloc>().add(FetchInvoiceForReturnEvent(query));
+    if (query.isEmpty) {
+      _clearSearch();
+      return;
+    }
+    context.read<ReturnBloc>().add(SearchInvoicesForReturnEvent(query));
+  }
+
+  Future<void> _openProcessReturn(
+    InvoiceEntity invoice, {
+    int? initialItemIndex,
+  }) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProcessReturnPage(
+          invoice: invoice,
+          initialItemIndex: initialItemIndex,
+        ),
+      ),
+    );
+    if (result == true && mounted) {
+      context.read<ReturnBloc>().add(
+        const FetchReturnsEvent(page: 1, forceRefresh: true),
+      );
+    }
   }
 
   Future<void> _reprintVoucher(ReturnEntity returnRecord) async {
@@ -96,35 +124,110 @@ class _ReturnsPageState extends State<ReturnsPage> {
     final isDark = theme.brightness == Brightness.dark;
 
     final cardBg = isDark ? AppColors.surfaceDark : AppColors.surfaceLight;
+    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Returns & Refunds',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: const Text('Returns & Refunds'),
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _tabController.index == 0
+                      ? AppGradientButton(
+                          onPressed: () {},
+                          label: 'Return',
+                          height: 38,
+                          borderRadius: 8,
+                          fontSize: 13,
+                        )
+                      : Material(
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => _tabController.animateTo(0),
+                            child: Container(
+                              height: 38,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: borderColor,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                'Return',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _tabController.index == 1
+                      ? AppGradientButton(
+                          onPressed: () {},
+                          label: 'History',
+                          height: 38,
+                          borderRadius: 8,
+                          fontSize: 13,
+                        )
+                      : Material(
+                          color: isDark
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => _tabController.animateTo(1),
+                            child: Container(
+                              height: 38,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: borderColor,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                'History',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
       body: SafeArea(
         child: BlocConsumer<ReturnBloc, ReturnState>(
           listener: (context, state) {
-            if (state is! ReturnLoading && _isSearchingInvoice) {
-              setState(() {
-                _isSearchingInvoice = false;
-              });
-            }
-            if (state is InvoiceLoadedForReturnSuccess) {
-              _isSearchingInvoice = false;
-              _clearSearch();
-              final invoice = state.invoice;
-              context.read<ReturnBloc>().add(ResetReturnStateEvent());
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProcessReturnPage(invoice: invoice),
-                ),
-              );
-            } else if (state is ReturnFailure) {
-              _isSearchingInvoice = false;
+            if (state is ReturnFailure) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.errorMessage),
@@ -135,403 +238,38 @@ class _ReturnsPageState extends State<ReturnsPage> {
                   ),
                 ),
               );
+            } else if (state is InvoiceLoadedForReturnSuccess) {
+              _clearSearch();
+              final invoice = state.invoice;
+              context.read<ReturnBloc>().add(const ResetReturnStateEvent());
+              _openProcessReturn(invoice);
             }
           },
           builder: (context, state) {
-            final List<ReturnEntity> returnsList;
-            double totalRefunds = 0.0;
-            int totalItemsCount = 0;
-
-            if (state is ReturnsLoadedSuccess) {
-              returnsList = state.returns;
-              totalRefunds = state.totalRefundsAllTime;
-              totalItemsCount = state.totalItemsReturnedAllTime;
-            } else {
-              returnsList = [];
-            }
-
-            final isSearching = _isSearchingInvoice && state is ReturnLoading;
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<ReturnBloc>().add(const FetchReturnsEvent());
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Process Return
+                ProcessReturnTab(
+                  searchController: _searchController,
+                  state: state,
+                  onSearch: _searchInvoices,
+                  onClearSearch: _clearSearch,
+                  onOpenProcessReturn: _openProcessReturn,
+                  isDark: isDark,
+                  cardBg: cardBg,
+                  borderColor: borderColor,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Minimal Metrics Card
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: isDark ? 0.25 : 0.03,
-                            ),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'TOTAL REFUNDED',
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B),
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                totalRefunds.toCurrency(),
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.3,
-                                  color: isDark
-                                      ? const Color(0xFFF87171)
-                                      : const Color(0xFFE11D48),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '${returnsList.length} ${returnsList.length == 1 ? 'Return' : 'Returns'}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF0F172A),
-                                  ),
-                                ),
-                                Text(
-                                  '$totalItemsCount Items',
-                                  style: TextStyle(
-                                    fontSize: 10.5,
-                                    color: isDark
-                                        ? const Color(0xFF94A3B8)
-                                        : const Color(0xFF64748B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
 
-                    const SizedBox(height: 12),
-
-                    // Minimal Invoice ID Input & QR Shortcut
-                    TextField(
-                      controller: _searchController,
-                      style: const TextStyle(fontSize: 13),
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val.trim().toLowerCase();
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Enter Invoice ID...',
-                        hintStyle: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF94A3B8),
-                        ),
-                        filled: true,
-                        fillColor: cardBg,
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: isDark
-                                ? AppColors.primaryButtonDark
-                                : AppColors.primaryButtonLight,
-                            width: 1.2,
-                          ),
-                        ),
-                        suffixIcon: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (_searchController.text.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                                tooltip: 'Clear',
-                                color: isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                                onPressed: _clearSearch,
-                              ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.qr_code_scanner_rounded,
-                                size: 20,
-                              ),
-                              tooltip: 'Scan Receipt',
-                              color: isDark
-                                  ? AppColors.primaryButtonDark
-                                  : AppColors.primaryButtonLight,
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ReceiptVerificationPage(
-                                          allowReturn: true,
-                                        ),
-                                  ),
-                                );
-                              },
-                            ),
-                            if (isSearching)
-                              const Padding(
-                                padding: EdgeInsets.only(right: 12, left: 4),
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
-                            else
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 20,
-                                ),
-                                tooltip: 'Process Return',
-                                onPressed: _searchInvoice,
-                              ),
-                          ],
-                        ),
-                      ),
-                      onSubmitted: (_) => _searchInvoice(),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Past Returns Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'RETURN HISTORY',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                            color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
-                          ),
-                        ),
-                        if (returnsList.isNotEmpty)
-                          Text(
-                            _searchQuery.isEmpty
-                                ? '${returnsList.length} records'
-                                : '${returnsList.where((r) {
-                                    final q = _searchQuery;
-                                    return r.invoiceId.toLowerCase().contains(q) || r.returnId.toLowerCase().contains(q) || r.reason.toLowerCase().contains(q) || r.items.any((item) => item.itemName.toLowerCase().contains(q) || item.partNo.toLowerCase().contains(q));
-                                  }).length} of ${returnsList.length}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Returns List or Empty View
-                    if (!_isSearchingInvoice &&
-                        state is ReturnLoading &&
-                        returnsList.isEmpty)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(32),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    else if (returnsList.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 36,
-                          horizontal: 20,
-                        ),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.assignment_turned_in_outlined,
-                              size: 40,
-                              color: isDark
-                                  ? const Color(0xFF64748B)
-                                  : const Color(0xFF94A3B8),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'No Returns Recorded Yet',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? Colors.white70
-                                    : const Color(0xFF334155),
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              'Returned items and refunds will appear here.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      ...() {
-                        final filtered = returnsList.where((r) {
-                          if (_searchQuery.isEmpty) return true;
-                          final q = _searchQuery;
-                          final matchInvoice = r.invoiceId
-                              .toLowerCase()
-                              .contains(q);
-                          final matchReturn = r.returnId.toLowerCase().contains(
-                            q,
-                          );
-                          final matchReason = r.reason.toLowerCase().contains(
-                            q,
-                          );
-                          final matchItem = r.items.any(
-                            (item) =>
-                                item.itemName.toLowerCase().contains(q) ||
-                                item.partNo.toLowerCase().contains(q),
-                          );
-                          return matchInvoice ||
-                              matchReturn ||
-                              matchReason ||
-                              matchItem;
-                        }).toList();
-
-                        if (filtered.isEmpty) {
-                          return [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 32,
-                                horizontal: 20,
-                              ),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.search_off_rounded,
-                                    size: 36,
-                                    color: isDark
-                                        ? const Color(0xFF64748B)
-                                        : const Color(0xFF94A3B8),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'No matching return history',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark
-                                          ? Colors.white70
-                                          : const Color(0xFF334155),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Tap the arrow button to fetch this invoice and process a return.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark
-                                          ? const Color(0xFF94A3B8)
-                                          : const Color(0xFF64748B),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ];
-                        }
-
-                        return filtered.map((ret) {
-                          return ReturnHistoryCard(
-                            returnRecord: ret,
-                            onPrintVoucher: () => _reprintVoucher(ret),
-                          );
-                        }).toList();
-                      }(),
-                  ],
+                // Tab 2: Return History (Database-paginated)
+                ReturnHistoryTab(
+                  state: state,
+                  onPrintVoucher: _reprintVoucher,
+                  isDark: isDark,
+                  cardBg: cardBg,
+                  borderColor: borderColor,
                 ),
-              ),
+              ],
             );
           },
         ),

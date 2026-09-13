@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
+import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/cart_item.dart';
 import 'package:gear_track/feature/point_of_sale/domain/entities/sale_entity.dart';
@@ -11,7 +14,9 @@ import 'package:gear_track/feature/point_of_sale/domain/usecases/checkout_cart.d
 import 'package:gear_track/feature/point_of_sale/domain/usecases/get_product_sales.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/get_sales.dart';
 import 'package:gear_track/feature/point_of_sale/domain/usecases/save_invoice.dart';
+import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
 import 'package:gear_track/feature/receipt_verification/domain/entities/invoice_entity.dart';
+import 'package:gear_track/init_dependencies.dart';
 
 part 'pos_event.dart';
 part 'pos_state.dart';
@@ -382,27 +387,69 @@ class PosBloc extends Bloc<PosEvent, PosState> {
         )
         .toList();
 
-    // High-Performance Single-Transaction Atomic Checkout
+    // -------------------------------------------------------------------------
+    // STEP 1: PRE-FLIGHT PDF GENERATION (Generate PDF in memory first)
+    // -------------------------------------------------------------------------
+    ShopSettings shopSettings = const ShopSettings();
+    try {
+      final getShopSettings = serviceLocator<GetShopSettings>();
+      final result = await getShopSettings().timeout(
+        const Duration(seconds: 2),
+      );
+      result.fold((_) {}, (settings) => shopSettings = settings);
+    } catch (_) {}
+
+    Uint8List? generatedPdfBytes;
+    try {
+      final doc = await PdfReceiptService.generateReceipt(
+        checkoutItems,
+        totalPaid,
+        shopSettings: shopSettings,
+        invoice: invoice,
+      ).timeout(const Duration(seconds: 6));
+      generatedPdfBytes = await doc.save().timeout(
+        const Duration(seconds: 4),
+      );
+    } catch (pdfError) {
+      // If PDF generation fails, STOP immediately!
+      // Do NOT touch Firestore database, do NOT clear cart items.
+      emit(PosError('Failed to generate receipt PDF: $pdfError'));
+      _emitLoadedState(emit);
+      return;
+    }
+
+    // -------------------------------------------------------------------------
+    // STEP 2: ATOMIC DATABASE TRANSACTION (Update database only after PDF success)
+    // -------------------------------------------------------------------------
     final result = await checkoutCart(sales: salesList, invoice: invoice);
 
-    result.fold((failure) => emit(PosError(failure.message)), (_) {
-      final oldCart = List<CartItem>.from(_cartItems);
-      _cartItems = [];
-      _saveCartToStorage();
-      // Optimistically prepend newly completed sales locally to save hundreds of Firestore reads
-      _allSales = [...salesList, ..._allSales];
+    result.fold(
+      (failure) {
+        // Database update failed: Cart remains intact, emit error
+        emit(PosError(failure.message));
+        _emitLoadedState(emit);
+      },
+      (_) {
+        // Database update succeeded! Now clear cart and save local state
+        final oldCart = List<CartItem>.from(_cartItems);
+        _cartItems = [];
+        _saveCartToStorage();
+        // Optimistically prepend newly completed sales locally to save hundreds of Firestore reads
+        _allSales = [...salesList, ..._allSales];
 
-      emit(
-        SaleAddedSuccess(
-          checkoutCartItems: oldCart,
-          totalPaid: totalPaid,
-          invoice: invoice,
-          generatePdf: event.generatePdf,
-          message: event.generatePdf
-              ? 'Sale completed & bill generated!'
-              : 'Sale recorded successfully without bill.',
-        ),
-      );
-    });
+        emit(
+          SaleAddedSuccess(
+            checkoutCartItems: oldCart,
+            totalPaid: totalPaid,
+            invoice: invoice,
+            generatePdf: event.generatePdf,
+            pdfBytes: generatedPdfBytes,
+            message: event.generatePdf
+                ? 'Sale completed & bill generated!'
+                : 'Sale recorded successfully without bill.',
+          ),
+        );
+      },
+    );
   }
 }
