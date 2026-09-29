@@ -120,6 +120,73 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
   }
 
   void _submitReturn() {
+    if (widget.invoice.hasDue) {
+      final existingDue = widget.invoice.dueAmount;
+      final returnVal = _totalRefundAmount;
+      final dueDeduction = returnVal > existingDue ? existingDue : returnVal;
+      final cashRefund = (returnVal - dueDeduction).clamp(0.0, double.infinity);
+      final remainingDue = (existingDue - dueDeduction).clamp(0.0, double.infinity);
+
+      showDialog<void>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Row(
+            children: [
+              Icon(Icons.assignment_return_rounded, color: Color(0xFF6366F1), size: 22),
+              SizedBox(width: 8),
+              Text(
+                'Confirm Return',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildDialogRow('Returned Goods Value', returnVal.toCurrency()),
+              const SizedBox(height: 6),
+              _buildDialogRow('Deducted from Due', '-${dueDeduction.toCurrency()}', isHighlight: true),
+              const SizedBox(height: 6),
+              _buildDialogRow('Remaining Due', remainingDue.toCurrency()),
+              const Divider(height: 16),
+              _buildDialogRow(
+                'Cash to Hand Customer',
+                cashRefund.toCurrency(),
+                isBold: true,
+                color: cashRefund > 0.001 ? const Color(0xFF10B981) : null,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(dialogCtx);
+                _executeSubmitReturn();
+              },
+              child: const Text('Confirm Return'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _executeSubmitReturn();
+    }
+  }
+
+  void _executeSubmitReturn() {
     final List<ReturnItemEntity> returnItems = [];
 
     for (int i = 0; i < widget.invoice.items.length; i++) {
@@ -240,6 +307,7 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           bottomNavigationBar: ReturnSummaryCard(
             totalReturnQuantity: _totalReturnQuantity,
             totalRefundAmount: _totalRefundAmount,
+            invoiceDueAmount: widget.invoice.dueAmount,
             restockedCount: _restockedCount,
             nonRestockedCount: _nonRestockedCount,
             isProcessing: isBusy,
@@ -395,12 +463,6 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                     ),
                   ),
 
-                  // Dynamic Refund Settlement Preview Box
-                  if (_totalReturnQuantity > 0) ...[
-                    const SizedBox(height: 10),
-                    _buildRefundSettlementPreview(isDark),
-                  ],
-
                   const SizedBox(height: 12),
 
                   // Section Header & Quick Select Action
@@ -504,130 +566,32 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
     );
   }
 
-  Widget _buildRefundSettlementPreview(bool isDark) {
-    final existingDue = widget.invoice.dueAmount;
-    final returnVal = _totalRefundAmount;
-    final dueDeduction = returnVal > existingDue ? existingDue : returnVal;
-    final cashRefund = (returnVal - dueDeduction).clamp(0.0, double.infinity);
-    final remainingDueAfter = (existingDue - dueDeduction).clamp(
-      0.0,
-      double.infinity,
-    );
-
-    final isDueAdjustment = existingDue > 0.001;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDueAdjustment
-            ? (isDark
-                  ? const Color(0xFF78350F).withValues(alpha: 0.25)
-                  : const Color(0xFFFEF3C7))
-            : (isDark
-                  ? const Color(0xFF064E3B).withValues(alpha: 0.25)
-                  : const Color(0xFFD1FAE5)),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDueAdjustment
-              ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
-              : const Color(0xFF10B981).withValues(alpha: 0.5),
-          width: 0.8,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isDueAdjustment
-                    ? Icons.info_outline_rounded
-                    : Icons.check_circle_outline_rounded,
-                size: 15,
-                color: isDueAdjustment
-                    ? const Color(0xFFD97706)
-                    : const Color(0xFF059669),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                isDueAdjustment
-                    ? 'REFUND SETTLEMENT BREAKDOWN'
-                    : 'FULL PAID INVOICE REFUND',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.4,
-                  color: isDueAdjustment
-                      ? (isDark
-                            ? const Color(0xFFFDE68A)
-                            : const Color(0xFF92400E))
-                      : (isDark
-                            ? const Color(0xFFA7F3D0)
-                            : const Color(0xFF065F46)),
-                ),
-              ),
-            ],
+  Widget _buildDialogRow(
+    String label,
+    String value, {
+    bool isHighlight = false,
+    bool isBold = false,
+    Color? color,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
           ),
-          const SizedBox(height: 6),
-          if (isDueAdjustment) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Returned Items Value: ${returnVal.toCurrency()}',
-                  style: const TextStyle(fontSize: 11.5),
-                ),
-                Text(
-                  'Deducted from Due: -${dueDeduction.toCurrency()}',
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFFEF4444),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Remaining Due After: ${remainingDueAfter.toCurrency()}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark
-                        ? const Color(0xFF94A3B8)
-                        : const Color(0xFF64748B),
-                  ),
-                ),
-                Text(
-                  'Cash Refund: ${cashRefund.toCurrency()}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: cashRefund > 0.001
-                        ? const Color(0xFF10B981)
-                        : (isDark
-                              ? const Color(0xFF94A3B8)
-                              : const Color(0xFF64748B)),
-                  ),
-                ),
-              ],
-            ),
-          ] else ...[
-            Text(
-              'Customer has fully paid for this invoice. Cash refund: ${returnVal.toCurrency()}',
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? const Color(0xFFA7F3D0)
-                    : const Color(0xFF065F46),
-              ),
-            ),
-          ],
-        ],
-      ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: (isHighlight || isBold) ? FontWeight.bold : FontWeight.w600,
+            color: color ?? (isHighlight ? const Color(0xFFEF4444) : null),
+          ),
+        ),
+      ],
     );
   }
 }
