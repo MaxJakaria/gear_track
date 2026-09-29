@@ -98,13 +98,6 @@ class _ProcessReturnTabState extends State<ProcessReturnTab> {
                 filled: true,
                 fillColor: cardBg,
                 isDense: true,
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  size: 20,
-                  color: isDark
-                      ? const Color(0xFF94A3B8)
-                      : const Color(0xFF64748B),
-                ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 12,
@@ -129,32 +122,32 @@ class _ProcessReturnTabState extends State<ProcessReturnTab> {
                 suffixIcon: ValueListenableBuilder<TextEditingValue>(
                   valueListenable: searchController,
                   builder: (context, value, _) {
-                    if (value.text.isNotEmpty) {
-                      return IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                        tooltip: 'Clear',
-                        color: isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF64748B),
-                        onPressed: onClearSearch,
-                      );
-                    }
-                    return IconButton(
-                      icon: const Icon(Icons.qr_code_scanner_rounded, size: 19),
-                      tooltip: 'Scan Receipt',
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ReceiptVerificationPage(
-                              allowReturn: true,
-                            ),
+                    final hasText = value.text.trim().isNotEmpty;
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (hasText)
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            tooltip: 'Clear',
+                            color: isDark
+                                ? const Color(0xFF94A3B8)
+                                : const Color(0xFF64748B),
+                            onPressed: onClearSearch,
                           ),
-                        );
-                      },
+                        IconButton(
+                          icon: const Icon(Icons.search_rounded, size: 20),
+                          tooltip: 'Search',
+                          color: hasText
+                              ? (isDark
+                                  ? AppColors.primaryButtonDark
+                                  : AppColors.primaryButtonLight)
+                              : (isDark
+                                  ? const Color(0xFF64748B)
+                                  : const Color(0xFF94A3B8)),
+                          onPressed: onSearch,
+                        ),
+                      ],
                     );
                   },
                 ),

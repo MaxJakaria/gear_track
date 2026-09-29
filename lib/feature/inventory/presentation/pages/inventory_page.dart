@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gear_track/init_dependencies.dart';
+import 'package:gear_track/core/domain/usecases/get_shop_settings.dart';
+import 'package:gear_track/core/entities/shop_settings.dart';
 import 'package:gear_track/core/widgets/app_drawer.dart';
 import 'package:gear_track/core/widgets/custom_confirm_delete_dialog.dart';
+import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_fab.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/add_product_sheet.dart';
@@ -14,6 +19,7 @@ import 'package:gear_track/feature/inventory/presentation/widgets/inventory_erro
 import 'package:gear_track/feature/inventory/presentation/widgets/product_list_view.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/batch_list_view.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/active_filter_banner.dart';
+import 'package:gear_track/feature/inventory/utils/pdf_inventory_service.dart';
 
 /// Clean Architecture Inventory Presentation Page
 class InventoryPage extends StatefulWidget {
@@ -28,6 +34,7 @@ class InventoryPage extends StatefulWidget {
 class _InventoryPageState extends State<InventoryPage> {
   final _searchController = TextEditingController();
   bool _isSearching = false;
+  bool _isExportingPdf = false;
   String? _expandedCardKey;
 
   @override
@@ -137,6 +144,166 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  String _getFilterLabel(StockFilter filter) {
+    switch (filter) {
+      case StockFilter.all:
+        return 'All Items';
+      case StockFilter.inStock:
+        return 'In Stock';
+      case StockFilter.lowStockProduct:
+        return 'Low Stock (Product)';
+      case StockFilter.lowStockBatch:
+        return 'Low Stock (Batch)';
+      case StockFilter.outOfStockProduct:
+        return 'Out of Stock (Product)';
+      case StockFilter.outOfStockBatch:
+        return 'Out of Stock (Batch)';
+    }
+  }
+
+  void _handleExportPdf() {
+    if (_isExportingPdf) return;
+
+    final inventoryState = context.read<InventoryBloc>().state;
+    if (inventoryState is! InventoryLoaded) return;
+
+    final isBatchFilter =
+        inventoryState.activeFilter == StockFilter.lowStockBatch ||
+        inventoryState.activeFilter == StockFilter.outOfStockBatch;
+
+    final List<GroupedProduct> itemsToExport = isBatchFilter
+        ? inventoryState.filteredBatchesGrouped
+        : inventoryState.filteredGroupedProducts;
+
+    if (itemsToExport.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No products available to export.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final int totalUnits = isBatchFilter
+        ? inventoryState.filteredBatches
+            .fold(0, (sum, item) => sum + item.stockCount)
+        : itemsToExport.fold(0, (sum, item) => sum + item.totalStockCount);
+
+    final searchQuery = _searchController.text.trim();
+    final filterLabel = _getFilterLabel(inventoryState.activeFilter);
+
+    final String reportTitle;
+    final String fileNameFilterTag;
+
+    if (searchQuery.isNotEmpty) {
+      if (inventoryState.activeFilter != StockFilter.all) {
+        reportTitle = 'Search: "$searchQuery" ($filterLabel)';
+      } else {
+        reportTitle = 'Search: "$searchQuery"';
+      }
+      fileNameFilterTag = 'search_$searchQuery';
+    } else if (inventoryState.activeFilter != StockFilter.all) {
+      reportTitle = filterLabel;
+      fileNameFilterTag = filterLabel;
+    } else {
+      reportTitle = 'All Items';
+      fileNameFilterTag = 'all_stock';
+    }
+
+    setState(() => _isExportingPdf = true);
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text('Generating Stock PDF...'),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    Future.microtask(() async {
+      try {
+        ShopSettings shopSettings = const ShopSettings();
+        try {
+          final getShopSettings = serviceLocator<GetShopSettings>();
+          final result =
+              await getShopSettings().timeout(const Duration(seconds: 2));
+          result.fold((_) {}, (settings) => shopSettings = settings);
+        } catch (_) {}
+
+        final pdfBytes = await PdfInventoryService.generateInventoryPdf(
+          items: itemsToExport,
+          shopSettings: shopSettings,
+          filterTitle: reportTitle,
+          totalStockUnits: totalUnits,
+        );
+
+        final fileName = PdfInventoryService.buildInventoryFileName(
+          filterName: fileNameFilterTag,
+        );
+
+        final savedFile = await PdfInventoryService.saveInventoryPdfToDevice(
+          pdfBytes: pdfBytes,
+          fileName: fileName,
+        );
+
+        if (!mounted) return;
+        setState(() => _isExportingPdf = false);
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'PDF saved to Downloads:\n${savedFile.path.split(Platform.pathSeparator).last}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isExportingPdf = false);
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save PDF: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -158,6 +325,8 @@ class _InventoryPageState extends State<InventoryPage> {
           onClearAll: _handleClearAll,
           onOpenSettings: () =>
               Navigator.push(context, SettingsPage.route()),
+          onExportPdf: _handleExportPdf,
+          isExportingPdf: _isExportingPdf,
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButton: AddProductFab(

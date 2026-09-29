@@ -13,6 +13,9 @@ class SaleModel extends SaleEntity {
     required super.sellPrice,
     required super.costCode,
     super.invoiceId = '',
+    super.partyName = '',
+    super.partyAddress = '',
+    super.servedBy = '',
   });
 
   factory SaleModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -28,6 +31,9 @@ class SaleModel extends SaleEntity {
       sellPrice: (data['sellPrice'] as num?)?.toDouble() ?? 0.0,
       costCode: data['costCode'] ?? '',
       invoiceId: data['invoiceId'] ?? '',
+      partyName: data['partyName'] ?? '',
+      partyAddress: data['partyAddress'] ?? '',
+      servedBy: data['servedBy'] ?? '',
     );
   }
 
@@ -42,6 +48,9 @@ class SaleModel extends SaleEntity {
       'sellPrice': sellPrice,
       'costCode': costCode,
       'invoiceId': invoiceId,
+      'partyName': partyName,
+      'partyAddress': partyAddress,
+      'servedBy': servedBy,
     };
   }
 
@@ -57,6 +66,9 @@ class SaleModel extends SaleEntity {
       sellPrice: saleEntity.sellPrice,
       costCode: saleEntity.costCode,
       invoiceId: saleEntity.invoiceId,
+      partyName: saleEntity.partyName,
+      partyAddress: saleEntity.partyAddress,
+      servedBy: saleEntity.servedBy,
     );
   }
 }

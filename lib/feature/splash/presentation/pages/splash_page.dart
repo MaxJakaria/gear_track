@@ -41,7 +41,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
   late final Animation<Offset> _textSlide;
   late final Animation<double> _textFade;
   late final Animation<double> _indicatorFade;
-  late final Animation<double> _footerFade;
   late final Animation<double> _pulseAnimation;
 
   Timer? _minDurationTimer;
@@ -96,12 +95,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
       ),
     );
 
-    _footerFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.7, 1.0, curve: Curves.easeIn),
-      ),
-    );
 
     // 2. Ambient breathing glow animation
     _pulseController = AnimationController(
@@ -320,55 +313,6 @@ class _SplashPageState extends State<SplashPage> with TickerProviderStateMixin {
 
                 const Spacer(flex: 3),
 
-                // Luxury Bottom Security & Version Badge
-                FadeTransition(
-                  opacity: _footerFade,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF111827).withValues(alpha: 0.6)
-                            : Colors.white.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF334155).withValues(alpha: 0.5)
-                              : const Color(0xFFE2E8F0).withValues(alpha: 0.8),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.verified_user_rounded,
-                            size: 13,
-                            color: isDark
-                                ? const Color(0xFF818CF8)
-                                : const Color(0xFF4F46E5),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'GearTrack Enterprise • v1.0.0 Pro',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),

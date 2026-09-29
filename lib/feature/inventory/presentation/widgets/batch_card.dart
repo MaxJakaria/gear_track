@@ -18,8 +18,7 @@ class BatchCard extends StatelessWidget {
     'assets/images/card_bg_gold.jpg',
   ];
 
-  String get _cardBgImage =>
-      _cardVariants[cardIndex % _cardVariants.length];
+  String get _cardBgImage => _cardVariants[cardIndex % _cardVariants.length];
 
   String _formatDate(DateTime date) {
     final year = date.year;

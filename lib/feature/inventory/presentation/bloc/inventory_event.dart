@@ -73,6 +73,23 @@ final class UpdateProductEvent extends InventoryEvent {
   List<Object?> get props => [product];
 }
 
+final class UpdateGroupedProductDetailsEvent extends InventoryEvent {
+  final GroupedProduct groupedProduct;
+  final String newItemName;
+  final String newModel;
+  final Completer<void>? completer;
+
+  const UpdateGroupedProductDetailsEvent({
+    required this.groupedProduct,
+    required this.newItemName,
+    required this.newModel,
+    this.completer,
+  });
+
+  @override
+  List<Object?> get props => [groupedProduct, newItemName, newModel];
+}
+
 final class DeleteProductEvent extends InventoryEvent {
   final String productId;
   final Completer<void>? completer;

@@ -11,6 +11,9 @@ class SaleEntity extends Equatable {
   final double sellPrice;
   final String costCode;
   final String invoiceId;
+  final String partyName;
+  final String partyAddress;
+  final String servedBy;
 
   const SaleEntity({
     required this.id,
@@ -23,6 +26,9 @@ class SaleEntity extends Equatable {
     required this.sellPrice,
     required this.costCode,
     this.invoiceId = '',
+    this.partyName = '',
+    this.partyAddress = '',
+    this.servedBy = '',
   });
 
   @override
@@ -37,5 +43,8 @@ class SaleEntity extends Equatable {
     sellPrice,
     costCode,
     invoiceId,
+    partyName,
+    partyAddress,
+    servedBy,
   ];
 }

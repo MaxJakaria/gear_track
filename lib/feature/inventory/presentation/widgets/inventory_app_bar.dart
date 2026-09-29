@@ -9,6 +9,8 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onClearSearch;
   final VoidCallback? onClearAll;
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onExportPdf;
+  final bool isExportingPdf;
   final String title;
 
   const InventoryAppBar({
@@ -21,6 +23,8 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onClearSearch,
     this.onClearAll,
     this.onOpenSettings,
+    this.onExportPdf,
+    this.isExportingPdf = false,
     required this.title,
   });
 
@@ -110,6 +114,23 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
       actions: [
+        if (isExportingPdf)
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          )
+        else if (onExportPdf != null)
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_rounded, size: 22),
+            tooltip: 'Export Stock PDF',
+            onPressed: onExportPdf,
+          ),
         if (!isSearching) ...[
           IconButton(
             icon: Image.asset(

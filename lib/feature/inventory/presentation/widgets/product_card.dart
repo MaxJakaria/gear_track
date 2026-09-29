@@ -7,6 +7,7 @@ import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dar
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/batch_item_tile.dart';
+import 'package:gear_track/feature/inventory/presentation/widgets/edit_product_details_dialog.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/edit_product_sheet.dart';
 import 'package:gear_track/feature/inventory/presentation/widgets/stock_status_badge.dart';
 
@@ -139,18 +140,58 @@ class _ProductCardState extends State<ProductCard> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    grouped.itemName.isNotEmpty
-                                        ? grouped.itemName
-                                        : 'Unnamed Product',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.3,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          grouped.itemName.isNotEmpty
+                                              ? grouped.itemName
+                                              : 'Unnamed Product',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: -0.3,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Tooltip(
+                                        message: 'Edit product details',
+                                        child: InkWell(
+                                          onTap: () {
+                                            EditProductDetailsDialog.show(
+                                              context,
+                                              groupedProduct: grouped,
+                                            );
+                                          },
+                                          borderRadius: BorderRadius.circular(14),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.2,
+                                              ),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.35,
+                                                ),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: const Icon(
+                                              Icons.edit_rounded,
+                                              size: 13,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 6),
 

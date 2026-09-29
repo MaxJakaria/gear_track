@@ -7,6 +7,7 @@ import 'package:gear_track/feature/inventory/domain/usecases/add_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/clear_all_products.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/delete_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/get_product.dart';
+import 'package:gear_track/feature/inventory/domain/usecases/update_grouped_product_details.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/update_product.dart';
 
 part 'inventory_event.dart';
@@ -16,6 +17,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
   final AddProduct addProduct;
   final GetProducts getProducts;
   final UpdateProduct updateProduct;
+  final UpdateGroupedProductDetails updateGroupedProductDetails;
   final DeleteProduct deleteProduct;
   final ClearAllProducts clearAllProducts;
 
@@ -25,6 +27,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     required this.addProduct,
     required this.getProducts,
     required this.updateProduct,
+    required this.updateGroupedProductDetails,
     required this.deleteProduct,
     required this.clearAllProducts,
   }) : super(InventoryInitial()) {
@@ -32,6 +35,7 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     on<AddProductEvent>(_onAddProduct);
     on<SearchProductsEvent>(_onSearchProducts);
     on<UpdateProductEvent>(_onUpdateProduct);
+    on<UpdateGroupedProductDetailsEvent>(_onUpdateGroupedProductDetails);
     on<DeleteProductEvent>(_onDeleteProduct);
     on<ClearAllProductsEvent>(_onClearAllProducts);
     on<ClearOutOfStockBatchesEvent>(_onClearOutOfStockBatches);
@@ -137,6 +141,27 @@ class InventoryBloc extends Bloc<InventoryEvent, InventoryState> {
     Emitter<InventoryState> emit,
   ) async {
     final result = await updateProduct(event.product);
+    await result.fold(
+      (failure) async {
+        emit(InventoryError(failure.message));
+        event.completer?.completeError(failure.message);
+      },
+      (_) async {
+        await _fetchAndEmit(emit);
+        event.completer?.complete();
+      },
+    );
+  }
+
+  Future<void> _onUpdateGroupedProductDetails(
+    UpdateGroupedProductDetailsEvent event,
+    Emitter<InventoryState> emit,
+  ) async {
+    final result = await updateGroupedProductDetails(
+      groupedProduct: event.groupedProduct,
+      newItemName: event.newItemName,
+      newModel: event.newModel,
+    );
     await result.fold(
       (failure) async {
         emit(InventoryError(failure.message));

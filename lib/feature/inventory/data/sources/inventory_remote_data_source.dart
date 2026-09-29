@@ -1,10 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gear_track/feature/inventory/data/models/product_model.dart';
+import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 
 abstract class InventoryRemoteDataSource {
   Future<void> addProduct(ProductModel productModel);
   Future<List<ProductModel>> getProducts();
   Future<void> updateProduct(ProductModel productModel);
+  Future<void> updateGroupedProductDetails({
+    required GroupedProduct groupedProduct,
+    required String newItemName,
+    required String newModel,
+  });
   Future<void> deleteProduct(String productId);
   Future<void> clearAllProducts();
 }
@@ -177,6 +183,41 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
         'costCode': productModel.costCode,
       });
     });
+  }
+
+  @override
+  Future<void> updateGroupedProductDetails({
+    required GroupedProduct groupedProduct,
+    required String newItemName,
+    required String newModel,
+  }) async {
+    final docIds = <String>{};
+    for (final batch in groupedProduct.batches) {
+      final parts = batch.id.split('/');
+      if (parts.length == 2 && parts[0].isNotEmpty) {
+        docIds.add(parts[0]);
+      } else if (batch.partNo.isNotEmpty) {
+        docIds.add(batch.partNo);
+      } else if (batch.id.isNotEmpty) {
+        docIds.add(batch.id);
+      }
+    }
+
+    if (docIds.isEmpty && groupedProduct.partNo.isNotEmpty) {
+      docIds.add(groupedProduct.partNo);
+    }
+
+    if (docIds.isEmpty) return;
+
+    final batch = firestore.batch();
+    for (final docId in docIds) {
+      final docRef = firestore.collection('products').doc(docId);
+      batch.update(docRef, {
+        'itemName': newItemName.trim(),
+        'model': newModel.trim(),
+      });
+    }
+    await batch.commit();
   }
 
   @override

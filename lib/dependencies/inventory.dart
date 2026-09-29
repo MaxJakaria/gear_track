@@ -5,6 +5,7 @@ import 'package:gear_track/feature/inventory/domain/usecases/add_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/clear_all_products.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/delete_product.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/get_product.dart';
+import 'package:gear_track/feature/inventory/domain/usecases/update_grouped_product_details.dart';
 import 'package:gear_track/feature/inventory/domain/usecases/update_product.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -24,6 +25,7 @@ void inventoryDependencies(GetIt sl) {
   sl.registerLazySingleton(() => AddProduct(sl()));
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => UpdateProduct(sl()));
+  sl.registerLazySingleton(() => UpdateGroupedProductDetails(sl()));
   sl.registerLazySingleton(() => DeleteProduct(sl()));
   sl.registerLazySingleton(() => ClearAllProducts(sl()));
 
@@ -33,6 +35,7 @@ void inventoryDependencies(GetIt sl) {
       addProduct: sl(),
       getProducts: sl(),
       updateProduct: sl(),
+      updateGroupedProductDetails: sl(),
       deleteProduct: sl(),
       clearAllProducts: sl(),
     ),

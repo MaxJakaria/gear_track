@@ -32,16 +32,7 @@ class PosRepositoryImpl implements PosRepository {
       final saleModels = sales.map((s) => SaleModel.fromEntity(s)).toList();
       final invoiceModel = invoice is InvoiceModel
           ? invoice
-          : InvoiceModel(
-              invoiceId: invoice.invoiceId,
-              saleDate: invoice.saleDate,
-              totalAmount: invoice.totalAmount,
-              totalItems: invoice.totalItems,
-              items: invoice.items,
-              shopName: invoice.shopName,
-              shopPhone: invoice.shopPhone,
-              shopAddress: invoice.shopAddress,
-            );
+          : InvoiceModel.fromEntity(invoice);
 
       await remoteDataSource.checkoutCart(
         sales: saleModels,
@@ -80,16 +71,7 @@ class PosRepositoryImpl implements PosRepository {
     try {
       final invoiceModel = invoice is InvoiceModel
           ? invoice
-          : InvoiceModel(
-              invoiceId: invoice.invoiceId,
-              saleDate: invoice.saleDate,
-              totalAmount: invoice.totalAmount,
-              totalItems: invoice.totalItems,
-              items: invoice.items,
-              shopName: invoice.shopName,
-              shopPhone: invoice.shopPhone,
-              shopAddress: invoice.shopAddress,
-            );
+          : InvoiceModel.fromEntity(invoice);
       await remoteDataSource.saveInvoice(invoiceModel);
       return const Right(null);
     } catch (e) {

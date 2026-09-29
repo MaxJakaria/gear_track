@@ -9,7 +9,6 @@ import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_c
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_checkout_section.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_product_search_card.dart';
 import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
-import 'package:gear_track/feature/receipt_verification/presentation/pages/receipt_verification_page.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/pages/returns_page.dart';
 
@@ -57,11 +56,7 @@ class _PosPageState extends State<PosPage> {
       );
     }
     context.read<InventoryBloc>().add(const FetchProductsEvent());
-
-    final posState = context.read<PosBloc>().state;
-    if (posState is! PosLoaded) {
-      context.read<PosBloc>().add(const FetchSalesEvent());
-    }
+    context.read<PosBloc>().add(const FetchSalesEvent());
   }
 
   @override
@@ -207,7 +202,7 @@ class _PosPageState extends State<PosPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           vertical: 10,
-                          horizontal: 4,
+                          horizontal: 12,
                         ),
                         child: SizedBox(
                           width: 84,
@@ -228,20 +223,6 @@ class _PosPageState extends State<PosPage> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.qr_code_scanner_rounded),
-                        tooltip: 'Verify Receipt',
-                        onPressed: isBusy
-                            ? null
-                            : () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const ReceiptVerificationPage(),
-                                ),
-                              ),
-                      ),
-                      const SizedBox(width: 6),
                     ],
                   ),
                   body: AbsorbPointer(

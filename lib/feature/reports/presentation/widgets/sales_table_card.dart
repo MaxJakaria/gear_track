@@ -102,6 +102,7 @@ class SalesTableCard extends StatelessWidget {
           _InvoiceGroup(
             slNumber: currentInvoiceSl,
             invoiceId: r.invoiceId,
+            partyName: r.partyName,
             items: [r],
           ),
         );
@@ -500,39 +501,80 @@ class SalesTableCard extends StatelessWidget {
                                         child: Container(
                                           alignment: Alignment.center,
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 6.0,
+                                            horizontal: 4.0,
                                             vertical: 6.0,
                                           ),
-                                          child: Row(
+                                          child: Column(
                                             mainAxisAlignment:
                                                 MainAxisAlignment.center,
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Text(
-                                                group.invoiceId.isNotEmpty
-                                                    ? group.invoiceId
-                                                    : '-',
-                                                textAlign: TextAlign.center,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 10.0,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark
-                                                      ? const Color(0xFFE2E8F0)
-                                                      : const Color(0xFF1E293B),
-                                                ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Flexible(
+                                                    child: Text(
+                                                      group.invoiceId.isNotEmpty
+                                                          ? group.invoiceId
+                                                          : '-',
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontSize: 10.0,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: isDark
+                                                            ? const Color(
+                                                                0xFFE2E8F0,
+                                                              )
+                                                            : const Color(
+                                                                0xFF1E293B,
+                                                              ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (group
+                                                      .invoiceId
+                                                      .isNotEmpty) ...[
+                                                    const SizedBox(width: 3),
+                                                    Icon(
+                                                      Icons.copy_rounded,
+                                                      size: 11,
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFF64748B,
+                                                            )
+                                                          : const Color(
+                                                              0xFF94A3B8,
+                                                            ),
+                                                    ),
+                                                  ],
+                                                ],
                                               ),
-                                              if (group
-                                                  .invoiceId
-                                                  .isNotEmpty) ...[
-                                                const SizedBox(width: 3),
-                                                Icon(
-                                                  Icons.copy_rounded,
-                                                  size: 11,
-                                                  color: isDark
-                                                      ? const Color(0xFF64748B)
-                                                      : const Color(0xFF94A3B8),
+                                              if (group.partyName.trim().isNotEmpty) ...[
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  group.partyName.trim(),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 9.0,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isDark
+                                                        ? const Color(
+                                                            0xFF38BDF8,
+                                                          )
+                                                        : const Color(
+                                                            0xFF0284C7,
+                                                          ),
+                                                  ),
                                                 ),
                                               ],
                                             ],
@@ -744,11 +786,13 @@ class SalesTableCard extends StatelessWidget {
 class _InvoiceGroup {
   final int slNumber;
   final String invoiceId;
+  final String partyName;
   final List<SalesRecordDetail> items;
 
   _InvoiceGroup({
     required this.slNumber,
     required this.invoiceId,
+    this.partyName = '',
     required this.items,
   });
 }
