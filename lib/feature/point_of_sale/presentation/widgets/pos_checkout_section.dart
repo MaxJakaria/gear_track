@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_checkout_button.dart';
 
-/// Section for Customer / Party Details and Checkout Action
+/// Section for Customer / Party Details, Payment/Due Input, and Checkout Action
 class PosCheckoutSection extends StatefulWidget {
   const PosCheckoutSection({super.key});
 
@@ -15,6 +15,7 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
   late final TextEditingController _partyNameController;
   late final TextEditingController _partyAddressController;
   late final TextEditingController _servedByController;
+  late final TextEditingController _paidAmountController;
 
   @override
   void initState() {
@@ -22,13 +23,29 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
     _partyNameController = TextEditingController();
     _partyAddressController = TextEditingController();
     _servedByController = TextEditingController();
+    _paidAmountController = TextEditingController();
+    _paidAmountController.addListener(_onInputChanged);
+    _partyNameController.addListener(_onInputChanged);
+    _partyAddressController.addListener(_onInputChanged);
+    _servedByController.addListener(_onInputChanged);
+  }
+
+  void _onInputChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _paidAmountController.removeListener(_onInputChanged);
+    _partyNameController.removeListener(_onInputChanged);
+    _partyAddressController.removeListener(_onInputChanged);
+    _servedByController.removeListener(_onInputChanged);
     _partyNameController.dispose();
     _partyAddressController.dispose();
     _servedByController.dispose();
+    _paidAmountController.dispose();
     super.dispose();
   }
 
@@ -36,6 +53,80 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
     _partyNameController.clear();
     _partyAddressController.clear();
     _servedByController.clear();
+    _paidAmountController.clear();
+  }
+
+  double _getPaidAmount(double totalAmount) {
+    final text = _paidAmountController.text.trim();
+    if (text.isEmpty) return totalAmount;
+    final val = double.tryParse(text);
+    if (val == null || val < 0) return totalAmount;
+    return val;
+  }
+
+  double _getDueAmount(double totalAmount) {
+    final paid = _getPaidAmount(totalAmount);
+    final due = totalAmount - paid;
+    return due > 0 ? due : 0.0;
+  }
+
+  void _handleCheckout(
+    BuildContext context,
+    bool generatePdf,
+    double totalAmount,
+  ) {
+    final paid = _getPaidAmount(totalAmount);
+    final due = _getDueAmount(totalAmount);
+    final hasDue = due > 0;
+
+    final partyName = _partyNameController.text.trim();
+    final partyAddress = _partyAddressController.text.trim();
+    final servedBy = _servedByController.text.trim();
+
+    if (hasDue) {
+      if (partyName.isEmpty) {
+        _showValidationAlert('Party Name is required when selling with due.');
+        return;
+      }
+      if (partyAddress.isEmpty) {
+        _showValidationAlert('Party Address is required when selling with due.');
+        return;
+      }
+      if (servedBy.isEmpty) {
+        _showValidationAlert('Served By is required when selling with due.');
+        return;
+      }
+    }
+
+    context.read<PosBloc>().add(
+          CheckoutCartEvent(
+            generatePdf: generatePdf,
+            partyName: partyName,
+            partyAddress: partyAddress,
+            servedBy: servedBy,
+            paidAmount: paid,
+            dueAmount: due,
+          ),
+        );
+  }
+
+  void _showValidationAlert(String message) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -65,11 +156,15 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
           );
           final hasStockIssue = hasOutOfStockItems || hasExcessQuantityItems;
 
+          final paid = _getPaidAmount(totalAmount);
+          final due = _getDueAmount(totalAmount);
+          final hasDue = due > 0;
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Customer / Party Details Section
-              _buildOptionalPartySection(theme, isDark),
+              // 1. Payment & Due Section + Customer Details
+              _buildPaymentAndCustomerSection(theme, isDark, totalAmount, paid, due, hasDue),
 
               const SizedBox(height: 12),
 
@@ -114,25 +209,19 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
                 const SizedBox(height: 14),
               ],
 
-              // 3. Checkout Buttons (Sale Only & Generate Bill)
+              // 2. Checkout Buttons (Sale Only & Generate Bill)
               PosCheckoutButton(
                 cartItems: List.from(cartItems),
                 totalAmount: totalAmount,
+                paidAmount: paid,
+                dueAmount: due,
                 isLoading: isProcessing,
                 isEnabled: !hasStockIssue,
                 partyNameController: _partyNameController,
                 partyAddressController: _partyAddressController,
                 servedByController: _servedByController,
-                onCheckout: (bool generatePdf) {
-                  context.read<PosBloc>().add(
-                    CheckoutCartEvent(
-                      generatePdf: generatePdf,
-                      partyName: _partyNameController.text.trim(),
-                      partyAddress: _partyAddressController.text.trim(),
-                      servedBy: _servedByController.text.trim(),
-                    ),
-                  );
-                },
+                onCheckout: (bool generatePdf) =>
+                    _handleCheckout(context, generatePdf, totalAmount),
               ),
             ],
           );
@@ -141,32 +230,87 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
     );
   }
 
-  Widget _buildOptionalPartySection(ThemeData theme, bool isDark) {
+  Widget _buildPaymentAndCustomerSection(
+    ThemeData theme,
+    bool isDark,
+    double totalAmount,
+    double paid,
+    double due,
+    bool hasDue,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF334155).withValues(alpha: 0.6)
+              : const Color(0xFFE2E8F0),
+          width: 0.8,
+        ),
       ),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Paid & Due Input Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Paid Amount Field
+              Expanded(
+                child: _buildCompactInput(
+                  controller: _paidAmountController,
+                  label: 'Paid Amount',
+                  isDark: isDark,
+                  theme: theme,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  hintText: '৳${totalAmount.toStringAsFixed(0)}',
+                ),
+              ),
+
+              // Due text only if due exists (no container background)
+              if (hasDue) ...[
+                const SizedBox(width: 12),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Due: ৳${due.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // Customer Fields
           _buildCompactInput(
             controller: _partyNameController,
-            label: 'Party Name (Optional)',
+            label: 'Party Name',
+            isRequired: hasDue,
             isDark: isDark,
             theme: theme,
           ),
           const SizedBox(height: 8),
           _buildCompactInput(
             controller: _partyAddressController,
-            label: 'Party Address (Optional)',
+            label: 'Party Address',
+            isRequired: hasDue,
             isDark: isDark,
             theme: theme,
           ),
           const SizedBox(height: 8),
           _buildCompactInput(
             controller: _servedByController,
-            label: 'Served By (Optional)',
+            label: 'Served By',
+            isRequired: hasDue,
             isDark: isDark,
             theme: theme,
           ),
@@ -180,23 +324,43 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
     required String label,
     required bool isDark,
     required ThemeData theme,
+    bool isRequired = false,
+    TextInputType keyboardType = TextInputType.text,
+    String? hintText,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (isRequired) ...[
+              const SizedBox(width: 3),
+              const Text(
+                '*',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 3),
         SizedBox(
           height: 36,
           child: TextField(
             controller: controller,
+            keyboardType: keyboardType,
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w500,
@@ -204,6 +368,11 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
             ),
             decoration: InputDecoration(
               isDense: true,
+              hintText: hintText,
+              hintStyle: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 8,
                 vertical: 8,

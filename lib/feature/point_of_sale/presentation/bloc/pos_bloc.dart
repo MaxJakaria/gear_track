@@ -374,10 +374,17 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       result.fold((_) {}, (settings) => shopSettings = settings);
     } catch (_) {}
 
+    final totalBill = checkoutItems.fold(0.0, (total, i) => total + i.subtotal);
+    final paidAmount = event.paidAmount ?? totalBill;
+    final dueAmount = event.dueAmount ?? (totalBill - paidAmount).clamp(0.0, totalBill);
+    final paymentStatus = dueAmount > 0
+        ? (paidAmount > 0 ? 'PARTIAL' : 'DUE')
+        : 'PAID';
+
     final invoice = InvoiceEntity(
       invoiceId: invoiceId,
       saleDate: now,
-      totalAmount: totalPaid,
+      totalAmount: totalBill,
       totalItems: checkoutItems.fold(0, (total, i) => total + i.quantity),
       items: invoiceItems,
       shopName: shopSettings.shopName,
@@ -387,6 +394,9 @@ class PosBloc extends Bloc<PosEvent, PosState> {
       partyName: event.partyName,
       partyAddress: event.partyAddress,
       servedBy: event.servedBy,
+      paidAmount: paidAmount,
+      dueAmount: dueAmount,
+      paymentStatus: paymentStatus,
     );
 
     int itemIndex = 1;
@@ -418,7 +428,7 @@ class PosBloc extends Bloc<PosEvent, PosState> {
     try {
       final doc = await PdfReceiptService.generateReceipt(
         checkoutItems,
-        totalPaid,
+        totalBill,
         shopSettings: shopSettings,
         invoice: invoice,
       ).timeout(const Duration(seconds: 6));

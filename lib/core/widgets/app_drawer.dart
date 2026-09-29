@@ -6,8 +6,10 @@ import 'package:gear_track/core/pages/help_guide_page.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/database_maintenance/presentation/pages/database_maintenance_page.dart';
+import 'package:gear_track/feature/due_management/presentation/pages/due_management_page.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/settings_page.dart';
+import 'package:gear_track/feature/returns/presentation/pages/returns_page.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -153,6 +155,35 @@ class _AppDrawerState extends State<AppDrawer> {
 
                     const SizedBox(height: 6),
 
+                    // Due Management
+                    _buildMenuCard(
+                      icon: Icons.payments_rounded,
+                      title: 'Due Management',
+                      iconColor: const Color(0xFFEF4444),
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          DueManagementPage.route(),
+                        );
+                      },
+                    ),
+
+                    // Return Management
+                    _buildMenuCard(
+                      icon: Icons.assignment_return_rounded,
+                      title: 'Return Management',
+                      iconColor: const Color(0xFFF59E0B),
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          ReturnsPage.route(),
+                        );
+                      },
+                    ),
 
                     // 4. Database Maintenance
                     _buildMenuCard(

@@ -9,6 +9,7 @@ import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_cart_c
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_checkout_section.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/widgets/pos_product_search_card.dart';
 import 'package:gear_track/feature/point_of_sale/utils/pdf_receipt_service.dart';
+import 'package:gear_track/feature/due_management/presentation/pages/due_management_page.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/pages/returns_page.dart';
 
@@ -202,10 +203,32 @@ class _PosPageState extends State<PosPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           vertical: 10,
-                          horizontal: 12,
+                          horizontal: 4,
                         ),
                         child: SizedBox(
-                          width: 84,
+                          width: 74,
+                          height: 36,
+                          child: AppGradientButton(
+                            onPressed: isBusy
+                                ? null
+                                : () => Navigator.push(
+                                    context,
+                                    DueManagementPage.route(),
+                                  ),
+                            label: 'Due',
+                            height: 36,
+                            borderRadius: 8,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 8,
+                        ),
+                        child: SizedBox(
+                          width: 80,
                           height: 36,
                           child: AppGradientButton(
                             onPressed: isBusy

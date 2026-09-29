@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/theme/app_theme.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/auth/presentation/widgets/auth_gate.dart';
+import 'package:gear_track/feature/due_management/presentation/bloc/due_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/receipt_verification/presentation/bloc/receipt_verification_bloc.dart';
@@ -41,6 +42,7 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider(create: (context) => serviceLocator<ReportsBloc>()),
         BlocProvider(create: (context) => serviceLocator<ReturnBloc>()),
+        BlocProvider(create: (context) => serviceLocator<DueBloc>()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

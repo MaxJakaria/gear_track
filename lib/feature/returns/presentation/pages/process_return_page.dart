@@ -9,6 +9,8 @@ import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_event.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_state.dart';
+import 'package:gear_track/feature/due_management/presentation/bloc/due_bloc.dart';
+import 'package:gear_track/feature/due_management/presentation/bloc/due_event.dart';
 import 'package:gear_track/feature/returns/presentation/widgets/return_item_tile.dart';
 import 'package:gear_track/feature/returns/presentation/widgets/return_summary_card.dart';
 
@@ -171,6 +173,22 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           context.read<ReportsBloc>().add(const RefreshReportsEvent());
           // 3. Refresh returns history
           context.read<ReturnBloc>().add(const FetchReturnsEvent());
+          // 4. Refresh due management list
+          context.read<DueBloc>().add(const FetchDueInvoicesEvent());
+
+          final existingDue = widget.invoice.dueAmount;
+          final returnVal = state.returnRecord.totalRefundAmount;
+          final dueDeduction = returnVal > existingDue
+              ? existingDue
+              : returnVal;
+          final cashRefund = (returnVal - dueDeduction).clamp(
+            0.0,
+            double.infinity,
+          );
+
+          final String successMsg = existingDue > 0.001
+              ? 'Return processed! Adjusted from due: ${dueDeduction.toCurrency()}${cashRefund > 0.001 ? ', Cash refund: ${cashRefund.toCurrency()}' : ''}'
+              : 'Return processed! Refund: ${returnVal.toCurrency()}';
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -182,11 +200,7 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                     size: 18,
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Return processed! Refund: ${state.returnRecord.totalRefundAmount.toCurrency()}',
-                    ),
-                  ),
+                  Expanded(child: Text(successMsg)),
                 ],
               ),
               backgroundColor: const Color(0xFF10B981),
@@ -233,13 +247,12 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Minimal Invoice Meta Card
+                  // Enhanced Invoice Meta Card with Payment Status
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -247,47 +260,100 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                           ? AppColors.surfaceDark
                           : AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.borderDark
+                            : AppColors.borderLight,
+                        width: 0.8,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 4,
+                        // Row 1: Invoice ID, Date, and PAID/DUE Badge
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              widget.invoice.invoiceId,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'monospace',
-                                color: isDark
-                                    ? AppColors.primaryButtonDark
-                                    : AppColors.primaryButtonLight,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  widget.invoice.invoiceId,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'monospace',
+                                    color: isDark
+                                        ? AppColors.primaryButtonDark
+                                        : AppColors.primaryButtonLight,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  widget.invoice.formattedDate,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              widget.invoice.formattedDate,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: widget.invoice.hasDue
+                                    ? const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.12)
+                                    : const Color(
+                                        0xFF10B981,
+                                      ).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                widget.invoice.hasDue
+                                    ? 'DUE: ${widget.invoice.dueAmount.toCurrency()}'
+                                    : 'PAID',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.invoice.hasDue
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF10B981),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+
+                        if (widget.invoice.partyName.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Customer: ${widget.invoice.partyName}'
+                            '${widget.invoice.partyAddress.isNotEmpty ? ' (${widget.invoice.partyAddress})' : ''}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? const Color(0xFFE2E8F0)
+                                  : const Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 8),
+
+                        // Row 3: Financial Summary (Total, Paid, Due)
                         Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
+                          spacing: 12,
                           runSpacing: 4,
                           children: [
                             Text(
-                              'Original Total: ${widget.invoice.totalAmount.toCurrency()}',
+                              'Total: ${widget.invoice.totalAmount.toCurrency()}',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: isDark
@@ -295,13 +361,32 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                                     : const Color(0xFF64748B),
                               ),
                             ),
+                            Text(
+                              'Paid: ${widget.invoice.paidAmount.toCurrency()}',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF059669),
+                              ),
+                            ),
+                            if (widget.invoice.hasDue)
+                              Text(
+                                'Due: ${widget.invoice.dueAmount.toCurrency()}',
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFEF4444),
+                                ),
+                              ),
                             if (widget.invoice.hasReturns)
                               Text(
                                 'Prev. Refunded: ${widget.invoice.returnedAmount.toCurrency()}',
                                 style: const TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFEF4444),
+                                  color: Color(0xFFF59E0B),
                                 ),
                               ),
                           ],
@@ -309,6 +394,12 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                       ],
                     ),
                   ),
+
+                  // Dynamic Refund Settlement Preview Box
+                  if (_totalReturnQuantity > 0) ...[
+                    const SizedBox(height: 10),
+                    _buildRefundSettlementPreview(isDark),
+                  ],
 
                   const SizedBox(height: 12),
 
@@ -410,6 +501,133 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildRefundSettlementPreview(bool isDark) {
+    final existingDue = widget.invoice.dueAmount;
+    final returnVal = _totalRefundAmount;
+    final dueDeduction = returnVal > existingDue ? existingDue : returnVal;
+    final cashRefund = (returnVal - dueDeduction).clamp(0.0, double.infinity);
+    final remainingDueAfter = (existingDue - dueDeduction).clamp(
+      0.0,
+      double.infinity,
+    );
+
+    final isDueAdjustment = existingDue > 0.001;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDueAdjustment
+            ? (isDark
+                  ? const Color(0xFF78350F).withValues(alpha: 0.25)
+                  : const Color(0xFFFEF3C7))
+            : (isDark
+                  ? const Color(0xFF064E3B).withValues(alpha: 0.25)
+                  : const Color(0xFFD1FAE5)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDueAdjustment
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
+              : const Color(0xFF10B981).withValues(alpha: 0.5),
+          width: 0.8,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isDueAdjustment
+                    ? Icons.info_outline_rounded
+                    : Icons.check_circle_outline_rounded,
+                size: 15,
+                color: isDueAdjustment
+                    ? const Color(0xFFD97706)
+                    : const Color(0xFF059669),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isDueAdjustment
+                    ? 'REFUND SETTLEMENT BREAKDOWN'
+                    : 'FULL PAID INVOICE REFUND',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.4,
+                  color: isDueAdjustment
+                      ? (isDark
+                            ? const Color(0xFFFDE68A)
+                            : const Color(0xFF92400E))
+                      : (isDark
+                            ? const Color(0xFFA7F3D0)
+                            : const Color(0xFF065F46)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (isDueAdjustment) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Returned Items Value: ${returnVal.toCurrency()}',
+                  style: const TextStyle(fontSize: 11.5),
+                ),
+                Text(
+                  'Deducted from Due: -${dueDeduction.toCurrency()}',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Remaining Due After: ${remainingDueAfter.toCurrency()}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+                Text(
+                  'Cash Refund: ${cashRefund.toCurrency()}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: cashRefund > 0.001
+                        ? const Color(0xFF10B981)
+                        : (isDark
+                              ? const Color(0xFF94A3B8)
+                              : const Color(0xFF64748B)),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Text(
+              'Customer has fully paid for this invoice. Cash refund: ${returnVal.toCurrency()}',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? const Color(0xFFA7F3D0)
+                    : const Color(0xFF065F46),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

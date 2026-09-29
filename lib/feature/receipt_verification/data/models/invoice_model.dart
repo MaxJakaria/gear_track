@@ -73,6 +73,9 @@ class InvoiceModel extends InvoiceEntity {
     super.servedBy = '',
     super.returnedAmount = 0.0,
     super.returnStatus = 'NONE',
+    super.paidAmount,
+    super.dueAmount,
+    super.paymentStatus,
   });
 
   factory InvoiceModel.fromCartItems({
@@ -83,6 +86,9 @@ class InvoiceModel extends InvoiceEntity {
     String partyName = '',
     String partyAddress = '',
     String servedBy = '',
+    double? paidAmount,
+    double? dueAmount,
+    String? paymentStatus,
   }) {
     final items = cartItems
         .map((i) => InvoiceItemModel.fromCartItem(i))
@@ -111,6 +117,9 @@ class InvoiceModel extends InvoiceEntity {
       servedBy: servedBy,
       returnedAmount: 0.0,
       returnStatus: 'NONE',
+      paidAmount: paidAmount ?? totalAmount,
+      dueAmount: dueAmount ?? 0.0,
+      paymentStatus: paymentStatus,
     );
   }
 
@@ -130,13 +139,16 @@ class InvoiceModel extends InvoiceEntity {
       servedBy: entity.servedBy,
       returnedAmount: entity.returnedAmount,
       returnStatus: entity.returnStatus,
+      paidAmount: entity.paidAmount,
+      dueAmount: entity.dueAmount,
+      paymentStatus: entity.paymentStatus,
     );
   }
 
-  factory InvoiceModel.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
+  factory InvoiceModel.fromMap(
+    Map<String, dynamic> data,
+    String invoiceId,
   ) {
-    final data = doc.data() ?? {};
     final rawItems = data['items'] as List<dynamic>? ?? [];
     final items = rawItems
         .map(
@@ -151,10 +163,16 @@ class InvoiceModel extends InvoiceEntity {
       date = DateTime.tryParse(data['saleDate']) ?? DateTime.now();
     }
 
+    final totalAmt = (data['totalAmount'] as num?)?.toDouble() ?? 0.0;
+    final paidAmt = (data['paidAmount'] as num?)?.toDouble() ?? totalAmt;
+    final dueAmt = (data['dueAmount'] as num?)?.toDouble() ?? 0.0;
+    final payStatus = data['paymentStatus'] as String? ??
+        (dueAmt > 0 ? (paidAmt > 0 ? 'PARTIAL' : 'DUE') : 'PAID');
+
     return InvoiceModel(
-      invoiceId: doc.id,
+      invoiceId: invoiceId,
       saleDate: date,
-      totalAmount: (data['totalAmount'] as num?)?.toDouble() ?? 0.0,
+      totalAmount: totalAmt,
       totalItems: (data['totalItems'] as num?)?.toInt() ?? items.length,
       items: items,
       shopName: data['shopName'] ?? '',
@@ -166,7 +184,16 @@ class InvoiceModel extends InvoiceEntity {
       servedBy: data['servedBy'] ?? '',
       returnedAmount: (data['returnedAmount'] as num?)?.toDouble() ?? 0.0,
       returnStatus: data['returnStatus'] ?? 'NONE',
+      paidAmount: paidAmt,
+      dueAmount: dueAmt,
+      paymentStatus: payStatus,
     );
+  }
+
+  factory InvoiceModel.fromFirestore(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    return InvoiceModel.fromMap(doc.data() ?? {}, doc.id);
   }
 
   Map<String, dynamic> toMap() {
@@ -176,6 +203,9 @@ class InvoiceModel extends InvoiceEntity {
       'formattedDate': formattedDate,
       'formattedTime': formattedTime,
       'totalAmount': totalAmount,
+      'paidAmount': paidAmount,
+      'dueAmount': dueAmount,
+      'paymentStatus': paymentStatus,
       'totalItems': totalItems,
       'shopName': shopName,
       'shopPhone': shopPhone,

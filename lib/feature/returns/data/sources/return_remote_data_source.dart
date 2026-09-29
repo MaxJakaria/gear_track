@@ -411,6 +411,23 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
         (acc, i) => acc + ((i['returnableQuantity'] as num?)?.toInt() ?? 0),
       );
 
+      final double existingDue =
+          ((invoiceData['dueAmount'] as num?)?.toDouble() ?? 0.0);
+      final double invoiceTotal =
+          ((invoiceData['totalAmount'] as num?)?.toDouble() ?? 0.0);
+      final double existingPaid =
+          ((invoiceData['paidAmount'] as num?)?.toDouble() ??
+              (invoiceTotal - existingDue).clamp(0.0, double.infinity));
+      final double refundAmount = returnModel.totalRefundAmount;
+
+      final double newDue =
+          (existingDue - refundAmount).clamp(0.0, double.infinity);
+      final double dueDeducted = existingDue - newDue;
+      final double cashRefund = (refundAmount - dueDeducted).clamp(0.0, double.infinity);
+      final double newPaid =
+          (existingPaid - cashRefund).clamp(0.0, double.infinity);
+      final String newPaymentStatus = newDue <= 0.001 ? 'PAID' : 'PARTIAL';
+
       transaction.update(invoiceRef, {
         'items': activeInvoiceItems,
         'totalAmount': newTotalAmount,
@@ -420,6 +437,9 @@ class ReturnRemoteDataSourceImpl implements ReturnRemoteDataSource {
             returnModel.totalRefundAmount,
         'returnStatus': isFullReturn ? 'FULL' : 'PARTIAL',
         'lastReturnDate': Timestamp.fromDate(returnModel.returnDate),
+        'dueAmount': newDue,
+        'paidAmount': newPaid,
+        'paymentStatus': newPaymentStatus,
       });
 
       // C. Update matching sales records

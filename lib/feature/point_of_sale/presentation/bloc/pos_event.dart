@@ -155,12 +155,16 @@ class CheckoutCartEvent extends PosEvent {
   final String partyName;
   final String partyAddress;
   final String servedBy;
+  final double? paidAmount;
+  final double? dueAmount;
 
   const CheckoutCartEvent({
     this.generatePdf = true,
     this.partyName = '',
     this.partyAddress = '',
     this.servedBy = '',
+    this.paidAmount,
+    this.dueAmount,
   });
 
   @override
@@ -169,6 +173,8 @@ class CheckoutCartEvent extends PosEvent {
     partyName,
     partyAddress,
     servedBy,
+    paidAmount,
+    dueAmount,
   ];
 }
 
