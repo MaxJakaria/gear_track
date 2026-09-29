@@ -95,23 +95,6 @@ class _AppDrawerState extends State<AppDrawer> {
       backgroundColor: Colors.transparent,
       child: Row(
         children: [
-          // Outer Soft Shadow Strip (on the left edge for right-side slide)
-          Container(
-            width: 16,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [
-                  Colors.white.withValues(alpha: 0.16),
-                  Colors.white.withValues(alpha: 0.05),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.45, 1.0],
-              ),
-            ),
-          ),
-
           // Main Drawer Body
           Expanded(
             child: ColoredBox(
@@ -234,6 +217,23 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+
+          // Outer Soft Shadow Strip (on the right edge for left-side slide)
+          Container(
+            width: 16,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.16),
+                  Colors.white.withValues(alpha: 0.05),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.45, 1.0],
               ),
             ),
           ),

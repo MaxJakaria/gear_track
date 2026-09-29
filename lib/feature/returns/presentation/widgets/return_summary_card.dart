@@ -34,10 +34,14 @@ class ReturnSummaryCard extends StatelessWidget {
     final double dueDeduction = totalRefundAmount > invoiceDueAmount
         ? invoiceDueAmount
         : totalRefundAmount;
-    final double cashRefund =
-        (totalRefundAmount - dueDeduction).clamp(0.0, double.infinity);
-    final double remainingDue =
-        (invoiceDueAmount - dueDeduction).clamp(0.0, double.infinity);
+    final double cashRefund = (totalRefundAmount - dueDeduction).clamp(
+      0.0,
+      double.infinity,
+    );
+    final double remainingDue = (invoiceDueAmount - dueDeduction).clamp(
+      0.0,
+      double.infinity,
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -87,10 +91,11 @@ class ReturnSummaryCard extends StatelessWidget {
                             vertical: 1,
                           ),
                           decoration: BoxDecoration(
-                            color: (isDark
-                                    ? AppColors.primaryButtonDark
-                                    : AppColors.primaryButtonLight)
-                                .withValues(alpha: 0.15),
+                            color:
+                                (isDark
+                                        ? AppColors.primaryButtonDark
+                                        : AppColors.primaryButtonLight)
+                                    .withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -123,35 +128,22 @@ class ReturnSummaryCard extends StatelessWidget {
                           letterSpacing: -0.3,
                           color: hasDue
                               ? (cashRefund > 0.001
-                                  ? const Color(0xFF10B981)
-                                  : (isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : const Color(0xFF64748B)))
+                                    ? const Color(0xFF10B981)
+                                    : (isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B)))
                               : (isDark
-                                  ? const Color(0xFFF87171)
-                                  : const Color(0xFFE11D48)),
+                                    ? const Color(0xFFF87171)
+                                    : const Color(0xFFE11D48)),
                         ),
                       ),
-                      if (hasDue && totalReturnQuantity > 0) ...[
-                        const SizedBox(width: 8),
-                        Text(
-                          '(Goods: ${totalRefundAmount.toCurrency()})',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? const Color(0xFF94A3B8)
-                                : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                   if (totalReturnQuantity > 0) ...[
                     const SizedBox(height: 2),
                     if (hasDue)
                       Text(
-                        'Due Adj: -${dueDeduction.toCurrency()} • Remaining Due: ${remainingDue.toCurrency()}',
+                        'Remaining Due: ${remainingDue.toCurrency()}',
                         style: const TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,

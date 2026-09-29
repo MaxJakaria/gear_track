@@ -106,36 +106,7 @@ class InvoiceSearchResultCard extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 8),
-
-                    // Financial breakdown if due exists
-                    if (invoice.hasDue) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Paid: ${invoice.paidAmount.toCurrency()}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? const Color(0xFF94A3B8)
-                                  : const Color(0xFF64748B),
-                            ),
-                          ),
-                          Text(
-                            'Due: ${invoice.dueAmount.toCurrency()}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFEF4444),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                    ],
 
                     // Bottom Row: Invoice ID Tag, Date, and Status Badge
                     Row(

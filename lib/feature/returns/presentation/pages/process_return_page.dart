@@ -439,15 +439,6 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                                     : const Color(0xFF059669),
                               ),
                             ),
-                            if (widget.invoice.hasDue)
-                              Text(
-                                'Due: ${widget.invoice.dueAmount.toCurrency()}',
-                                style: const TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFFEF4444),
-                                ),
-                              ),
                             if (widget.invoice.hasReturns)
                               Text(
                                 'Prev. Refunded: ${widget.invoice.returnedAmount.toCurrency()}',

@@ -55,15 +55,6 @@ class _DueManagementPageState extends State<DueManagementPage> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
-            onPressed: () {
-              context.read<DueBloc>().add(const FetchDueInvoicesEvent());
-            },
-          ),
-        ],
       ),
       body: BlocConsumer<DueBloc, DueState>(
         listener: (context, state) {
