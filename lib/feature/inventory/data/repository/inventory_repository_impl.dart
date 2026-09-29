@@ -1,6 +1,7 @@
 import 'package:gear_track/core/error/failure.dart';
 import 'package:gear_track/feature/inventory/data/models/product_model.dart';
 import 'package:gear_track/feature/inventory/data/sources/inventory_remote_data_source.dart';
+import 'package:gear_track/feature/inventory/domain/entities/grouped_product.dart';
 import 'package:gear_track/feature/inventory/domain/entities/product.dart';
 import 'package:gear_track/feature/inventory/domain/repository/inventory_repository.dart';
 import 'package:fpdart/fpdart.dart';
@@ -36,6 +37,24 @@ class InventoryRepositoryImpl implements InventoryRepository {
     try {
       final productModel = ProductModel.fromEntity(product);
       await remoteDataSource.updateProduct(productModel);
+      return const Right(null);
+    } catch (e) {
+      return Left(Failure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateGroupedProductDetails({
+    required GroupedProduct groupedProduct,
+    required String newItemName,
+    required String newModel,
+  }) async {
+    try {
+      await remoteDataSource.updateGroupedProductDetails(
+        groupedProduct: groupedProduct,
+        newItemName: newItemName,
+        newModel: newModel,
+      );
       return const Right(null);
     } catch (e) {
       return Left(Failure(e.toString()));

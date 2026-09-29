@@ -548,7 +548,7 @@ class PdfInventoryService {
         .replaceAll(RegExp(r'^_+|_+$'), '');
     final dateStr = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
     final tag = clean.isNotEmpty ? clean : 'all_stock';
-    return 'geartrack_inventory_${tag}_$dateStr.pdf';
+    return 'inventory_${tag}_$dateStr.pdf';
   }
 
   /// Saves the generated PDF bytes to the device's Download storage.
