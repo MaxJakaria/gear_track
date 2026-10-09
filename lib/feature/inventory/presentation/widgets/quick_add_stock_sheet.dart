@@ -111,13 +111,13 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   }
 
   GroupedProduct? _findConflictingProduct(List<GroupedProduct> list) {
-    final clean = _partNoController.text.trim().toLowerCase();
+    final clean = _partNoController.text.trim();
     if (clean.isEmpty) return null;
     final currentKey = widget.groupedProduct.groupKey;
     for (final p in list) {
       if (p.groupKey == currentKey) continue;
-      if (p.partNo.trim().toLowerCase() == clean ||
-          p.batches.any((b) => b.partNo.trim().toLowerCase() == clean)) {
+      if (p.partNo.trim() == clean ||
+          p.batches.any((b) => b.partNo.trim() == clean)) {
         return p;
       }
     }

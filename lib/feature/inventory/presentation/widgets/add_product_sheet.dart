@@ -110,11 +110,11 @@ class _AddProductSheetState extends State<AddProductSheet> {
   }
 
   GroupedProduct? _findMatchingProduct(List<GroupedProduct> list) {
-    final clean = _partNoController.text.trim().toLowerCase();
+    final clean = _partNoController.text.trim();
     if (clean.isEmpty) return null;
     for (final p in list) {
-      if (p.partNo.trim().toLowerCase() == clean ||
-          p.batches.any((b) => b.partNo.trim().toLowerCase() == clean)) {
+      if (p.partNo.trim() == clean ||
+          p.batches.any((b) => b.partNo.trim() == clean)) {
         return p;
       }
     }

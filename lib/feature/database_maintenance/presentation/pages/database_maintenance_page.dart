@@ -8,6 +8,8 @@ import 'package:gear_track/feature/database_maintenance/presentation/widgets/dan
 import 'package:gear_track/feature/database_maintenance/presentation/widgets/database_overview_card.dart';
 import 'package:gear_track/feature/database_maintenance/presentation/widgets/maintenance_module_card.dart';
 import 'package:gear_track/feature/database_maintenance/presentation/widgets/wipe_confirmation_dialog.dart';
+import 'package:gear_track/feature/due_management/presentation/bloc/due_bloc.dart';
+import 'package:gear_track/feature/due_management/presentation/bloc/due_event.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/point_of_sale/presentation/bloc/pos_bloc.dart';
 import 'package:gear_track/feature/reports/presentation/bloc/reports_bloc.dart';
@@ -73,6 +75,7 @@ class _DatabaseMaintenancePageState extends State<DatabaseMaintenancePage> {
     context.read<ReturnBloc>().add(const FetchReturnsEvent());
     context.read<ReturnBloc>().add(const ResetReturnStateEvent());
     context.read<ReportsBloc>().add(const RefreshReportsEvent());
+    context.read<DueBloc>().add(const FetchDueInvoicesEvent());
   }
 
   void _showSuccessSnack(String message) {
