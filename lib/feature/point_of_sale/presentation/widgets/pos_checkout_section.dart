@@ -88,26 +88,18 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
         _showValidationAlert('Party Name is required when selling with due.');
         return;
       }
-      if (partyAddress.isEmpty) {
-        _showValidationAlert('Party Address is required when selling with due.');
-        return;
-      }
-      if (servedBy.isEmpty) {
-        _showValidationAlert('Served By is required when selling with due.');
-        return;
-      }
     }
 
     context.read<PosBloc>().add(
-          CheckoutCartEvent(
-            generatePdf: generatePdf,
-            partyName: partyName,
-            partyAddress: partyAddress,
-            servedBy: servedBy,
-            paidAmount: paid,
-            dueAmount: due,
-          ),
-        );
+      CheckoutCartEvent(
+        generatePdf: generatePdf,
+        partyName: partyName,
+        partyAddress: partyAddress,
+        servedBy: servedBy,
+        paidAmount: paid,
+        dueAmount: due,
+      ),
+    );
   }
 
   void _showValidationAlert(String message) {
@@ -116,7 +108,11 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(child: Text(message)),
           ],
@@ -164,7 +160,14 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Payment & Due Section + Customer Details
-              _buildPaymentAndCustomerSection(theme, isDark, totalAmount, paid, due, hasDue),
+              _buildPaymentAndCustomerSection(
+                theme,
+                isDark,
+                totalAmount,
+                paid,
+                due,
+                hasDue,
+              ),
 
               const SizedBox(height: 12),
 
@@ -264,8 +267,9 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
                   label: 'Paid Amount',
                   isDark: isDark,
                   theme: theme,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   hintText: '৳${totalAmount.toStringAsFixed(0)}',
                 ),
               ),
@@ -302,7 +306,7 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
           _buildCompactInput(
             controller: _partyAddressController,
             label: 'Party Address',
-            isRequired: hasDue,
+            isRequired: false,
             isDark: isDark,
             theme: theme,
           ),
@@ -310,7 +314,7 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
           _buildCompactInput(
             controller: _servedByController,
             label: 'Served By',
-            isRequired: hasDue,
+            isRequired: false,
             isDark: isDark,
             theme: theme,
           ),
@@ -371,7 +375,9 @@ class _PosCheckoutSectionState extends State<PosCheckoutSection> {
               hintText: hintText,
               hintStyle: TextStyle(
                 fontSize: 12,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.5,
+                ),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 8,

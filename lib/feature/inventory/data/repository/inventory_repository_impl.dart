@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gear_track/core/error/failure.dart';
 import 'package:gear_track/feature/inventory/data/models/product_model.dart';
 import 'package:gear_track/feature/inventory/data/sources/inventory_remote_data_source.dart';
@@ -17,8 +18,11 @@ class InventoryRepositoryImpl implements InventoryRepository {
       final productModel = ProductModel.fromEntity(product);
       await remoteDataSource.addProduct(productModel);
       return const Right(null);
+    } on FirebaseException catch (e) {
+      return Left(Failure(e.message ?? e.toString()));
     } catch (e) {
-      return Left(Failure(e.toString()));
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      return Left(Failure(msg));
     }
   }
 

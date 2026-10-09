@@ -46,8 +46,23 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
           'totalStock': productModel.stockCount,
         });
       } else {
-        // Update total stock in existing main product document
         final data = productSnapshot.data() ?? {};
+        final existingItemName = (data['itemName'] ?? '').toString().trim();
+        final existingModel = (data['model'] ?? '').toString().trim();
+        final newItemName = productModel.itemName.trim();
+        final newModel = productModel.model.trim();
+
+        if (existingItemName.isNotEmpty &&
+            (existingItemName.toLowerCase() != newItemName.toLowerCase() ||
+                existingModel.toLowerCase() != newModel.toLowerCase())) {
+          throw FirebaseException(
+            plugin: 'inventory',
+            message:
+                'Part number "${productModel.partNo}" already belongs to "$existingItemName" ($existingModel). Part numbers must be unique.',
+          );
+        }
+
+        // Update total stock in existing main product document
         final int currentStock = data['totalStock'] ?? 0;
         final int newStock = currentStock + productModel.stockCount;
 
