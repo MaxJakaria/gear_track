@@ -310,7 +310,7 @@ class _InventoryPageState extends State<InventoryPage> {
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         resizeToAvoidBottomInset: false,
-        endDrawer: const AppDrawer(),
+        drawer: const AppDrawer(),
         appBar: InventoryAppBar(
           title: 'Products',
           isSearching: _isSearching,
@@ -391,7 +391,7 @@ class _InventoryPageState extends State<InventoryPage> {
                             );
                       },
                       onOpenFilterSidebar: () =>
-                          Scaffold.of(scaffoldCtx).openEndDrawer(),
+                          Scaffold.of(scaffoldCtx).openDrawer(),
                       onClearAll: state.activeFilter ==
                                   StockFilter.outOfStockBatch &&
                               batchList.isNotEmpty

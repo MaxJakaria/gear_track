@@ -42,15 +42,21 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: onStopSearch,
             )
-          : null,
-      titleSpacing: isSearching ? 0 : 16,
+          : Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu_rounded, size: 26),
+                tooltip: 'Open Menu',
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
+      titleSpacing: isSearching ? 0 : null,
       title: isSearching
           ? ValueListenableBuilder<TextEditingValue>(
               valueListenable: searchController,
               builder: (context, value, child) {
                 return Container(
                   height: 42,
-                  margin: const EdgeInsets.only(right: 16),
+                  margin: const EdgeInsets.only(right: 4),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest.withValues(
@@ -114,6 +120,16 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
       actions: [
+        if (!isSearching)
+          IconButton(
+            icon: Image.asset(
+              'assets/icons/search-engine.png',
+              width: 22,
+              height: 22,
+            ),
+            tooltip: 'Search Products',
+            onPressed: onStartSearch,
+          ),
         if (isExportingPdf)
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 10),
@@ -131,25 +147,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
             tooltip: 'Export Stock PDF',
             onPressed: onExportPdf,
           ),
-        if (!isSearching) ...[
-          IconButton(
-            icon: Image.asset(
-              'assets/icons/search-engine.png',
-              width: 22,
-              height: 22,
-            ),
-            tooltip: 'Search Products',
-            onPressed: onStartSearch,
-          ),
-          Builder(
-            builder: (context) => IconButton(
-              icon: const Icon(Icons.menu_rounded, size: 26),
-              tooltip: 'Open Menu',
-              onPressed: () => Scaffold.of(context).openEndDrawer(),
-            ),
-          ),
-          const SizedBox(width: 6),
-        ],
+        const SizedBox(width: 6),
       ],
     );
   }

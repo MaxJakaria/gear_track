@@ -6,8 +6,10 @@ import 'package:gear_track/core/pages/help_guide_page.dart';
 import 'package:gear_track/core/widgets/app_gradient_button.dart';
 import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/database_maintenance/presentation/pages/database_maintenance_page.dart';
+import 'package:gear_track/feature/due_management/presentation/pages/due_management_page.dart';
 import 'package:gear_track/feature/inventory/presentation/bloc/inventory_bloc.dart';
 import 'package:gear_track/feature/inventory/presentation/pages/settings_page.dart';
+import 'package:gear_track/feature/returns/presentation/pages/returns_page.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -93,23 +95,6 @@ class _AppDrawerState extends State<AppDrawer> {
       backgroundColor: Colors.transparent,
       child: Row(
         children: [
-          // Outer Soft Shadow Strip (on the left edge for right-side slide)
-          Container(
-            width: 16,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [
-                  Colors.white.withValues(alpha: 0.16),
-                  Colors.white.withValues(alpha: 0.05),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.45, 1.0],
-              ),
-            ),
-          ),
-
           // Main Drawer Body
           Expanded(
             child: ColoredBox(
@@ -153,6 +138,35 @@ class _AppDrawerState extends State<AppDrawer> {
 
                     const SizedBox(height: 6),
 
+                    // Due Management
+                    _buildMenuCard(
+                      icon: Icons.payments_rounded,
+                      title: 'Due Management',
+                      iconColor: const Color(0xFFEF4444),
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          DueManagementPage.route(),
+                        );
+                      },
+                    ),
+
+                    // Return Management
+                    _buildMenuCard(
+                      icon: Icons.assignment_return_rounded,
+                      title: 'Return Management',
+                      iconColor: const Color(0xFFF59E0B),
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          ReturnsPage.route(),
+                        );
+                      },
+                    ),
 
                     // 4. Database Maintenance
                     _buildMenuCard(
@@ -203,6 +217,23 @@ class _AppDrawerState extends State<AppDrawer> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ),
+
+          // Outer Soft Shadow Strip (on the right edge for left-side slide)
+          Container(
+            width: 16,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.16),
+                  Colors.white.withValues(alpha: 0.05),
+                  Colors.transparent,
+                ],
+                stops: const [0.0, 0.45, 1.0],
               ),
             ),
           ),

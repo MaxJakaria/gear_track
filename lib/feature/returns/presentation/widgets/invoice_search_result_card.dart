@@ -106,7 +106,6 @@ class InvoiceSearchResultCard extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 8),
 
                     // Bottom Row: Invoice ID Tag, Date, and Status Badge
@@ -147,6 +146,34 @@ class InvoiceSearchResultCard extends StatelessWidget {
                             color: isDark
                                 ? const Color(0xFF94A3B8)
                                 : const Color(0xFF64748B),
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        // Payment Status Badge (PAID vs DUE)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6.5,
+                            vertical: 2.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: invoice.hasDue
+                                ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                                : const Color(0xFF10B981).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            invoice.hasDue
+                                ? 'DUE: ${invoice.dueAmount.toCurrency()}'
+                                : 'PAID',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: invoice.hasDue
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF10B981),
+                            ),
                           ),
                         ),
 

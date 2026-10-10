@@ -53,6 +53,9 @@ class InvoiceEntity extends Equatable {
   final String servedBy;
   final double returnedAmount;
   final String returnStatus; // 'NONE', 'PARTIAL', 'FULL'
+  final double paidAmount;
+  final double dueAmount;
+  final String paymentStatus; // 'PAID', 'PARTIAL', 'DUE'
 
   const InvoiceEntity({
     required this.invoiceId,
@@ -69,7 +72,18 @@ class InvoiceEntity extends Equatable {
     this.servedBy = '',
     this.returnedAmount = 0.0,
     this.returnStatus = 'NONE',
-  });
+    double? paidAmount,
+    double? dueAmount,
+    String? paymentStatus,
+  })  : paidAmount = paidAmount ?? totalAmount,
+        dueAmount = dueAmount ?? 0.0,
+        paymentStatus = paymentStatus ??
+            ((dueAmount != null && dueAmount > 0)
+                ? (paidAmount != null && paidAmount > 0 ? 'PARTIAL' : 'DUE')
+                : 'PAID');
+
+  bool get hasDue => dueAmount > 0;
+  bool get isFullyPaid => dueAmount <= 0;
 
   bool get hasReturns => returnedAmount > 0 || returnStatus != 'NONE';
   bool get isFullyReturned =>
@@ -113,5 +127,8 @@ class InvoiceEntity extends Equatable {
     servedBy,
     returnedAmount,
     returnStatus,
+    paidAmount,
+    dueAmount,
+    paymentStatus,
   ];
 }

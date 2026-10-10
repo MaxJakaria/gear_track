@@ -25,6 +25,10 @@ import 'package:gear_track/init_dependencies.dart';
 class ReturnsPage extends StatefulWidget {
   const ReturnsPage({super.key});
 
+  static Route<void> route() {
+    return MaterialPageRoute<void>(builder: (_) => const ReturnsPage());
+  }
+
   @override
   State<ReturnsPage> createState() => _ReturnsPageState();
 }

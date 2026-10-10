@@ -13,6 +13,8 @@ class PosCheckoutButton extends StatelessWidget {
   final String partyName;
   final String partyAddress;
   final String servedBy;
+  final double? paidAmount;
+  final double? dueAmount;
   final TextEditingController? partyNameController;
   final TextEditingController? partyAddressController;
   final TextEditingController? servedByController;
@@ -27,6 +29,8 @@ class PosCheckoutButton extends StatelessWidget {
     this.partyName = '',
     this.partyAddress = '',
     this.servedBy = '',
+    this.paidAmount,
+    this.dueAmount,
     this.partyNameController,
     this.partyAddressController,
     this.servedByController,
@@ -48,6 +52,8 @@ class PosCheckoutButton extends StatelessWidget {
         partyName: _getPartyName(),
         partyAddress: _getPartyAddress(),
         servedBy: _getServedBy(),
+        paidAmount: paidAmount,
+        dueAmount: dueAmount,
       ),
     );
   }

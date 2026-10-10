@@ -9,6 +9,8 @@ import 'package:gear_track/feature/returns/domain/entities/return_entity.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_bloc.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_event.dart';
 import 'package:gear_track/feature/returns/presentation/bloc/return_state.dart';
+import 'package:gear_track/feature/due_management/presentation/bloc/due_bloc.dart';
+import 'package:gear_track/feature/due_management/presentation/bloc/due_event.dart';
 import 'package:gear_track/feature/returns/presentation/widgets/return_item_tile.dart';
 import 'package:gear_track/feature/returns/presentation/widgets/return_summary_card.dart';
 
@@ -118,6 +120,73 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
   }
 
   void _submitReturn() {
+    if (widget.invoice.hasDue) {
+      final existingDue = widget.invoice.dueAmount;
+      final returnVal = _totalRefundAmount;
+      final dueDeduction = returnVal > existingDue ? existingDue : returnVal;
+      final cashRefund = (returnVal - dueDeduction).clamp(0.0, double.infinity);
+      final remainingDue = (existingDue - dueDeduction).clamp(0.0, double.infinity);
+
+      showDialog<void>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Row(
+            children: [
+              Icon(Icons.assignment_return_rounded, color: Color(0xFF6366F1), size: 22),
+              SizedBox(width: 8),
+              Text(
+                'Confirm Return',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildDialogRow('Returned Goods Value', returnVal.toCurrency()),
+              const SizedBox(height: 6),
+              _buildDialogRow('Deducted from Due', '-${dueDeduction.toCurrency()}', isHighlight: true),
+              const SizedBox(height: 6),
+              _buildDialogRow('Remaining Due', remainingDue.toCurrency()),
+              const Divider(height: 16),
+              _buildDialogRow(
+                'Cash to Hand Customer',
+                cashRefund.toCurrency(),
+                isBold: true,
+                color: cashRefund > 0.001 ? const Color(0xFF10B981) : null,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(dialogCtx);
+                _executeSubmitReturn();
+              },
+              child: const Text('Confirm Return'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _executeSubmitReturn();
+    }
+  }
+
+  void _executeSubmitReturn() {
     final List<ReturnItemEntity> returnItems = [];
 
     for (int i = 0; i < widget.invoice.items.length; i++) {
@@ -171,6 +240,22 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           context.read<ReportsBloc>().add(const RefreshReportsEvent());
           // 3. Refresh returns history
           context.read<ReturnBloc>().add(const FetchReturnsEvent());
+          // 4. Refresh due management list
+          context.read<DueBloc>().add(const FetchDueInvoicesEvent());
+
+          final existingDue = widget.invoice.dueAmount;
+          final returnVal = state.returnRecord.totalRefundAmount;
+          final dueDeduction = returnVal > existingDue
+              ? existingDue
+              : returnVal;
+          final cashRefund = (returnVal - dueDeduction).clamp(
+            0.0,
+            double.infinity,
+          );
+
+          final String successMsg = existingDue > 0.001
+              ? 'Return processed! Adjusted from due: ${dueDeduction.toCurrency()}${cashRefund > 0.001 ? ', Cash refund: ${cashRefund.toCurrency()}' : ''}'
+              : 'Return processed! Refund: ${returnVal.toCurrency()}';
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -182,11 +267,7 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                     size: 18,
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Return processed! Refund: ${state.returnRecord.totalRefundAmount.toCurrency()}',
-                    ),
-                  ),
+                  Expanded(child: Text(successMsg)),
                 ],
               ),
               backgroundColor: const Color(0xFF10B981),
@@ -226,6 +307,7 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           bottomNavigationBar: ReturnSummaryCard(
             totalReturnQuantity: _totalReturnQuantity,
             totalRefundAmount: _totalRefundAmount,
+            invoiceDueAmount: widget.invoice.dueAmount,
             restockedCount: _restockedCount,
             nonRestockedCount: _nonRestockedCount,
             isProcessing: isBusy,
@@ -233,13 +315,12 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Minimal Invoice Meta Card
+                  // Enhanced Invoice Meta Card with Payment Status
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -247,52 +328,115 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                           ? AppColors.surfaceDark
                           : AppColors.surfaceLight,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.borderDark
+                            : AppColors.borderLight,
+                        width: 0.8,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 4,
+                        // Row 1: Invoice ID, Date, and PAID/DUE Badge
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              widget.invoice.invoiceId,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'monospace',
-                                color: isDark
-                                    ? AppColors.primaryButtonDark
-                                    : AppColors.primaryButtonLight,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  widget.invoice.invoiceId,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'monospace',
+                                    color: isDark
+                                        ? AppColors.primaryButtonDark
+                                        : AppColors.primaryButtonLight,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  widget.invoice.formattedDate,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              widget.invoice.formattedDate,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark
-                                    ? const Color(0xFF94A3B8)
-                                    : const Color(0xFF64748B),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: widget.invoice.hasDue
+                                    ? const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.12)
+                                    : const Color(
+                                        0xFF10B981,
+                                      ).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                widget.invoice.hasDue
+                                    ? 'DUE: ${widget.invoice.dueAmount.toCurrency()}'
+                                    : 'PAID',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: widget.invoice.hasDue
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF10B981),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+
+                        if (widget.invoice.partyName.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Customer: ${widget.invoice.partyName}'
+                            '${widget.invoice.partyAddress.isNotEmpty ? ' (${widget.invoice.partyAddress})' : ''}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? const Color(0xFFE2E8F0)
+                                  : const Color(0xFF334155),
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 8),
+
+                        // Row 3: Financial Summary (Total, Paid, Due)
                         Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
+                          spacing: 12,
                           runSpacing: 4,
                           children: [
                             Text(
-                              'Original Total: ${widget.invoice.totalAmount.toCurrency()}',
+                              'Total: ${widget.invoice.totalAmount.toCurrency()}',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: isDark
                                     ? const Color(0xFF94A3B8)
                                     : const Color(0xFF64748B),
+                              ),
+                            ),
+                            Text(
+                              'Paid: ${widget.invoice.paidAmount.toCurrency()}',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? const Color(0xFF10B981)
+                                    : const Color(0xFF059669),
                               ),
                             ),
                             if (widget.invoice.hasReturns)
@@ -301,7 +445,7 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
                                 style: const TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFFEF4444),
+                                  color: Color(0xFFF59E0B),
                                 ),
                               ),
                           ],
@@ -410,6 +554,35 @@ class _ProcessReturnPageState extends State<ProcessReturnPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDialogRow(
+    String label,
+    String value, {
+    bool isHighlight = false,
+    bool isBold = false,
+    Color? color,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: (isHighlight || isBold) ? FontWeight.bold : FontWeight.w600,
+            color: color ?? (isHighlight ? const Color(0xFFEF4444) : null),
+          ),
+        ),
+      ],
     );
   }
 }

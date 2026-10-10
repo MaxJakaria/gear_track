@@ -289,7 +289,7 @@ class PdfReceiptService {
             pw.SizedBox(height: 4),
             _buildItemsTable(context, displayItems),
             pw.SizedBox(height: 4),
-            _buildTotalSection(totalAmount),
+            _buildTotalSection(totalAmount, invoice: invoice),
             pw.SizedBox(height: 6),
             _buildFooter(qrPayload),
           ],
@@ -449,13 +449,89 @@ class PdfReceiptService {
     );
   }
 
-  static pw.Widget _buildTotalSection(double total) {
+  static pw.Widget _buildTotalSection(
+    double total, {
+    InvoiceEntity? invoice,
+  }) {
+    final bool hasDue = invoice != null && invoice.dueAmount > 0.001;
     final style = pw.TextStyle(fontSize: 5.5, fontWeight: pw.FontWeight.bold);
+    final rowStyle = const pw.TextStyle(fontSize: 5.0);
+    final dueStyle = pw.TextStyle(
+      fontSize: 5.5,
+      fontWeight: pw.FontWeight.bold,
+      color: PdfColors.red700,
+    );
+
+    if (hasDue) {
+      final paid = invoice.paidAmount;
+      final due = invoice.dueAmount;
+      return pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.end,
+        children: [
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              pw.Row(
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  pw.Text('Total : ', style: style),
+                  pw.Text(total.toCurrency(), style: style),
+                ],
+              ),
+              pw.SizedBox(height: 1.5),
+              pw.Row(
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  pw.Text('Paid : ', style: rowStyle),
+                  pw.Text(paid.toCurrency(), style: rowStyle),
+                ],
+              ),
+              pw.SizedBox(height: 1.5),
+              pw.Row(
+                mainAxisSize: pw.MainAxisSize.min,
+                children: [
+                  pw.Text('Due : ', style: dueStyle),
+                  pw.Text(due.toCurrency(), style: dueStyle),
+                ],
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // Fully Paid -> Paid Stamp (Sill) + Total row
     return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.end,
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
-        pw.Text('Total : ', style: style),
-        pw.Text(total.toCurrency(), style: style),
+        // "PAID" stamp / seal
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: PdfColors.green700, width: 1.2),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)),
+          ),
+          child: pw.Transform.rotate(
+            angle: -0.08,
+            child: pw.Text(
+              'PAID',
+              style: pw.TextStyle(
+                fontSize: 8.5,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.green700,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+        ),
+        pw.Row(
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text('Total : ', style: style),
+            pw.Text(total.toCurrency(), style: style),
+          ],
+        ),
       ],
     );
   }

@@ -45,11 +45,17 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   @override
   void initState() {
     super.initState();
-    _partNoController = TextEditingController();
+    _partNoController =
+        TextEditingController(text: widget.groupedProduct.partNo);
     _costCodeController =
         TextEditingController(text: widget.groupedProduct.latestCostCode);
     _loadMapping();
     _costCodeController.addListener(_updateDecodedCost);
+    _partNoController.addListener(_onPartNoChanged);
+  }
+
+  void _onPartNoChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadMapping() async {
@@ -83,6 +89,7 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
   @override
   void dispose() {
     _costCodeController.removeListener(_updateDecodedCost);
+    _partNoController.removeListener(_onPartNoChanged);
     _partNoController.dispose();
     _costCodeController.dispose();
     _stockCountController.dispose();
@@ -103,9 +110,36 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
     }
   }
 
-  Future<void> _submit() async {
+  GroupedProduct? _findConflictingProduct(List<GroupedProduct> list) {
+    final clean = _partNoController.text.trim();
+    if (clean.isEmpty) return null;
+    final currentKey = widget.groupedProduct.groupKey;
+    for (final p in list) {
+      if (p.groupKey == currentKey) continue;
+      if (p.partNo.trim() == clean ||
+          p.batches.any((b) => b.partNo.trim() == clean)) {
+        return p;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _submit(GroupedProduct? conflict) async {
     if (_isLoading) return;
     if (_formKey.currentState?.validate() ?? false) {
+      if (conflict != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Cannot add batch: Part Number "${_partNoController.text.trim()}" already belongs to "${conflict.itemName}" (${conflict.model}).',
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
       setState(() => _isLoading = true);
       final stock = int.tryParse(_stockCountController.text.trim()) ?? 0;
       final completer = Completer<void>();
@@ -126,10 +160,24 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
         await completer.future;
         if (mounted) {
           Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Stock batch added successfully!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
-      } catch (_) {
+      } catch (e) {
         if (mounted) {
           setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
       }
     }
@@ -145,6 +193,11 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
     final isDark = theme.brightness == Brightness.dark;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final maxHeight = MediaQuery.of(context).size.height * 0.85;
+
+    final invState = context.watch<InventoryBloc>().state;
+    final List<GroupedProduct> existingGrouped =
+        invState is InventoryLoaded ? invState.groupedProducts : const [];
+    final conflict = _findConflictingProduct(existingGrouped);
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
@@ -238,10 +291,54 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                       labelText: 'Part Number',
                       hintText: 'Enter part number for this batch',
                     ),
-                    validator: (val) => val == null || val.trim().isEmpty
-                        ? 'Part No is required'
-                        : null,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Part No is required';
+                      }
+                      if (conflict != null) {
+                        return 'Used by "${conflict.itemName}"';
+                      }
+                      return null;
+                    },
                   ),
+                  if (conflict != null) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(
+                          alpha: isDark ? 0.2 : 0.08,
+                        ),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            size: 20,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Part Number already belongs to "${conflict.itemName}" (${conflict.model}). Part numbers cannot be reused across different products.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
 
                   // Dynamic Input Fields (Cost Code with Live Decoded Preview & Stock Count)
@@ -329,7 +426,7 @@ class _QuickAddStockSheetState extends State<QuickAddStockSheet> {
                   const SizedBox(height: 24),
 
                   AppGradientButton(
-                    onPressed: _isLoading ? null : _submit,
+                    onPressed: _isLoading ? null : () => _submit(conflict),
                     isLoading: _isLoading,
                     label: 'Add Stock Batch',
                   ),

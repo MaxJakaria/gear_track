@@ -7,6 +7,7 @@ import 'package:gear_track/core/widgets/app_gradient_button.dart';
 class ReturnSummaryCard extends StatelessWidget {
   final int totalReturnQuantity;
   final double totalRefundAmount;
+  final double invoiceDueAmount;
   final int restockedCount;
   final int nonRestockedCount;
   final bool isProcessing;
@@ -16,6 +17,7 @@ class ReturnSummaryCard extends StatelessWidget {
     super.key,
     required this.totalReturnQuantity,
     required this.totalRefundAmount,
+    this.invoiceDueAmount = 0.0,
     required this.restockedCount,
     required this.nonRestockedCount,
     required this.isProcessing,
@@ -27,6 +29,19 @@ class ReturnSummaryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final canSubmit = totalReturnQuantity > 0 && !isProcessing;
+
+    final bool hasDue = invoiceDueAmount > 0.001;
+    final double dueDeduction = totalRefundAmount > invoiceDueAmount
+        ? invoiceDueAmount
+        : totalRefundAmount;
+    final double cashRefund = (totalRefundAmount - dueDeduction).clamp(
+      0.0,
+      double.infinity,
+    );
+    final double remainingDue = (invoiceDueAmount - dueDeduction).clamp(
+      0.0,
+      double.infinity,
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -50,7 +65,7 @@ class ReturnSummaryCard extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            // Left: Total Refund & Items Count
+            // Left: Total Refund & Settlement
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -59,7 +74,7 @@ class ReturnSummaryCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        'Total Refund',
+                        hasDue ? 'Cash to Refund' : 'Total Refund',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -71,9 +86,16 @@ class ReturnSummaryCard extends StatelessWidget {
                       if (totalReturnQuantity > 0) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
-                            color: (isDark ? AppColors.primaryButtonDark : AppColors.primaryButtonLight).withValues(alpha: 0.15),
+                            color:
+                                (isDark
+                                        ? AppColors.primaryButtonDark
+                                        : AppColors.primaryButtonLight)
+                                    .withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -81,7 +103,9 @@ class ReturnSummaryCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: isDark ? AppColors.primaryButtonDark : AppColors.primaryButtonLight,
+                              color: isDark
+                                  ? AppColors.primaryButtonDark
+                                  : AppColors.primaryButtonLight,
                             ),
                           ),
                         ),
@@ -89,41 +113,74 @@ class ReturnSummaryCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    totalRefundAmount.toCurrency(),
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                      color: isDark ? const Color(0xFFF87171) : const Color(0xFFE11D48),
-                    ),
+                  // Amount
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        hasDue
+                            ? cashRefund.toCurrency()
+                            : totalRefundAmount.toCurrency(),
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3,
+                          color: hasDue
+                              ? (cashRefund > 0.001
+                                    ? const Color(0xFF10B981)
+                                    : (isDark
+                                          ? const Color(0xFF94A3B8)
+                                          : const Color(0xFF64748B)))
+                              : (isDark
+                                    ? const Color(0xFFF87171)
+                                    : const Color(0xFFE11D48)),
+                        ),
+                      ),
+                    ],
                   ),
                   if (totalReturnQuantity > 0) ...[
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (restockedCount > 0)
-                          Text(
-                            '$restockedCount Restock',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF10B981),
+                    if (hasDue)
+                      Text(
+                        'Remaining Due: ${remainingDue.toCurrency()}',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFEF4444),
+                        ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          if (restockedCount > 0)
+                            Text(
+                              '$restockedCount Restock',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF10B981),
+                              ),
                             ),
-                          ),
-                        if (restockedCount > 0 && nonRestockedCount > 0)
-                          const Text(' • ', style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
-                        if (nonRestockedCount > 0)
-                          Text(
-                            '$nonRestockedCount Damaged',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFEF4444),
+                          if (restockedCount > 0 && nonRestockedCount > 0)
+                            const Text(
+                              ' • ',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF94A3B8),
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
+                          if (nonRestockedCount > 0)
+                            Text(
+                              '$nonRestockedCount Damaged',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                        ],
+                      ),
                   ],
                 ],
               ),
