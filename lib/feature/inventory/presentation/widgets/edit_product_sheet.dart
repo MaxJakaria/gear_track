@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/domain/usecases/get_cost_code_mapping.dart';
 import 'package:gear_track/core/entities/cost_code_mapping.dart';
@@ -31,8 +32,13 @@ class _EditProductSheetState extends State<EditProductSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _partNoController;
   late final TextEditingController _costCodeController;
+  late final TextEditingController _qtyController;
   late DateTime _selectedDate;
   bool _isLoading = false;
+
+  late final int _oldInitialQty;
+  late final int _oldStockCount;
+  int _calculatedStockCount = 0;
 
   CostCodeMapping _mapping = const CostCodeMapping(charToDigit: {});
   String _decodedCost = '';
@@ -40,11 +46,29 @@ class _EditProductSheetState extends State<EditProductSheet> {
   @override
   void initState() {
     super.initState();
+    _oldInitialQty = widget.product.initialQuantity;
+    _oldStockCount = widget.product.stockCount;
+    _calculatedStockCount = _oldStockCount;
+
     _partNoController = TextEditingController(text: widget.product.partNo);
     _costCodeController = TextEditingController(text: widget.product.costCode);
+    _qtyController = TextEditingController(text: _oldInitialQty.toString());
     _selectedDate = widget.product.entryDate;
+
     _loadMapping();
     _costCodeController.addListener(_updateDecodedCost);
+    _qtyController.addListener(_updateCalculatedStock);
+  }
+
+  void _updateCalculatedStock() {
+    final input = int.tryParse(_qtyController.text.trim());
+    if (input != null) {
+      final delta = input - _oldInitialQty;
+      final newStock = _oldStockCount + delta;
+      if (_calculatedStockCount != newStock) {
+        setState(() => _calculatedStockCount = newStock);
+      }
+    }
   }
 
   Future<void> _loadMapping() async {
@@ -68,8 +92,9 @@ class _EditProductSheetState extends State<EditProductSheet> {
       return;
     }
     final val = _mapping.decode(input);
-    final formatted =
-        val % 1 == 0 ? '৳${val.toInt()}' : '৳${val.toStringAsFixed(1)}';
+    final formatted = val % 1 == 0
+        ? '৳${val.toInt()}'
+        : '৳${val.toStringAsFixed(1)}';
     if (_decodedCost != formatted) {
       setState(() => _decodedCost = formatted);
     }
@@ -78,8 +103,10 @@ class _EditProductSheetState extends State<EditProductSheet> {
   @override
   void dispose() {
     _costCodeController.removeListener(_updateDecodedCost);
+    _qtyController.removeListener(_updateCalculatedStock);
     _partNoController.dispose();
     _costCodeController.dispose();
+    _qtyController.dispose();
     super.dispose();
   }
 
@@ -102,6 +129,10 @@ class _EditProductSheetState extends State<EditProductSheet> {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
 
+      final newInput = int.parse(_qtyController.text.trim());
+      final delta = newInput - _oldInitialQty;
+      final newStockCount = _oldStockCount + delta;
+
       final updatedProduct = Product(
         id: widget.product.id,
         entryDate: _selectedDate,
@@ -109,8 +140,8 @@ class _EditProductSheetState extends State<EditProductSheet> {
         itemName: widget.product.itemName,
         model: widget.product.model,
         costCode: _costCodeController.text.trim(),
-        initialQuantity: widget.product.initialQuantity,
-        stockCount: widget.product.stockCount,
+        initialQuantity: newInput,
+        stockCount: newStockCount,
       );
 
       final completer = Completer<void>();
@@ -252,13 +283,14 @@ class _EditProductSheetState extends State<EditProductSheet> {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF6366F1).withValues(
-                                      alpha: isDark ? 0.25 : 0.12,
-                                    ),
+                                    color: const Color(
+                                      0xFF6366F1,
+                                    ).withValues(alpha: isDark ? 0.25 : 0.12),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                      color: const Color(0xFF6366F1)
-                                          .withValues(alpha: 0.35),
+                                      color: const Color(
+                                        0xFF6366F1,
+                                      ).withValues(alpha: 0.35),
                                       width: 0.8,
                                     ),
                                   ),
@@ -278,6 +310,130 @@ class _EditProductSheetState extends State<EditProductSheet> {
                     validator: (val) => val == null || val.trim().isEmpty
                         ? 'Cost code required'
                         : null,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Batch Input / Initial Quantity Field
+                  TextFormField(
+                    controller: _qtyController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Batch Quantity',
+                      hintText: 'Enter batch input quantity',
+                      prefixIcon: Icon(Icons.add_box_outlined),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Quantity is required';
+                      }
+                      final input = int.tryParse(val.trim());
+                      if (input == null) {
+                        return 'Please enter a valid number';
+                      }
+                      final consumed = _oldInitialQty - _oldStockCount;
+                      if (input < consumed) {
+                        return 'Cannot be less than $consumed ($consumed already sold/used)';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Live Present Stock Auto-Calculation Preview Card
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: isDark ? 0.35 : 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.4),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Present Stock (Auto-calculated)',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$_calculatedStockCount units',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: _calculatedStockCount < _oldStockCount
+                                      ? (isDark
+                                          ? Colors.orangeAccent
+                                          : Colors.orange.shade800)
+                                      : (_calculatedStockCount > _oldStockCount
+                                          ? (isDark
+                                              ? Colors.greenAccent
+                                              : Colors.green.shade800)
+                                          : theme.colorScheme.onSurface),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_calculatedStockCount != _oldStockCount)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: (_calculatedStockCount > _oldStockCount
+                                      ? Colors.green
+                                      : Colors.orange)
+                                  .withValues(alpha: isDark ? 0.25 : 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: (_calculatedStockCount > _oldStockCount
+                                        ? Colors.green
+                                        : Colors.orange)
+                                    .withValues(alpha: 0.5),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              (_calculatedStockCount - _oldStockCount) > 0
+                                  ? '+${_calculatedStockCount - _oldStockCount}'
+                                  : '${_calculatedStockCount - _oldStockCount}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: _calculatedStockCount > _oldStockCount
+                                    ? (isDark
+                                        ? Colors.greenAccent
+                                        : Colors.green.shade800)
+                                    : (isDark
+                                        ? Colors.orangeAccent
+                                        : Colors.orange.shade900),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
 

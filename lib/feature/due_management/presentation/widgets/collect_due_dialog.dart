@@ -244,7 +244,22 @@ class _CollectDueDialogState extends State<CollectDueDialog> {
                         fontWeight: FontWeight.bold,
                       ),
                       decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.currency_pound, size: 20),
+                        prefixIcon: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: Text(
+                              '৳',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? const Color(0xFF94A3B8)
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ),
                         hintText: 'Enter amount received',
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14,

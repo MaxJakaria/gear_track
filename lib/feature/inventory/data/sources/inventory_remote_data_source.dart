@@ -174,11 +174,10 @@ class InventoryRemoteDataSourceImpl implements InventoryRemoteDataSource {
         newTotalStock = (currentTotal + stockDelta).clamp(0, 99999999);
       }
 
-      final int newInitial = productModel.stockCount > oldInitial
-          ? productModel.stockCount
-          : (productModel.initialQuantity > 0
-              ? productModel.initialQuantity
-              : oldInitial);
+      final int newInitial = productModel.initialQuantity > 0
+          ? productModel.initialQuantity
+          : oldInitial;
+
 
       // 2. ALL WRITES AFTER
       if (productSnapshot.exists) {

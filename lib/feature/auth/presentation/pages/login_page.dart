@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gear_track/core/theme/app_colors.dart';
@@ -6,6 +7,7 @@ import 'package:gear_track/feature/auth/presentation/bloc/auth_bloc.dart';
 import 'package:gear_track/feature/auth/presentation/pages/forgot_password_page.dart';
 import 'package:gear_track/feature/auth/presentation/widgets/auth_header_image.dart';
 import 'package:gear_track/feature/auth/presentation/widgets/auth_text_field.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +21,32 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _hasSavedEmail = false;
+  bool _isLoadingSavedEmail = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('saved_user_email') ??
+        FirebaseAuth.instance.currentUser?.email;
+
+    if (mounted) {
+      setState(() {
+        if (savedEmail != null && savedEmail.trim().isNotEmpty) {
+          _emailController.text = savedEmail.trim();
+          _hasSavedEmail = true;
+        } else {
+          _hasSavedEmail = false;
+        }
+        _isLoadingSavedEmail = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -29,10 +57,13 @@ class _LoginPageState extends State<LoginPage> {
 
   void _onLogin() {
     if (_formKey.currentState?.validate() ?? false) {
+      final email = _emailController.text.trim();
+      if (email.isEmpty) return;
+
       FocusScope.of(context).unfocus();
       context.read<AuthBloc>().add(
             AuthLoginRequested(
-              email: _emailController.text.trim(),
+              email: email,
               password: _passwordController.text,
             ),
           );
@@ -44,6 +75,18 @@ class _LoginPageState extends State<LoginPage> {
       context,
       ForgotPasswordPage.route(initialEmail: _emailController.text.trim()),
     );
+  }
+
+  Future<void> _switchAccount() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('saved_user_email');
+    if (mounted) {
+      setState(() {
+        _hasSavedEmail = false;
+        _emailController.clear();
+        _passwordController.clear();
+      });
+    }
   }
 
   @override
@@ -83,6 +126,14 @@ class _LoginPageState extends State<LoginPage> {
         builder: (context, state) {
           final isLoading = state is AuthLoading;
 
+          if (_isLoadingSavedEmail) {
+            return const SafeArea(
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
           return SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -98,32 +149,34 @@ class _LoginPageState extends State<LoginPage> {
                       // 1. Top Illustration
                       const AuthHeaderImage(
                         imagePath: 'assets/images/sign_in.png',
-                        bottomSpacing: 48,
+                        bottomSpacing: 40,
                       ),
 
-                      // 2. Email Address Field
-                      AuthTextField(
-                        controller: _emailController,
-                        labelText: 'Email Address',
-                        hintText: 'Enter your email',
-                        prefixIcon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        validator: (value) {
-                          final val = value?.trim() ?? '';
-                          if (val.isEmpty) {
-                            return 'Please enter your email.';
-                          }
-                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                              .hasMatch(val)) {
-                            return 'Enter a valid email address.';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 8),
+                      // 2. Email Address Field (Only shown on first-time login)
+                      if (!_hasSavedEmail) ...[
+                        AuthTextField(
+                          controller: _emailController,
+                          labelText: 'Email Address',
+                          hintText: 'Enter your email',
+                          prefixIcon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          validator: (value) {
+                            final val = value?.trim() ?? '';
+                            if (val.isEmpty) {
+                              return 'Please enter your email.';
+                            }
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                .hasMatch(val)) {
+                              return 'Enter a valid email address.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
-                      // 3. Password Field
+                      // 3. Password Field (Always shown, auto-focused if email is saved)
                       AuthTextField(
                         controller: _passwordController,
                         labelText: 'Password',
@@ -189,6 +242,30 @@ class _LoginPageState extends State<LoginPage> {
                         height: 48,
                         borderRadius: 10,
                       ),
+
+                      // 6. Optional Switch Account Link (Only when email is saved)
+                      if (_hasSavedEmail) ...[
+                        const SizedBox(height: 12),
+                        Center(
+                          child: TextButton(
+                            onPressed: isLoading ? null : _switchAccount,
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            child: Text(
+                              'Use different email / Switch account',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
