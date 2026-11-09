@@ -6,6 +6,7 @@ import 'package:gear_track/feature/auth/domain/usecases/check_auth_status.dart';
 import 'package:gear_track/feature/auth/domain/usecases/login_with_email_password.dart';
 import 'package:gear_track/feature/auth/domain/usecases/send_password_reset.dart';
 import 'package:gear_track/feature/auth/domain/usecases/sign_out.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -32,17 +33,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
-    final result = await checkAuthStatus();
-    result.fold(
-      (failure) => emit(const Unauthenticated()),
-      (isAuthenticated) {
-        if (isAuthenticated) {
-          emit(Authenticated(user: FirebaseAuth.instance.currentUser));
-        } else {
-          emit(const Unauthenticated());
-        }
-      },
-    );
+    // Every time app opens, require password entry
+    emit(const Unauthenticated());
   }
 
   Future<void> _onLogin(
@@ -57,7 +49,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     result.fold(
       (failure) => emit(AuthFailureState(failure.message)),
-      (user) => emit(Authenticated(user: user)),
+      (user) {
+        // Save email locally for subsequent app opens
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.setString('saved_user_email', event.email.trim());
+        });
+        emit(Authenticated(user: user));
+      },
     );
   }
 
